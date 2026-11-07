@@ -190,8 +190,8 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   auto* playhead=getPlayHead();
   const auto pos=playhead?playhead->getPosition():std::optional<juce::AudioPlayHead::PositionInfo>{};
   const bool transportPlaying=pos?pos->getIsPlaying():true;
-  const double bpm=pos?std::clamp(pos->getBpm().value_or(120.0),20.0,300.0):120.0;
-  const double blockPpq=pos?pos->getPpqPosition().value_or(lastExpectedPpq):lastExpectedPpq;
+  const double bpm=pos?std::clamp(pos->getBpm().orFallback(120.0),20.0,300.0):120.0;
+  const double blockPpq=pos?pos->getPpqPosition().orFallback(lastExpectedPpq):lastExpectedPpq;
   const bool jumped=lastTransport && transportPlaying && std::abs(blockPpq-lastExpectedPpq)>0.15;
   if(jumped || (lastTransport && !transportPlaying)) clearRuntime(!jumped && !transportPlaying);
   isPlaying.store(transportPlaying);lastTransport=transportPlaying;lastBpm=bpm;bpmAtomic.store(bpm);
