@@ -1,29 +1,364 @@
-#include <SkellCore/Core.h>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-SkellAudioProcessor::SkellAudioProcessor()
- : AudioProcessor(BusesProperties().withInput("Input",juce::AudioChannelSet::stereo(),true).withOutput("Output",juce::AudioChannelSet::stereo(),true)),
-   parameters(*this,nullptr,"PARAMETERS",createLayout()) {}
-juce::AudioProcessorValueTreeState::ParameterLayout SkellAudioProcessor::createLayout() {
-  juce::AudioProcessorValueTreeState::ParameterLayout layout;
-  layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"gain",1},"Gain",juce::NormalisableRange<float>(0.0f,2.0f,0.001f),1.0f));
-  return layout;
+#include <cmath>
+#include <algorithm>
+
+using APVTS=juce::AudioProcessorValueTreeState;
+using namespace skell::dsp;
+namespace {
+  juce::ParameterID id(const juce::String& name) {return {name,1};}
+  void addFloat(APVTS::ParameterLayout& l,const juce::String& name,float lo,float hi,float initial,float step=0.001f) {
+    l.add(std::make_unique<juce::AudioParameterFloat>(id(name),name,juce::NormalisableRange<float>(lo,hi,step),initial));
+  }
+  void addBool(APVTS::ParameterLayout& l,const juce::String& name,bool initial) {
+    l.add(std::make_unique<juce::AudioParameterBool>(id(name),name,initial));
+  }
+  void addChoice(APVTS::ParameterLayout& l,const juce::String& name,juce::StringArray choices,int index) {
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(name),name,choices,index));
+  }
+  int lengthClass(double beats,float shortMax,float mediumMax,float longMax) noexcept {
+    return beats<shortMax?0:beats<mediumMax?1:beats<longMax?2:3;
+  }
+  float protect(float sample) noexcept {
+    const auto amplitude=std::abs(sample);
+    return amplitude<=0.98f?sample:std::copysign(0.98f+0.02f*std::tanh((amplitude-0.98f)*50.0f),sample);
+  }
 }
-bool SkellAudioProcessor::isBusesLayoutSupported(const BusesLayout& l) const {
-  auto input=l.getMainInputChannelSet();
-  return (input==juce::AudioChannelSet::mono() || input==juce::AudioChannelSet::stereo()) && input==l.getMainOutputChannelSet();
+SkellSilenceAudioProcessor::SkellSilenceAudioProcessor()
+ : AudioProcessor(BusesProperties()
+     .withInput("Input",juce::AudioChannelSet::stereo(),true)
+     .withInput("Sidechain",juce::AudioChannelSet::stereo(),false)
+     .withOutput("Output",juce::AudioChannelSet::stereo(),true)),
+   parameters(*this,nullptr,"PARAMETERS",createLayout()) {
+  for(auto& v:waveform) v.store(0);
+  for(auto& v:recentStarts) v.store(0);
+  for(auto& v:recentEnds) v.store(0);
+  for(auto& v:recentBpms) v.store(120);
+  cacheParameters();
 }
-void SkellAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer&) {
+APVTS::ParameterLayout SkellSilenceAudioProcessor::createLayout() {
+  APVTS::ParameterLayout l;
+  addFloat(l,"mix",0,1,0.65f);
+  addFloat(l,"tension",0,1,0.5f);addFloat(l,"space",0,1,0.28f);
+  addFloat(l,"duckAfter",0,1,0.18f);
+  addChoice(l,"lookahead",{"OFF","250 ms","500 ms","1 beat","1 bar"},1);
+  addChoice(l,"triggerSource",{"AUTO","SIDECHAIN","GRID","MIDI"},0);
+  addChoice(l,"gridDivision",{"1/4","1/8","1/16","1/32"},1);
+  addFloat(l,"gridOffset",0,1,0.0f);
+  addFloat(l,"threshold",3,40,18,0.1f);
+  addFloat(l,"minGap",10,2000,90,1);
+  addFloat(l,"maxGap",500,30000,6000,10);
+  addFloat(l,"hold",0,300,45,1);
+  addFloat(l,"tailSensitivity",0,1,0.6f);
+  addFloat(l,"armTime",0,10,0.4f,0.01f);
+  addFloat(l,"classShortMax",0.25f,1,0.5f,0.125f);
+  addFloat(l,"classMediumMax",1,4,2,0.25f);
+  addFloat(l,"classLongMax",2.5f,16,4,0.5f);
+  for(size_t i=0;i<instrumentIds.size();++i){
+    const auto name=juce::String(instrumentIds[i]);
+    addBool(l,name+"On",true);addFloat(l,name+"Level",0,1,0.6f);
+    for(int c=0;c<4;++c){
+      const bool defaults[7][4]={{true,false,false,false},{false,true,false,false},{false,false,true,true},
+                                 {false,true,true,false},{false,false,false,true},{false,false,false,true},{true,false,false,false}};
+      addBool(l,"rule_"+name+"_"+juce::String(c),defaults[i][c]);
+    }
+  }
+  addFloat(l,"stopSpeedCurve",0,1,0.4f);addFloat(l,"stopTime",0.05f,2,0.45f,0.01f);
+  addFloat(l,"stopLowpass",0,1,0.7f);
+  addChoice(l,"airColor",{"FOLLOW","PINK","WHITE"},0);addFloat(l,"airShape",0,1,0.5f);
+  addFloat(l,"swellLength",80,2000,500,10);addFloat(l,"swellReverb",0,1,0.6f);
+  addChoice(l,"noiseType",{"WHITE","PINK","VINYL","ROOM"},1);
+  addFloat(l,"noiseFadeIn",0.01f,0.9f,0.18f);addFloat(l,"noiseFadeOut",0.01f,0.9f,0.18f);
+  addFloat(l,"impactPitch",0,1,0.35f);addFloat(l,"impactDecay",0,1,0.5f);addFloat(l,"impactClick",0,1,0.4f);
+  addFloat(l,"riserStart",0,1,0.25f);addFloat(l,"riserCurve",0,1,0.5f);addFloat(l,"riserNoiseMix",0,1,0.8f);
+  addChoice(l,"stutterDiv",{"1/4","1/8","1/16","1/32","1/64"},2);
+  addFloat(l,"stutterDecay",0,0.95f,0.2f);addFloat(l,"stutterCount",1,32,6,1);
+  addBool(l,"learnArmed",false);addBool(l,"lockToMap",false);
+  return l;
+}
+namespace {
+  constexpr std::array<const char*,38> namedIds={
+     "mix","tension","space","duckAfter","lookahead","triggerSource","gridDivision","gridOffset",
+     "threshold","minGap","maxGap","hold","tailSensitivity","armTime",
+     "classShortMax","classMediumMax","classLongMax",
+     "stopSpeedCurve","stopTime","stopLowpass","airColor","airShape",
+     "swellLength","swellReverb","noiseType","noiseFadeIn","noiseFadeOut",
+     "impactPitch","impactDecay","impactClick","riserStart","riserCurve","riserNoiseMix",
+     "stutterDiv","stutterDecay","stutterCount","learnArmed","lockToMap"
+  };
+}
+void SkellSilenceAudioProcessor::cacheParameters() {
+  for(size_t i=0;i<namedParams.size();++i)namedParams[i]=parameters.getRawParameterValue(namedIds[i]);
+  for(size_t i=0;i<instrumentIds.size();++i){
+    const juce::String stem(instrumentIds[i]);
+    onParams[i]=parameters.getRawParameterValue(stem+"On");
+    levelParams[i]=parameters.getRawParameterValue(stem+"Level");
+    for(int c=0;c<4;++c)ruleParams[i][size_t(c)]=parameters.getRawParameterValue("rule_"+stem+"_"+juce::String(c));
+  }
+}
+float SkellSilenceAudioProcessor::param(const char* name) const noexcept {
+  for(size_t i=0;i<namedIds.size();++i)if(std::strcmp(name,namedIds[i])==0)
+     return namedParams[i]->load(std::memory_order_relaxed);
+  return 0;
+}
+void SkellSilenceAudioProcessor::snapshotSettings(InstrumentSettings& s) const noexcept {
+  for(size_t i=0;i<instrumentIds.size();++i){
+    s.enabled[i]=onParams[i]->load(std::memory_order_relaxed)>=0.5f;
+    s.levels[i]=levelParams[i]->load(std::memory_order_relaxed);
+    for(int c=0;c<4;++c) s.rules[i][size_t(c)]=ruleParams[i][size_t(c)]->load(std::memory_order_relaxed)>=0.5f;
+  }
+  s.stopSpeedCurve=param("stopSpeedCurve");s.stopTime=param("stopTime");s.stopLowpass=param("stopLowpass");
+  s.airColor=int(param("airColor"));s.airShape=param("airShape");
+  s.swellLength=param("swellLength");s.swellReverb=param("swellReverb");
+  s.noiseType=int(param("noiseType"));s.noiseFadeIn=param("noiseFadeIn");s.noiseFadeOut=param("noiseFadeOut");
+  s.impactPitch=param("impactPitch");s.impactDecay=param("impactDecay");s.impactClick=param("impactClick");
+  s.riserStart=param("riserStart");s.riserCurve=param("riserCurve");s.riserNoiseMix=param("riserNoiseMix");
+  s.stutterDiv=int(param("stutterDiv"));s.stutterDecay=param("stutterDecay");s.stutterCount=int(param("stutterCount"));
+}
+bool SkellSilenceAudioProcessor::isBusesLayoutSupported(const BusesLayout& l) const {
+  const auto main=l.getMainInputChannelSet();
+  if(main!=juce::AudioChannelSet::mono() && main!=juce::AudioChannelSet::stereo()) return false;
+  if(main!=l.getMainOutputChannelSet()) return false;
+  const auto side=l.getChannelSet(true,1);
+  return side.isDisabled() || side==juce::AudioChannelSet::mono() || side==juce::AudioChannelSet::stereo();
+}
+void SkellSilenceAudioProcessor::prepareToPlay(double rate,int /*blockSize*/) {
+  sr=std::max(8000.0,rate);sampleRateAtomic.store(sr);
+  delay.prepare(sr);history.prepare(sr);instruments.prepare(sr);detector.prepare(sr);
+  smoothMix.reset(sr,0.012);smoothTension.reset(sr,0.020);smoothSpace.reset(sr,0.020);
+  smoothMix.setCurrentAndTargetValue(param("mix"));smoothTension.setCurrentAndTargetValue(param("tension"));smoothSpace.setCurrentAndTargetValue(param("space"));
+  clearRuntime();
+  latencyRequested.store(latencyFor(lastBpm));triggerAsyncUpdate();
+}
+void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
+  detector.reset();delay.reset();if(!preserveHistory)history.reset(samples);instruments.reset();
+  readEvents=writtenEvents=0;pendingLearnEvent=-1;previewRemaining=0;gridInGap=false;wasFxActive=false;
+  wetTailRemaining=0;lastGapSample=-1000000000LL;
+  peak=0;peakSamples=0;activeMask.store(0);activeLengthClass.store(-1);
+}
+int SkellSilenceAudioProcessor::latencyFor(double bpm) const noexcept {
+  const int mode=int(param("lookahead"));
+  if(mode==0) return 0;
+  if(mode==1) return int(sr*0.250);
+  if(mode==2) return int(sr*0.500);
+  return int(std::clamp((mode==3?1.0:4.0)*60.0/std::max(20.0,bpm),0.0,16.0)*sr);
+}
+void SkellSilenceAudioProcessor::handleAsyncUpdate() {
+  const auto requested=latencyRequested.load();
+  if(getLatencySamples()!=requested) setLatencySamples(requested);
+}
+void SkellSilenceAudioProcessor::addEvent(int64_t start,double bpm) noexcept {
+  auto& e=events[size_t(writtenEvents%events.size())];e={start,-1,bpm};++writtenEvents;
+  if(writtenEvents-readEvents>events.size())readEvents=writtenEvents-events.size();
+}
+void SkellSilenceAudioProcessor::closeEvent(int64_t end) noexcept {
+  if(writtenEvents==0) return;
+  auto& e=events[size_t((writtenEvents-1)%events.size())];
+  if(e.end>=0) return;
+  e.end=std::max(e.start+1,end);
+  const int r=recentCount.fetch_add(1,std::memory_order_relaxed)%32;
+  recentStarts[size_t(r)].store(e.start,std::memory_order_release);
+  recentEnds[size_t(r)].store(e.end,std::memory_order_release);
+  recentBpms[size_t(r)].store(e.bpm,std::memory_order_release);
+  lastGapSample=e.end;
+}
+SkellSilenceAudioProcessor::RecentGap SkellSilenceAudioProcessor::getRecentGap(int index) const noexcept {
+  const int count=recentCount.load(std::memory_order_acquire);
+  if(index<0 || index>=std::min(32,count)) return {};
+  const int idx=(count-1-index+32*2048)%32;
+  return {recentStarts[size_t(idx)].load(),recentEnds[size_t(idx)].load(),recentBpms[size_t(idx)].load()};
+}
+void SkellSilenceAudioProcessor::requestMapEdit(int index,double deltaPpq,bool remove) noexcept {
+  editDelta.store(deltaPpq);editRemove.store(remove);editIndex.store(index);
+}
+void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals guard;
-  auto gain=parameters.getRawParameterValue("gain")->load();
-  buffer.applyGain(gain);
+  auto main=getBusBuffer(buffer,false,0);
+  if(main.getNumChannels()==0) return;
+  const auto side=getBusBuffer(buffer,true,1);
+  const int n=main.getNumSamples(),nc=main.getNumChannels();
+  auto* left=main.getWritePointer(0);
+  auto* right=nc==2?main.getWritePointer(1):nullptr;
+  const auto* sideL=side.getNumChannels()>0?side.getReadPointer(0):nullptr;
+  const auto* sideR=side.getNumChannels()>1?side.getReadPointer(1):nullptr;
+
+  if(clearMapRequested.exchange(false)) gapMap.clear();
+  if(const int idx=editIndex.exchange(-1);idx>=0) {
+    if(editRemove.exchange(false)) gapMap.erase(idx);
+    else {auto g=gapMap.get(idx);const double d=editDelta.load();gapMap.replace(idx,{std::max(0.0,g.from+d),std::max(0.001,g.to+d)});}
+  }
+  auto* playhead=getPlayHead();
+  const auto pos=playhead?playhead->getPosition():std::optional<juce::AudioPlayHead::PositionInfo>{};
+  const bool transportPlaying=pos?pos->getIsPlaying():true;
+  const double bpm=pos?std::clamp(pos->getBpm().value_or(120.0),20.0,300.0):120.0;
+  const double blockPpq=pos?pos->getPpqPosition().value_or(lastExpectedPpq):lastExpectedPpq;
+  const bool jumped=lastTransport && transportPlaying && std::abs(blockPpq-lastExpectedPpq)>0.15;
+  if(jumped || (lastTransport && !transportPlaying)) clearRuntime(!jumped && !transportPlaying);
+  isPlaying.store(transportPlaying);lastTransport=transportPlaying;lastBpm=bpm;bpmAtomic.store(bpm);
+  const bool lock=param("lockToMap")>0.5f;
+  // Never toggle PDC to zero when LOCK is enabled. A stable latency contract is
+  // essential for hosts that cannot reconfigure compensation mid-playback.
+  const int latency=latencyFor(bpm);
+  if(latencyRequested.exchange(latency)!=latency) triggerAsyncUpdate();
+  smoothMix.setTargetValue(param("mix"));smoothTension.setTargetValue(param("tension"));smoothSpace.setTargetValue(param("space"));
+  const float duck=param("duckAfter"),shortMax=param("classShortMax"),mediumMax=param("classMediumMax"),longMax=param("classLongMax");
+  const int source=int(param("triggerSource"));
+  constexpr double gridBeats[4]={1.0,0.5,0.25,0.125};
+  const double gridDivision=gridBeats[std::clamp(int(param("gridDivision")),0,3)];
+  const double gridOffset=param("gridOffset");
+  const bool learn=param("learnArmed")>0.5f;
+  DetectorSettings d;
+  d.thresholdDb=param("threshold");d.minGapMs=param("minGap");d.maxGapMs=param("maxGap");
+  d.holdMs=param("hold");d.tailSensitivity=param("tailSensitivity");d.armTimeSeconds=param("armTime");
+  InstrumentSettings inst;snapshotSettings(inst);
+  const double ppqPerSample=bpm/(60.0*sr);
+  const int previewIndex=previewRequested.exchange(-1);
+  if(previewIndex>=0 && !transportPlaying && getRecentCount()>0) {
+    previewStartSample=samples;
+    const auto gap=getRecentGap(std::min(previewIndex,getRecentCount()-1));
+    previewSourceStart=gap.start;
+    previewTotal=previewRemaining=std::max<int64_t>(1,std::min<int64_t>(int64_t(sr*0.75),gap.end-gap.start));
+  }
+  auto midiIterator=juce::MidiBuffer::Iterator(midi);
+  juce::MidiMessage midiEvent;
+  int nextMidiSample=0;
+  bool hasMidi=midiIterator.getNextEvent(midiEvent,nextMidiSample);
+  for(int i=0;i<n;++i) {
+    const auto clock=samples++;
+    const float inL=left[i],inR=right?right[i]:inL;
+    const float mono=0.5f*(inL+inR);
+    const float sideMono=sideL?0.5f*(sideL[i]+(sideR?sideR[i]:sideL[i])):mono;
+    delay.push(0,inL);delay.push(1,inR);
+    history.push(mono);
+    const double ppq=blockPpq+i*ppqPerSample;
+    DetectionResult detected;
+    bool begin=false,end=false;
+    int64_t eventStart=clock,eventEnd=clock;
+    if(transportPlaying && !lock) {
+      if(source==0 || source==1) {
+        detected=detector.process(source==1?sideMono:mono,clock,d);
+        begin=detected.began;end=detected.ended;
+        if(begin) eventStart=detected.start;
+        if(end) eventEnd=detected.end;
+      } else if(source==2){
+        const double phase=std::fmod(ppq+1000000.0*gridDivision-gridOffset*gridDivision,gridDivision);
+        const bool inGap=phase>=gridDivision*0.75;
+        begin=inGap && !gridInGap;end=!inGap && gridInGap;
+        gridInGap=inGap;
+      } else if(source==3){
+        while(hasMidi && nextMidiSample<=i){
+          if(midiEvent.isNoteOff()){end=true;eventEnd=clock;}
+          if(midiEvent.isNoteOn()){begin=true;eventStart=clock;}
+          hasMidi=midiIterator.getNextEvent(midiEvent,nextMidiSample);
+        }
+      }
+      if(source==3 && !end && writtenEvents>0) {
+        auto& last=events[size_t((writtenEvents-1)%events.size())];
+        if(last.end<0 && clock-last.start>=int64_t(d.maxGapMs*sr/1000.0)){end=true;eventEnd=clock;}
+      }
+      if(end){closeEvent(eventEnd);if(learn && ppq>openGapPpq)gapMap.append(openGapPpq,ppq);}
+      if(begin){ addEvent(eventStart,bpm);openGapPpq=ppq-double(clock-eventStart)*ppqPerSample; }
+    }
+    if(i==n-1){fastMeter.store(detected.fast);slowMeter.store(detected.slow);thresholdMeter.store(detected.threshold);detectorState.store(int(detector.getState()));}
+    peak=std::max(peak,std::max(std::abs(inL),std::abs(inR)));
+    if(++peakSamples>=size_t(sr/72)){
+      const auto index=waveformSequence.fetch_add(1)%waveformSize;
+      waveform[size_t(index)].store(std::min(1.0f,peak),std::memory_order_release);
+      peakSamples=0;peak=0;
+    }
+    const auto dryL=delay.delayed(0,latency),dryR=delay.delayed(1,latency);
+    const auto delayedClock=clock-latency;
+    const double delayedPpq=ppq-latency*ppqPerSample;
+    const float wetMix=smoothMix.getNextValue(),tension=smoothTension.getNextValue(),space=smoothSpace.getNextValue();
+    double gapStart=0,gapLen=0;
+    bool active=false;
+    if(transportPlaying && lock){
+      // Map is bounded and only read once per ~32 samples; interpolation below uses PPQ.
+      if(i%32==0){
+        pendingLearnEvent=-1;
+        for(int k=0;k<gapMap.size();++k){const auto g=gapMap.get(k);
+          if(delayedPpq>=g.from && delayedPpq<g.to){pendingLearnEvent=k;break;}
+          if(g.from>delayedPpq && g.from<delayedPpq+32*ppqPerSample){pendingLearnEvent=k;break;}
+        }
+      }
+      if(pendingLearnEvent>=0){const auto g=gapMap.get(pendingLearnEvent);
+        active=delayedPpq>=g.from && delayedPpq<g.to;
+        gapStart=double(delayedClock)-(delayedPpq-g.from)/ppqPerSample;
+        gapLen=(g.to-g.from)/ppqPerSample;
+      }
+    } else if(transportPlaying){
+      while(readEvents<writtenEvents) {
+        const auto& e=events[size_t(readEvents%events.size())];
+        if(e.end>=0 && delayedClock>=e.end){++readEvents;continue;}
+        if(delayedClock>=e.start && (e.end<0 || delayedClock<e.end)) {
+          active=true;gapStart=double(e.start);
+          gapLen=e.end>=0?double(e.end-e.start):std::max(sr*60.0/bpm,double(delayedClock-e.start)+sr*0.1);
+        }
+        break;
+      }
+    } else if(previewRemaining>0){
+      active=true;gapStart=double(previewSourceStart);
+      gapLen=double(previewTotal);
+      --previewRemaining;
+    }
+    float wet=0;
+    if(active && !wasFxActive)instruments.beginGap();
+    wasFxActive=active;
+    if(active && gapLen>1) {
+      const double renderTime=transportPlaying?double(delayedClock)-gapStart:double(clock-previewStartSample);
+      const float progress=std::clamp(float(renderTime/gapLen),0.0f,1.0f);
+      const int cl=lengthClass(gapLen/sr*bpm/60.0,shortMax,mediumMax,longMax);
+      const GapContext context{history,sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
+      wet=instruments.process(context,inst,cl);
+      wetTailRemaining=std::max<int64_t>(1,int64_t(sr*2));
+      activeLengthClass.store(cl,std::memory_order_relaxed);
+      int mask=0;for(int ins=0;ins<7;++ins)if(inst.enabled[size_t(ins)] && inst.rules[size_t(ins)][size_t(cl)])mask|=1<<ins;
+      activeMask.store(mask,std::memory_order_relaxed);
+    } else {
+      activeMask.store(0,std::memory_order_relaxed);activeLengthClass.store(-1,std::memory_order_relaxed);
+      if (wetTailRemaining>0 && transportPlaying) {
+        const float fade=std::min(1.0f,float(wetTailRemaining)/(float(sr)*0.5f));
+        wet=instruments.tail(space)*fade;
+        --wetTailRemaining;
+      }
+    }
+    // At MIX 0 preserve the original signal bit-for-bit (including high peaks).
+    const float lift=(!active && delayedClock-lastGapSample<sr*0.055 && delayedClock>=lastGapSample)?duck*0.18f*wetMix:0;
+    const float outL=dryL*(1.0f+lift)+wet*wetMix;
+    const float outR=dryR*(1.0f+lift)+wet*wetMix;
+    left[i]=(wetMix<=0 && lift<=0)?dryL:protect(outL);
+    if(right)right[i]=(wetMix<=0 && lift<=0)?dryR:protect(outR);
+    delay.next();
+  }
+  lastExpectedPpq=blockPpq+n*ppqPerSample;currentPpqAtomic.store(lastExpectedPpq);
+  totalSamples.store(samples);
+  int count=0;
+  for(int k=0;k<getRecentCount();++k)if(samples-getRecentGap(k).end<sr*60.0)++count;
+  gapsLastMinute.store(count);
 }
-juce::AudioProcessorEditor* SkellAudioProcessor::createEditor() { return new SkellAudioProcessorEditor(*this); }
-void SkellAudioProcessor::getStateInformation(juce::MemoryBlock& dest) {
-  if(auto xml=parameters.copyState().createXml()) copyXmlToBinary(*xml,dest);
+juce::AudioProcessorEditor* SkellSilenceAudioProcessor::createEditor(){return new SkellSilenceAudioProcessorEditor(*this);}
+void SkellSilenceAudioProcessor::getStateInformation(juce::MemoryBlock& dest) {
+  auto state=parameters.copyState();
+  juce::ValueTree ui("SKELL_UI");ui.setProperty("width",windowW.load(),nullptr);ui.setProperty("height",windowH.load(),nullptr);
+  juce::ValueTree map("GAPS");
+  for(int i=0;i<gapMap.size();++i){const auto g=gapMap.get(i);
+    juce::ValueTree item("GAP");item.setProperty("from",g.from,nullptr);item.setProperty("to",g.to,nullptr);map.addChild(item,-1,nullptr);
+  }
+  ui.addChild(map,-1,nullptr);state.addChild(ui,-1,nullptr);
+  if(auto xml=state.createXml())copyXmlToBinary(*xml,dest);
 }
-void SkellAudioProcessor::setStateInformation(const void* data,int size) {
-  if(auto xml=getXmlFromBinary(data,size))
-    if(xml->hasTagName(parameters.state.getType())) parameters.replaceState(juce::ValueTree::fromXml(*xml));
+void SkellSilenceAudioProcessor::setStateInformation(const void* data,int size) {
+  if(const auto xml=getXmlFromBinary(data,size))if(xml->hasTagName(parameters.state.getType())){
+    auto state=juce::ValueTree::fromXml(*xml);
+    const auto ui=state.getChildWithName("SKELL_UI");
+    if(ui.isValid()){
+      windowW.store(juce::jlimit(720,2400,int(ui.getProperty("width",1080))));
+      windowH.store(juce::jlimit(456,1520,int(ui.getProperty("height",684))));
+      gapMap.clear();const auto map=ui.getChildWithName("GAPS");
+      for(const auto& item:map)gapMap.append(double(item.getProperty("from",0.0)),double(item.getProperty("to",0.0)));
+      state.removeChild(ui,nullptr);
+    }
+    parameters.replaceState(state);
+  }
 }
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new SkellAudioProcessor(); }
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter(){return new SkellSilenceAudioProcessor();}

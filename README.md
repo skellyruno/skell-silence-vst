@@ -1,74 +1,72 @@
-# SkellCore VST Template
-Shared **Skell Audio** foundation for JUCE 8 C++17 VST3 plugins.
+# SKELL SILENCE (`skell-silence-vst`)
 
-The former Skell VST Quickstart is preserved as a **small gain demo plugin**, with its original VST3 manufacturer, plugin code and bundle identity unchanged. Build a new plugin by choosing unique IDs; never reuse these demo IDs in commercial releases.
+An original JUCE 8 / CMake **VST3 + Standalone** audio effect based on the build organization, JUCE pin and CI conventions of [skellyruno/skell-vst-template](https://github.com/skellyruno/skell-vst-template). The plugin detects gaps and inserts tempo-aware sound design. Product: **Skell Silence**, vendor: **Skell Audio**, unique VST3 code: `Sl01`.
 
-## Contents
-- `SkellCore::DSP`: portable C++17 TempoClock, PhraseTracker, OnsetDetector, four-line FDNReverb, prototype 4× interpolated-peak limiter, PitchFormantEngine.
-- `SkellCore::UI`: JUCE LookAndFeel, colour themes and glow cache.
-- **Production DSP backend copies**: SkellyTune RealtimeTuner v3.3 and dependencies (MIT), exact DeEsser PhraseAwareDetector behavior in a namespaced copy, and Skelly Master MasteringEngine in a namespaced copy.
-- `SkellCore/backends/SkellyTuneBackend.h`: adapter matching production pitch backend to the shared `PitchFormantEngine`.
-- Separate portable CI (Windows + Linux) and Windows JUCE VST3 build pipeline.
+## Features in this source release
 
-## Generate a new plugin (recommended)
-
-```sh
-python tools/new_plugin.py "Skell Compressor" ../skell-compressor-vst --code SC01
-```
-
-This creates an independent VST3 + Standalone project with an immutable SkellCore dependency, unique plugin code, generated CI, and the original quickstart gain processor. Pick a different four-character code for **every** plugin. Once you rename the GitHub template repository, use `--core-repo https://github.com/skellyruno/skellcore-vst-template.git`.
-
-## Low-end PC performance and safety
-
-SkellCore offers an opt-in `TruePeakLimiter::Quality::Economy` detector (2 phases × 8 taps, versus default Standard's 4 × 16), modulo-free FIR reads, bounded buffer allocations, pre-prepare bypass safety, a bounded UI glow cache, and actual Release-mode allocation/parity tests. Read [performance details](SkellCore/PERFORMANCE.md) before enabling Economy in any shipped plugin.
+- Mono/stereo audio effect with optional mono/stereo sidechain bus and MIDI input.
+- Dual-speed RMS gap detector with threshold, min/max duration, arm time, recovery hold and decay-aware tail sensitivity.
+- AUTO, SIDECHAIN, GRID (subdivision and phase-offset parameters) and MIDI event gates. SIDECHAIN defaults to disabled at the host bus level.
+- Input-driven lookahead: Off, 250 ms, 500 ms, one beat, one bar; dry signal delayed to match detector decisions. Host latency is reported using `setLatencySamples`, updated on the message thread. **LOCK retains the selected lookahead latency** rather than toggling plug-in delay compensation while audio is playing; it triggers from the saved PPQ map.
+- Seven independently enabled and leveled effects: Tape Stop, Filtered Air, Reverse Swell, Noise Fade, Impact, Riser and Stutter Tail. Default 7×4 matrix follows the supplied spec. The EXTRA LONG impact is placed on the last beat.
+- Macro parameters: MIX, TENSION, SPACE and DUCK AFTER (brief transient lift). Gap audio receives a 5 ms edge ramp, a bounded 2-second reverb release and an output soft-peak protector. MIX=0 preserves the dry audio without an extra saturation stage.
+- LEARN records gap start/end PPQ positions while playing. LOCK replays saved PPQ gaps; the map is saved in plugin state. Click a mapped region in the 8-second timeline, drag or press Left/Right to nudge, Delete/Backspace to remove. Header **MENU → Reset learned gaps** clears all. When a region is selected, PREVIEW can audition stored history if the host continues calling `processBlock` while stopped.
+- Scale-consistent, fixed-ratio 1200×760 base interface with dark negative-space original wordmark, waveform/gap overlays, gap detector monitor, instrument rack, settings popups, editable class boundaries and gap/min count. Default opening size is 1080×684.
+- Host-automatable APVTS parameters and `.skellsilence` preset save/load, including the learned gap map and editor size.
+- No allocations are made by the custom DSP buffers during `processBlock`. Custom DSP state is preallocated in `prepareToPlay`.
 
 ## Build
-```sh
-cmake -S . -B build -DJUCE_PATH=/path/to/JUCE
-cmake --build build --config Release
+
+Use CMake 3.22+ and a C++17 compiler (MSVC on Windows, Clang/Xcode on macOS). JUCE 8.0.12 is fetched automatically from GitHub unless you specify an installed JUCE folder.
+
+**Windows, Visual Studio:**
+
+```powershell
+cmake -S . -B build -A x64 -DJUCE_PATH="C:/JUCE"
+cmake --build build --config Release --parallel 2
 ```
 
-`JUCE_PATH` is optional; CMake otherwise fetches pinned JUCE 8.0.12.
-```sh
-cmake -S SkellCore -B build-core -DSKELLCORE_BUILD_TESTS=ON
-cmake --build build-core --config Release
-ctest --test-dir build-core -C Release --output-on-failure
+Omit `-DJUCE_PATH` for the pinned JUCE 8.0.12 auto-fetch. For GitHub builds, create a `skell-silence-vst` repo and upload the **contents** of this folder, and open **Actions → Build Skell Silence → Run workflow**. The workflow builds a Windows `.vst3` bundle and a standalone executable, then uploads both in one GitHub artifact (one ZIP download, no nested ZIP).
+
+**macOS:**
+
+```bash
+cmake -S . -B build -G Xcode
+cmake --build build --config Release --parallel 2
 ```
 
-## Reuse in other plugin repos
-Copy `SkellCore/` into your monorepo, or FetchContent the **immutable commit** of this template. Example from a consumer:
-```cmake
-include(FetchContent)
-FetchContent_Declare(SkellCore
-  GIT_REPOSITORY https://github.com/skellyruno/skell-vst-template.git
-  GIT_TAG <IMMUTABLE_COMMIT_SHA>
-  SOURCE_SUBDIR SkellCore)
-FetchContent_MakeAvailable(SkellCore)
-target_link_libraries(MyPlugin PRIVATE SkellCore::DSP SkellCore::UI)
-```
-Replace `MyPlugin` with the JUCE target. Once the repository itself is renamed on GitHub, update the URL to `skellcore-vst-template` while pinning the immutable revision. Repositories renamed by GitHub redirect old clones but new URLs should be adopted in each plugin.
+Expected JUCE build products:
 
-## Integration APIs
-```cpp
-#include <SkellCore/Core.h>
-#include <SkellCore/backends/SkellyTuneBackend.h>
-skellcore::backends::SkellyTuneBackend tuning;
-skellcore::PitchFormantEngine pitch;
-pitch.setBackend(&tuning);
-pitch.prepare(48000, 2);
-auto latency = pitch.latencySamples(); // Report from prepareToPlay.
-```
-The production tuner exposes block processing and stable declared dry/transient latency. Do not change PDC inside processBlock and do not confuse variable pitch-cycle source age with fixed host delay.
+- `build/SkellSilence_artefacts/Release/VST3/Skell Silence.vst3`
+- `build/SkellSilence_artefacts/Release/Standalone/Skell Silence.exe` (Windows)
+- `build/SkellSilence_artefacts/Release/Standalone/Skell Silence.app` (macOS)
 
-Include `<SkellCore/backends/deesser/PhraseAwareDetector.h>` and use `skellcore::deesser::PhraseAwareDetector` for the existing DeEsser logic, and `<SkellCore/backends/master/MasteringEngine.h>` for the sampled-at-oversampled-rate mastering core. The mastering engine needs a high-quality *external* oversampler. The generic `TruePeakLimiter` is experimental; no compliance claim.
+Actual output directory may vary with generator and JUCE configuration. Copy the `.vst3` bundle to the system's VST3 plugin folder, or extract the GitHub artifact once.
 
-## Status and migration
-This is **v0.3 shared-core work**. Source import does not automatically migrate any already released plugin. Existing DAW automation, UI layout, plugin IDs, and audio behavior must stay unchanged until validated per-plugin.
+## Workflow
 
-- Tuning, phrase aware, and mastering algorithms: imported, require A/B tests before plugin adoption.
-- FDN reverb, prototype true peak limiter, onset tracking: functional portable modules, not production-certified.
-- Host tempo / JUCE UI: available, UI not mandatory for a plugin.
-- Choir: links pinned SkellCore target on separate PR; current sound unchanged.
-- AdlibLab / Silence Designer / other new plugins: opt in as their CMake projects are ready.
+1. Place it on a track/bus, allow 250 ms lookahead, and play audio containing clear phrase gaps.
+2. Set THRESHOLD, MIN GAP, MAX GAP and HOLD. Use the waveform and detector meter to tune detection.
+3. Configure the instruments, edit the 7×4 rule cells, and adjust LENGTH RULES → EDIT RANGES to set each class boundary in beats.
+4. Arm **LEARN** while the timeline plays. Stop learning and enable **LOCK** for PPQ-aligned repeatable playback; the map is serialized with the session.
+5. Use **TENSION**, **SPACE**, **DUCK AFTER** and **MIX** to blend the results. Export using the DAW's normal bounce workflow with latency compensation enabled.
 
-See [SkellCore/README.md](SkellCore/README.md) and [GitHub migration tracker](https://github.com/skellyruno/skell-vst-template/issues/2).
+## Performance / known limitations
+
+This is an **initial implementation**, not a verified commercial-ready release. The C++ DSP-only tests (`tests/run_cpp_tests.sh`) run without JUCE and cover basic gap opening/closing, map edits, fixed lookahead and seven-instrument rendering. **The full JUCE VST3 and Standalone targets have not yet been verified locally**, because JUCE is not installed here and external Git access is unavailable; run the included CI to confirm compilation and test the real DAW build.
+
+The AirNoise spectrum-follow option currently uses a lightweight low-pass shaping model, not the proposed 24-band spectral matching. Tape stop and stutter use a circular sample history and basic interpolation rather than the full Hermite/pitch-coherent engine described in the design brief. The supplied FDN reverb is a compact 8-delay model. This revision uses cached RMS coefficients and a decay-sensitive threshold to lower detector overhead; these improvements remain subject to listening tests. LEARN is bounded to 2,048 PPQ gaps (no heap growth on the audio thread) and assumes a usable host PPQ timeline. Selected mapped-gap editing takes effect on the following audio block. `setLatencySamples` must be observed by the host: latency changes during live playback can produce audible transitions, so choose lookahead before recording/bouncing.
+
+**Host considerations:** Some DAWs do not continue processing effects when transport is stopped; PREVIEW cannot make sound in those hosts until the host processes audio again. MIDI and GRID triggers provide simple gates rather than full user-drawn grid hit maps. The preview reads the retained input history; input history is unavailable before the plugin has received audio.
+
+This plugin uses the operating system's licensed sans-serif fallback font; no third-party font asset is distributed. Custom UI is drawn using JUCE primitives.
+
+## Revision v1.1 / safety and UI improvements
+
+- Reliable relative layout: scaled component transforms preserve label, slider, matrix and clickable hit target proportions at all supported window sizes.
+- Improved panel hierarchy, subtly increased contrast, SKELL green trim, descriptive tooltips, and a clearer detection workflow.
+- Detector envelope and dB coefficient caching avoid transcendental operations on every audio sample. Tail sensitivity now adapts detection to an actively falling RMS envelope.
+- Do not set host-reported latency to zero on LOCK; otherwise toggling LOCK mid-session could desynchronize PDC. One-beat/bar modes still depend on tempo and can require PDC renegotiation on BPM changes.
+- Reverb continues releasing for at most two seconds after a gap, then parks processing. MIX=0 remains dry (except normal lookahead delay).
+- Preserve the existing shared SkellCore subtree and optional CMake linkage when updating this repository. DSP modules remain separate pending A/B validation.
+- CI includes a native DSP test before release packaging. Full VST3 success is determined by GitHub Actions, not the portable test suite alone.

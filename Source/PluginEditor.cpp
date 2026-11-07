@@ -1,23 +1,36 @@
-#include <SkellCore/UI.h>
 #include "PluginEditor.h"
-SkellAudioProcessorEditor::SkellAudioProcessorEditor(SkellAudioProcessor& p)
- : AudioProcessorEditor(&p),gainAttachment(p.parameters,"gain",gain) {
-  setSize(520,340);
-  title.setText("Skell Quickstart",juce::dontSendNotification);
-  title.setFont(juce::Font(juce::FontOptions(26.0f).withStyle("Bold")));
-  title.setJustificationType(juce::Justification::centred);
-  gain.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-  gain.setTextBoxStyle(juce::Slider::TextBoxBelow,false,90,25);
-  addAndMakeVisible(title);addAndMakeVisible(gain);
+SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceAudioProcessor& p)
+ : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p) {
+  setLookAndFeel(&look);
+  addAndMakeVisible(header);addAndMakeVisible(timeline);addAndMakeVisible(detection);
+  addAndMakeVisible(rack);addAndMakeVisible(matrix);addAndMakeVisible(macros);
+  constrainer.setSizeLimits(720,456,2400,1520);
+  constrainer.setFixedAspectRatio(1200.0/760.0);
+  setConstrainer(&constrainer);setResizable(true,true);
+  header.onScaleChange=[this](float s){setSize(juce::roundToInt(1200*s),juce::roundToInt(760*s));};
+  setSize(p.windowW.load(),p.windowH.load());
 }
-void SkellAudioProcessorEditor::paint(juce::Graphics& g) {
-  g.fillAll(juce::Colour(0xff16191e));
-  g.setColour(juce::Colour(0xff323a48));
-  g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(12),12.0f,2.0f);
-  g.setColour(juce::Colour(0xffb0c9ff));
-  g.drawText("GAIN",getWidth()/2-60,245,120,24,juce::Justification::centred);
+SkellSilenceAudioProcessorEditor::~SkellSilenceAudioProcessorEditor() {
+  setLookAndFeel(nullptr);
 }
-void SkellAudioProcessorEditor::resized() {
-  title.setBounds(40,34,getWidth()-80,55);
-  gain.setBounds(getWidth()/2-75,100,150,145);
+void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g) {
+  g.fillAll(skell::ui::Theme::ink);
+  g.setColour(skell::ui::Theme::violet.withAlpha(0.08f));
+  g.fillRect(getLocalBounds().withTrimmedTop(getHeight()-3));
+}
+void SkellSilenceAudioProcessorEditor::resized() {
+  // Keep all controls, hit targets, labels, and strokes in 1200x760 design space.
+  // Scaling only component bounds previously left fonts & child hit targets unscaled.
+  const float scale=float(getWidth())/1200.0f;
+  auto place=[scale](juce::Component& c,int x,int y,int w,int h){
+    c.setBounds(juce::roundToInt(x*scale),juce::roundToInt(y*scale),w,h);
+    c.setTransform(juce::AffineTransform::scale(scale));
+  };
+  place(header,0,0,1200,64);
+  place(timeline,30,84,800,316);
+  place(detection,30,420,800,140);
+  place(rack,850,84,320,476);
+  place(matrix,30,580,800,160);
+  place(macros,850,580,320,160);
+  processor.windowW.store(getWidth());processor.windowH.store(getHeight());
 }

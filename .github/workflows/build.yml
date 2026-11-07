@@ -1,31 +1,48 @@
-name: Build SkellCore VST Template (Windows VST3)
+name: Build Skell Silence
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'SkellCore/**'
-      - 'CMakeLists.txt'
-      - 'Source/PluginEditor.cpp'
-      - 'Source/PluginProcessor.cpp'
-      - '.github/workflows/build.yml'
-
 jobs:
-  build:
+  dsp-portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test C++ DSP (without JUCE)
+        run: bash tests/run_cpp_tests.sh
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Configure
+      - name: Configure JUCE plugin
         run: cmake -S . -B build -A x64
-      - name: Build
+      - name: Build VST3 and Standalone
         run: cmake --build build --config Release --parallel 2
-      - name: Package
+      - name: Package build products
         shell: pwsh
         run: |
-          $plugin = Get-ChildItem -Path build -Directory -Recurse -Filter '*.vst3' | Select-Object -First 1
-          if (-not $plugin) { throw 'VST3 bundle missing' }
-          Compress-Archive -Path $plugin.FullName -DestinationPath SkellCore-Template-Windows-VST3.zip
+          $vst = Get-ChildItem -Path build -Directory -Recurse -Filter '*.vst3' | Select-Object -First 1
+          if (-not $vst) { throw 'VST3 bundle missing' }
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item -Path $vst.FullName -Destination dist -Recurse -Force
+          $app = Get-ChildItem -Path build -File -Recurse -Filter 'Skell Silence.exe' | Select-Object -First 1
+          if ($app) { Copy-Item $app.FullName dist/SkellSilence-Standalone.exe }
       - uses: actions/upload-artifact@v4
         with:
-          name: SkellCore-Template-Windows-VST3
-          path: SkellCore-Template-Windows-VST3.zip
+          name: SkellSilence-Windows
+          path: |
+            dist/**
           if-no-files-found: error
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -G Xcode
+      - run: cmake --build build --config Release --parallel 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SkellSilence-macOS
+          path: |
+            build/SkellSilence_artefacts/Release/VST3/*.vst3
+            build/SkellSilence_artefacts/Release/Standalone/*.app
+          if-no-files-found: warn
