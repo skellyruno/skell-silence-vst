@@ -18,7 +18,8 @@ public:
       popup.addItem(1,"Reset learned gaps");popup.addSeparator();
       popup.addItem(2,"UI 80%");popup.addItem(3,"UI 100%");popup.addItem(4,"UI 125%");popup.addSeparator();
       popup.addItem(5,"About Skell Silence");
-      popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&menu),[safe=juce::Component::SafePointer<HeaderBar>(this)](int result){
+      juce::Component::SafePointer<HeaderBar> safeThis(this);
+      popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&menu),[safe=safeThis](int result){
         if(safe==nullptr)return;
         if(result==1)safe->processor.requestClearMap();
         if(result>=2&&result<=4 && safe->onScaleChange)safe->onScaleChange(result==2?0.8f:result==3?1.0f:1.25f);
