@@ -29,6 +29,7 @@ jobs:
           if ($app) { Copy-Item $app.FullName dist/SkellSilence-Standalone.exe }
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: SkellSilence-Windows
           path: |
             dist/**
@@ -41,6 +42,7 @@ jobs:
       - run: cmake --build build --config Release --parallel 2
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: SkellSilence-macOS
           path: |
             build/SkellSilence_artefacts/Release/VST3/*.vst3
