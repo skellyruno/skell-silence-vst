@@ -7,8 +7,7 @@ namespace skell::ui {
 class DetectionPanel final : public juce::Component,private juce::Timer {
 public:
  explicit DetectionPanel(SkellSilenceAudioProcessor& p)
-  :processor(p),sourceAttachment(p.parameters,"triggerSource",source),
-   lookaheadAttachment(p.parameters,"lookahead",lookahead) {
+  :processor(p) {
    constexpr std::array<const char*,6> ids{"threshold","minGap","maxGap","hold","tailSensitivity","armTime"};
    constexpr std::array<const char*,6> names{"THRESHOLD","MIN GAP","MAX GAP","HOLD","TAIL SENSE","ARM TIME"};
    for(int i=0;i<6;++i){
@@ -30,6 +29,13 @@ public:
    lookahead.addItemList({"OFF","250 ms","500 ms","1 BEAT","1 BAR"},1);
    lookahead.setTooltip("Delay the wet/dry signal for gap detection. Reported to the DAW as latency.");
    addAndMakeVisible(source);addAndMakeVisible(lookahead);
+   // Construct the attachments only once their ComboBox item IDs exist.
+   // In particular LOOKAHEAD defaults to choice 2 (250 ms); attaching it
+   // to an empty ComboBox loses its initial selection in JUCE 8.
+   sourceAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+       p.parameters,"triggerSource",source);
+   lookaheadAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+       p.parameters,"lookahead",lookahead);
    latency.setColour(juce::Label::textColourId,Theme::muted);
    latency.setJustificationType(juce::Justification::centredLeft);addAndMakeVisible(latency);
    startTimerHz(12);
@@ -76,7 +82,7 @@ private:
  std::array<juce::Label,6> knobLabels;
  std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>,6> attachments;
  juce::ComboBox source,lookahead;
- juce::AudioProcessorValueTreeState::ComboBoxAttachment sourceAttachment,lookaheadAttachment;
+ std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> sourceAttachment,lookaheadAttachment;
  juce::Label latency;
 };
 }
