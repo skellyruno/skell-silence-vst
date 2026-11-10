@@ -14,17 +14,18 @@ public:
  }
  void paint(juce::Graphics& g) override {
    Theme::panelBackground(g,getLocalBounds().toFloat());
-   Theme::title(g,"03  /  GAP INSTRUMENTS",{15,10,245,20});
+   Theme::title(g,"03  /  INSTRUMENT DECK",{15,9,239,23});
+   Theme::sectionRule(g,15.0f,37.0f,float(getWidth()-30),Theme::amber);
    const int active=processor.activeMask.load(std::memory_order_relaxed);
    g.setColour(active?Theme::green:Theme::muted);
-   g.fillEllipse(float(getWidth()-87),17.0f,6.0f,6.0f);
-   g.setFont(Theme::font(10,true));
+   g.fillEllipse(float(getWidth()-86),17.0f,7.0f,7.0f);
+   g.setFont(Theme::font(11,true));
    g.drawText(active?"PLAYING":"ARMED",getWidth()-78,9,68,23,juce::Justification::centredLeft);
    g.setColour(Theme::muted.withAlpha(0.78f));g.setFont(Theme::font(9,true));
-   g.drawText(processor.inputChannels.load(std::memory_order_relaxed)>1?"STEREO":"MONO",getWidth()-164,10,65,21,juce::Justification::centredRight);
+   g.drawText(processor.inputChannels.load(std::memory_order_relaxed)>1?"2 CH / STEREO":"1 CH / MONO",getWidth()-193,10,96,21,juce::Justification::centredRight);
  }
  void resized() override {
-   constexpr int top=41,row=58;
+   constexpr int top=43,row=58;
    for(int i=0;i<7;++i)strips[size_t(i)]->setBounds(9,top+i*row,getWidth()-18,row);
  }
 private:

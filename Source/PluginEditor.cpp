@@ -16,9 +16,15 @@ SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceA
 }
 SkellSilenceAudioProcessorEditor::~SkellSilenceAudioProcessorEditor(){setLookAndFeel(nullptr);}
 void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g){
-  g.fillAll(skell::ui::Theme::ink);
-  g.setColour(skell::ui::Theme::green.withAlpha(0.13f));
-  g.drawHorizontalLine(getHeight()-1,0.0f,float(getWidth()));
+  const auto r=getLocalBounds().toFloat();
+  g.setGradientFill(juce::ColourGradient(skell::ui::Theme::ink.brighter(0.14f),
+    r.getCentreX(),0,skell::ui::Theme::ink.darker(0.24f),r.getCentreX(),r.getBottom(),false));
+  g.fillAll();
+  const float scale=float(getWidth())/1200.0f;
+  g.setColour(skell::ui::Theme::green.withAlpha(0.34f));
+  g.fillRect(0.0f,float(getHeight())-2.0f,105.0f*scale,2.0f);
+  g.setColour(skell::ui::Theme::violet.withAlpha(0.28f));
+  g.fillRect(105.0f*scale,float(getHeight())-2.0f,66.0f*scale,2.0f);
 }
 void SkellSilenceAudioProcessorEditor::resized(){
   // IMPORTANT: transform child content AND its location once, in the same

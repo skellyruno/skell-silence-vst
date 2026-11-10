@@ -133,30 +133,38 @@ public:
     const bool playing=(processor.activeMask.load(std::memory_order_relaxed)&(1<<index))!=0;
     const bool on=enabled.getToggleState();
     const auto c=Theme::instruments[size_t(index)];
-    if(index%2==0 || playing){
-      g.setColour(playing?c.withAlpha(0.12f):Theme::raised.withAlpha(0.25f));
-      g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(1,2),5.0f);
-    }
-    g.setColour(Theme::border.withAlpha(0.7f));g.drawHorizontalLine(getHeight()-1,8.0f,float(getWidth()-8));
-    g.setColour(on?c:Theme::border);g.fillRoundedRectangle(5.0f,18.0f,3.0f,23.0f,1.5f);
+    const auto row=getLocalBounds().toFloat().reduced(2.0f,2.0f);
+    g.setGradientFill(juce::ColourGradient(playing?c.withAlpha(0.22f):
+        on?Theme::raised.withAlpha(0.74f):Theme::inset.withAlpha(0.45f),
+        0.0f,row.getY(),Theme::panel.withAlpha(0.34f),float(getWidth()),row.getBottom(),false));
+    g.fillRoundedRectangle(row,7.0f);
+    if(playing){g.setColour(c.withAlpha(0.65f));g.drawRoundedRectangle(row.reduced(0.5f),7.0f,1.0f);}
+    g.setColour(on?c:Theme::border);
+    g.fillRoundedRectangle(4.0f,9.0f,3.0f,40.0f,1.5f);
+    g.setColour(on?c.withAlpha(0.19f):Theme::inset);
+    g.fillEllipse(11.0f,17.0f,25.0f,25.0f);
+    g.setColour(on?c:Theme::muted);g.setFont(Theme::font(11,true));
+    g.drawText(juce::String(index+1).paddedLeft('0',2),11,18,25,23,juce::Justification::centred);
+    // Individual waveform accent, rather than an identical decorative meter per row.
+    const auto graph=juce::Rectangle<float>(float(getWidth()-89),14.0f,55.0f,29.0f);
+    g.setColour(Theme::inset.withAlpha(0.68f));g.fillRoundedRectangle(graph,4.0f);
+    g.setColour(Theme::border.withAlpha(0.7f));g.drawHorizontalLine(int(graph.getCentreY()),graph.getX()+4,graph.getRight()-4);
     juce::Path env;
-    const float x=float(getWidth()-87),y=float(getHeight()/2);
-    env.startNewSubPath(x,y-12.0f*Theme::instrumentEnvelope(index,0.0f));
-    for(int i=1;i<=32;++i){
-       const float t=float(i)/32;
-       const float yy=y-12.0f*Theme::instrumentEnvelope(index,t);
-       env.lineTo(x+49.0f*t,yy);
+    for(int step=0;step<=28;++step){
+       const float t=float(step)/28.0f;
+       const float ey=graph.getBottom()-5.0f-20.0f*Theme::instrumentEnvelope(index,t);
+       const float ex=graph.getX()+4.0f+(graph.getWidth()-8.0f)*t;
+       if(step==0)env.startNewSubPath(ex,ey);else env.lineTo(ex,ey);
     }
-    g.setColour(on?c.withAlpha(playing?1.0f:0.55f):Theme::border);
-    g.strokePath(env,juce::PathStrokeType(playing?2.0f:1.2f));
-    if(playing){g.setColour(c);g.fillEllipse(float(getWidth()-99),float(getHeight()/2-3),6.0f,6.0f);}
-    g.setColour(on?Theme::muted:Theme::border);
-    g.setFont(Theme::font(9.0f,true));
-    g.drawText(juce::String(juce::roundToInt(level.getValue()*100.0))+"%",173,37,52,13,juce::Justification::centred);
+    g.setColour(on?c.withAlpha(playing?1.0f:0.82f):Theme::border);
+    g.strokePath(env,juce::PathStrokeType(playing?2.4f:1.6f,juce::PathStrokeType::curved));
+    if(playing){g.setColour(c);g.fillEllipse(graph.getX()-6.0f,graph.getCentreY()-2.5f,5,5);}
+    g.setColour(on?Theme::text:Theme::muted);g.setFont(Theme::font(11.5f,true));
+    g.drawText(juce::String(juce::roundToInt(level.getValue()*100.0))+"%",166,36,65,16,juce::Justification::centred);
   }
   void resized() override {
-    enabled.setBounds(11,8,153,41);
-    level.setBounds(158,14,71,30);
+    enabled.setBounds(35,8,124,40);
+    level.setBounds(159,11,71,30);
     settings.setBounds(getWidth()-30,16,25,26);
   }
 

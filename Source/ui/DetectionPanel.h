@@ -42,30 +42,32 @@ public:
  }
  void paint(juce::Graphics& g) override {
    Theme::panelBackground(g,getLocalBounds().toFloat());
-   Theme::title(g,"02  /  GAP DETECTOR",{15,10,235,20});
+   Theme::title(g,"02  /  SIGNAL DETECTOR",{15,9,244,22});
    // Three indicators in the compact detector strip: fast, slow and trigger threshold.
-   const juce::Rectangle<float> strip(551.0f,13.0f,234.0f,18.0f);
+   const juce::Rectangle<float> strip(528.0f,13.0f,255.0f,18.0f);
    g.setColour(Theme::inset);g.fillRoundedRectangle(strip,4);
    const float fast=processor.fastMeter.load(),slow=processor.slowMeter.load(),limit=processor.thresholdMeter.load();
    const float mx=std::max(0.015f,std::max(fast,slow)*1.5f);
    const float w=strip.getWidth()-8;
-   g.setColour(Theme::cyan);g.fillRoundedRectangle(555.0f,17.0f,w*std::clamp(fast/mx,0.0f,1.0f),2,1);
-   g.setColour(Theme::amber);g.fillRoundedRectangle(555.0f,21.0f,w*std::clamp(slow/mx,0.0f,1.0f),2,1);
-   g.setColour(Theme::violet);g.fillRoundedRectangle(555.0f,25.0f,w*std::clamp(limit/mx,0.0f,1.0f),2,1);
+   g.setColour(Theme::cyan);g.fillRoundedRectangle(532.0f,17.0f,w*std::clamp(fast/mx,0.0f,1.0f),2,1);
+   g.setColour(Theme::amber);g.fillRoundedRectangle(532.0f,21.0f,w*std::clamp(slow/mx,0.0f,1.0f),2,1);
+   g.setColour(Theme::violet);g.fillRoundedRectangle(532.0f,25.0f,w*std::clamp(limit/mx,0.0f,1.0f),2,1);
    const int state=processor.detectorState.load(std::memory_order_relaxed);
    const char* stateNames[]{"SOUND","PENDING","GAP","RECOVERING"};
    g.setColour(state==2?Theme::violet:state==1?Theme::amber:Theme::muted);
-   g.fillEllipse(317.0f,16.5f,6.0f,6.0f);
-   g.setFont(Theme::font(10,true));
-   g.drawText(stateNames[std::clamp(state,0,3)],328,9,94,22,juce::Justification::centredLeft);
-   g.setColour(Theme::border);g.drawVerticalLine(607,48,130);
-   g.setFont(Theme::font(10,true));g.setColour(Theme::muted);
+   g.fillEllipse(294.0f,17.0f,7.0f,7.0f);
+   g.setFont(Theme::font(11,true));
+   g.drawText(stateNames[std::clamp(state,0,3)],307,9,98,22,juce::Justification::centredLeft);
+   g.setColour(Theme::border);g.drawVerticalLine(608,43,136);
+   g.setColour(Theme::cyan.withAlpha(0.30f));g.fillRoundedRectangle(615.0f,37.0f,173.0f,100.0f,6.0f);
+   g.setColour(Theme::inset);g.fillRoundedRectangle(617.0f,39.0f,169.0f,96.0f,5.0f);
+   g.setFont(Theme::font(11,true));g.setColour(Theme::muted);
    g.drawText("TRIGGER",621,41,94,16,juce::Justification::centredLeft);
    g.drawText("LOOKAHEAD",621,84,125,16,juce::Justification::centredLeft);
  }
  void resized() override {
    for(int i=0;i<6;++i){const int x=13+i*98;
-     knobLabels[size_t(i)].setBounds(x,36,94,18);
+     knobLabels[size_t(i)].setBounds(x,34,94,20);
      knobs[size_t(i)].setBounds(x+4,53,86,78);
    }
    source.setBounds(620,57,165,26);

@@ -52,33 +52,36 @@ public:
  }
  void paint(juce::Graphics& g) override {
    Theme::panelBackground(g,getLocalBounds().toFloat());
-   Theme::title(g,"04  /  LENGTH RULES  -  BEAT SYNCED",{15,8,getWidth()-189,22});
-   const int x=193,top=38,cw=(getWidth()-x-17)/4,rh=18;
-   g.setColour(Theme::inset);g.fillRoundedRectangle(juce::Rectangle<float>(float(x-6),float(top),float(getWidth()-x-7),float(rh*8)),5.0f);
+   Theme::title(g,"04  /  PERFORMANCE RULES",{15,8,getWidth()-189,22});
+   const int x=193,top=41,cw=(getWidth()-x-17)/4,rh=18;
+   g.setColour(Theme::inset);g.fillRoundedRectangle(juce::Rectangle<float>(float(x-6),float(top),float(getWidth()-x-7),float(rh*8)),7.0f);
+   g.setColour(Theme::green.withAlpha(0.17f));g.fillRoundedRectangle(17.0f,40.0f,155.0f,18.0f,4.0f);
+   g.setColour(Theme::muted);g.setFont(Theme::font(9.5f,true));
+   g.drawText("EFFECT",23,41,105,16,juce::Justification::centredLeft);
    const int active=processor.activeLengthClass.load(std::memory_order_relaxed);
    if(active>=0&&active<4) {
      g.setColour(Theme::green.withAlpha(0.10f));
      g.fillRoundedRectangle(juce::Rectangle<float>(float(x+active*cw+3),float(top+3),float(cw-6),float(rh*8-6)),4.0f);
      g.setColour(Theme::green);g.fillRoundedRectangle(float(x+active*cw+cw/2-17),float(top+1),34.0f,2.0f,1.0f);
    }
-   g.setFont(Theme::font(10.5f,true));
+   g.setFont(Theme::font(11.5f,true));
    for(int c=0;c<4;++c){
      g.setColour(active==c?Theme::text:(c==0?Theme::cyan:c==1?Theme::green:c==2?Theme::violet:Theme::amber));
      g.drawFittedText(dsp::classNames[size_t(c)],x+c*cw,top,cw,rh,juce::Justification::centred,1);
    }
    for(int i=0;i<7;++i){
      const int cy=top+(i+1)*rh;
-     if(i%2==0){g.setColour(Theme::raised.withAlpha(0.32f));g.fillRect(x-5,cy,getWidth()-x-8,rh);}
-     g.setColour(Theme::text);g.setFont(Theme::font(11.0f));
+     if(i%2==0){g.setColour(Theme::raised.withAlpha(0.42f));g.fillRect(x-5,cy,getWidth()-x-8,rh);}
+     g.setColour(Theme::text);g.setFont(Theme::font(12.5f,true));
      g.drawFittedText(dsp::instrumentNames[size_t(i)],17,cy,167,rh,juce::Justification::centredLeft,1);
      g.setColour(Theme::border.withAlpha(0.68f));g.drawHorizontalLine(cy+rh,15.0f,float(getWidth()-16));
    }
  }
  void resized() override {
-   rangeButton.setBounds(getWidth()-144,8,127,26);
-   const int x=193,top=38,cw=(getWidth()-x-17)/4,rh=18;
+   rangeButton.setBounds(getWidth()-148,7,132,28);
+   const int x=193,top=41,cw=(getWidth()-x-17)/4,rh=18;
    for(int i=0;i<7;++i)for(int c=0;c<4;++c)
-     buttons[size_t(i*4+c)].setBounds(x+c*cw+cw/2-11,top+(i+1)*rh,22,rh);
+     buttons[size_t(i*4+c)].setBounds(x+c*cw+cw/2-23,top+(i+1)*rh,46,rh);
  }
 
 private:

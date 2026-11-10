@@ -41,28 +41,35 @@ public:
   }
   std::function<void(float)> onScaleChange;
   void paint(juce::Graphics& g) override {
-    g.fillAll(Theme::ink);
-    g.setColour(Theme::border);g.drawHorizontalLine(69,0,1200);
-    g.setColour(Theme::green);g.fillRoundedRectangle(24.0f,19.0f,3.0f,30.0f,1.5f);
-    g.setColour(Theme::text);g.setFont(Theme::font(25,true));
-    g.drawText("SKELL",36,13,98,39,juce::Justification::centredLeft);
-    g.setColour(Theme::violet);g.drawText("SILENCE",132,13,143,39,juce::Justification::centredLeft);
-    g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
-    g.drawText("GAP DESIGNER  /  V1.6",282,18,146,29,juce::Justification::centredLeft);
-    g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
-    g.drawText("WET MIX",905,22,61,25,juce::Justification::centredLeft);
+    const auto r=getLocalBounds().toFloat();
+    g.setGradientFill(juce::ColourGradient(Theme::ink.brighter(0.22f),0,0,
+                                          Theme::ink,0,r.getBottom(),false));
+    g.fillRect(r);
+    g.setColour(Theme::border.withAlpha(0.67f));g.drawHorizontalLine(69,0.0f,1200.0f);
+    g.setColour(Theme::green);g.fillRoundedRectangle(22.0f,17.0f,4.0f,36.0f,1.5f);
+    g.setColour(Theme::green.withAlpha(0.30f));g.fillRoundedRectangle(30.0f,17.0f,2.0f,36.0f,1.0f);
+    g.setFont(Theme::font(27,true));g.setColour(Theme::text);
+    g.drawText("SKELL",39,11,115,40,juce::Justification::centredLeft);
+    g.setColour(Theme::violet);g.drawText("SILENCE",154,11,153,40,juce::Justification::centredLeft);
+    g.setFont(Theme::font(11,true));g.setColour(Theme::muted);
+    g.drawText("GAP DESIGN ENGINE",314,15,129,15,juce::Justification::centredLeft);
+    g.setColour(Theme::green.withAlpha(0.70f));g.fillRoundedRectangle(314.0f,36.0f,30.0f,2.0f,1.0f);
+    g.setColour(Theme::muted);g.setFont(Theme::font(9.5f,true));
+    g.drawText("V1.7  /  STEREO FX",350,28,102,20,juce::Justification::centredLeft);
     const bool running=processor.isPlaying.load();
-    Theme::pill(g,{776.0f,22.0f,109.0f,25.0f},running?Theme::green:Theme::muted,running);
-    g.setColour(running?Theme::green:Theme::muted);g.fillEllipse(786.0f,31.0f,6,6);
-    g.setColour(Theme::text);g.setFont(Theme::font(10,true));
+    Theme::pill(g,{772.0f,20.0f,122.0f,30.0f},running?Theme::green:Theme::muted,running);
+    g.setColour(running?Theme::green:Theme::muted);g.fillEllipse(784.0f,32.0f,7,7);
+    g.setColour(Theme::text);g.setFont(Theme::font(11,true));
     const bool learning=processor.parameters.getRawParameterValue("learnArmed")->load()>0.5f;
     const bool locked=processor.parameters.getRawParameterValue("lockToMap")->load()>0.5f;
-    g.drawText(learning?"LEARNING":locked?"MAP LOCK":running?"ANALYZING":"READY / IDLE",799,22,80,25,juce::Justification::centredLeft);
+    g.drawText(learning?"LEARNING":locked?"MAP LOCK":running?"ANALYZING":"READY / IDLE",799,20,94,30,juce::Justification::centredLeft);
+    g.setColour(Theme::muted);g.setFont(Theme::font(11,true));
+    g.drawText("MIX",906,20,53,30,juce::Justification::centredLeft);
   }
   void resized() override {
-    load.setBounds(447,20,69,29);save.setBounds(524,20,69,29);
-    learn.setBounds(609,20,82,29);lock.setBounds(689,20,76,29);
-    mix.setBounds(963,18,145,31);menu.setBounds(1113,20,70,29);
+    load.setBounds(459,19,69,32);save.setBounds(534,19,69,32);
+    learn.setBounds(615,19,80,32);lock.setBounds(698,19,74,32);
+    mix.setBounds(961,18,145,34);menu.setBounds(1112,19,70,32);
   }
 private:
   void timerCallback() override {repaint(770,17,121,35);}

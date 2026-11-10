@@ -196,3 +196,11 @@ inspect the downloadable screenshot contact sheet and full-size minimum/compact
 PNGs, correct clipping and hit targets, and rerun the workflow. Passing static
 bounds checks alone is not a substitute for visual inspection or testing the
 native file chooser and plugin in FL Studio.
+
+
+### v1.7 visual console refresh
+The editor keeps all existing automation IDs, 912x578 shipping size, and its one-workspace layout.
+The hardware console language now uses higher-contrast typography, gradient metal panels, seven
+colour-coded instrument strips with numerical IDs, integrated envelope cards, wider beat-rule
+toggle targets, and clearer detector and dynamics grouping. Every source UI edit triggers the
+existing SkellCore actual-editor screenshot workflow.

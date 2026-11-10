@@ -12,7 +12,7 @@ public:
     for(int i=0;i<3;++i){
       auto& s=sliders[size_t(i)];s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
       s.setTextBoxStyle(juce::Slider::TextBoxBelow,false,67,19);
-      if(i==0)s.setComponentID("tension");
+      s.setComponentID(i==0?"tension":i==1?"space":"duck-after");
       const auto* param=p.parameters.getParameter(names[i]);
       if(param!=nullptr)s.setDoubleClickReturnValue(true,param->convertFrom0to1(param->getDefaultValue()));
       s.setTooltip(i==0?"Riser and swell intensity":i==1?"Reverb bloom on gap material":"Short lift after a gap");
@@ -20,21 +20,27 @@ public:
       addAndMakeVisible(s);
       label[size_t(i)].setText(labels[i],juce::dontSendNotification);
       label[size_t(i)].setJustificationType(juce::Justification::centred);
-      label[size_t(i)].setColour(juce::Label::textColourId,Theme::muted);addAndMakeVisible(label[size_t(i)]);
+      label[size_t(i)].setColour(juce::Label::textColourId,Theme::text);addAndMakeVisible(label[size_t(i)]);
     }
     startTimerHz(8);
  }
  void paint(juce::Graphics& g) override {
     Theme::panelBackground(g,getLocalBounds().toFloat());
-    Theme::title(g,"05  /  DYNAMICS",{15,8,160,20});
-    g.setColour(Theme::border);g.drawHorizontalLine(145,14.0f,float(getWidth()-14));
-    g.setColour(Theme::violet);g.setFont(Theme::font(10,true));
+    Theme::title(g,"05  /  PERFORMANCE",{15,8,222,23});
+    Theme::sectionRule(g,14.0f,145.0f,float(getWidth()-28),Theme::violet);
+    for(int i=0;i<3;++i){
+      const auto c=i==0?Theme::amber:i==1?Theme::violet:Theme::green;
+      const float x=10.0f+107.0f*i;
+      g.setColour(c.withAlpha(0.08f));g.fillRoundedRectangle(x,29.0f,98.0f,113.0f,7.0f);
+      g.setColour(c.withAlpha(0.48f));g.fillRoundedRectangle(x+32.0f,29.0f,34.0f,2.0f,1.0f);
+    }
+    g.setColour(Theme::violet);g.setFont(Theme::font(11,true));
     g.drawText("GAPS / MIN",15,149,88,18,juce::Justification::centredLeft);
-    g.setColour(Theme::text);g.setFont(Theme::font(12,true));
+    g.setColour(Theme::text);g.setFont(Theme::font(13,true));
     g.drawText(juce::String(processor.gapsLastMinute.load()),108,149,40,18,juce::Justification::centredLeft);
     const int mask=processor.activeMask.load();
     g.setColour(mask?Theme::green:Theme::muted);g.fillEllipse(245.0f,155.0f,6,6);
-    g.setColour(Theme::muted);g.setFont(Theme::font(10));
+    g.setColour(Theme::muted);g.setFont(Theme::font(11));
     g.drawText(mask?"FX ACTIVE":"NO GAP",258,148,70,19,juce::Justification::centredLeft);
  }
  void resized() override {
