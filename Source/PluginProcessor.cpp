@@ -233,10 +233,10 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
     previewSourceStart=gap.start;
     previewTotal=previewRemaining=std::max<int64_t>(1,std::min<int64_t>(int64_t(sr*0.75),gap.end-gap.start));
   }
-  auto midiIterator=juce::MidiBuffer::Iterator(midi);
-  juce::MidiMessage midiEvent;
-  int nextMidiSample=0;
-  bool hasMidi=midiIterator.getNextEvent(midiEvent,nextMidiSample);
+  // JUCE 8's zero-allocation MidiBufferIterator replaces deprecated Iterator.
+  // Keep sample offsets intact so MIDI gap starts/ends remain sample-accurate.
+  auto midiIterator=midi.cbegin();
+  const auto midiEnd=midi.cend();
   // Publish activity at block boundaries, not tens of thousands of atomic
   // writes per second. The UI refreshes independently at 12-30 Hz.
   int blockActiveClass=-1,blockActiveMask=0;
@@ -266,10 +266,18 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
         begin=inGap && !gridInGap;end=!inGap && gridInGap;
         gridInGap=inGap;
       } else if(source==3){
-        while(hasMidi && nextMidiSample<=i){
-          if(midiEvent.isNoteOff()){end=true;eventEnd=clock;}
-          if(midiEvent.isNoteOn()){begin=true;eventStart=clock;}
-          hasMidi=midiIterator.getNextEvent(midiEvent,nextMidiSample);
+        while(midiIterator!=midiEnd && (*midiIterator).samplePosition<=i){
+          // Read the metadata's raw note bytes without constructing a MIDI
+          // message on the real-time thread (SysEx could otherwise allocate).
+          const auto event=*midiIterator;
+          if(event.numBytes>=3){
+            const auto command=event.data[0]&0xf0;
+            const bool isOn=command==0x90 && event.data[2]!=0;
+            const bool isOff=command==0x80 || (command==0x90 && event.data[2]==0);
+            if(isOff){end=true;eventEnd=clock;}
+            if(isOn){begin=true;eventStart=clock;}
+          }
+          ++midiIterator;
         }
       }
       if(source==3 && !end && writtenEvents>0) {

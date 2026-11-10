@@ -81,6 +81,25 @@ bool testDryLatency() {
   return true;
 }
 
+// Verify the modern MidiBufferIterator keeps exact note sample offsets.
+bool testMidiGapPositions() {
+  SkellSilenceAudioProcessor p;
+  setParameter(p, "triggerSource", 3.f);
+  setParameter(p, "mix", 0.f);
+  p.prepareToPlay(48000., 256);
+  juce::AudioBuffer<float> audio(2, 256);
+  audio.clear();
+  juce::MidiBuffer midi;
+  midi.addEvent(juce::MidiMessage::noteOn(1, 60, juce::uint8(100)), 64);
+  midi.addEvent(juce::MidiMessage::noteOff(1, 60), 192);
+  p.processBlock(audio, midi);
+  const auto recent = p.getRecentGap(0);
+  const bool passed = p.getRecentCount() == 1 && recent.start == 64
+                      && recent.end == 192;
+  p.releaseResources();
+  return passed;
+}
+
 void generateDetectorInput(SkellSilenceAudioProcessor& p) {
   // Actual processBlock with sound/silence/sound to populate waveform and
   // detected-gap widgets. No prerecorded/painted waveform or fake editor.
@@ -164,6 +183,102 @@ bool makeContactSheet(const juce::File& folder) {
   return skellcore::ui::headless::writePng(sheet,
                                           folder.getChildFile("contact-sheet.png"));
 }
+// A normal single JUCE message loop (works when JUCE_MODAL_LOOPS_PERMITTED=0).
+// The three phases deliberately yield to the event queue so attachment changes
+// and async popup dismissal are applied before screenshots are taken.
+class ScreenshotDriver final : private juce::Timer {
+public:
+  ScreenshotDriver(juce::Component& editorIn, const juce::File& outputIn,
+                   const Options& opts)
+      : editor(editorIn), output(outputIn), options(opts) {}
+
+  void start() { startTimer(80); }
+  int failures() const noexcept { return errorCount; }
+private:
+  void timerCallback() override {
+    if (next >= options.scenes.size()) return;
+    const auto& scene = options.scenes[next];
+    if (phase == 0) {
+      closeExistingOverlays(editor);
+      phase = 1;
+      return;
+    }
+    if (phase == 1) {
+      if (options.configure) options.configure(scene);
+      phase = 2;
+      return;
+    }
+    Options one;
+    one.project = options.project;
+    one.minimumColours = options.minimumColours;
+    one.scenes.push_back(scene);
+    one.inspect = options.inspect;
+    // Shared SkellCore::UIRenderer captures the real editor, checking image
+    // dimensions, sampled color richness and every active layout assertion.
+    const auto report = skellcore::ui::headless::render(editor, output, one);
+    for (const auto& err : report.errors) {
+      std::fprintf(stderr, "Screenshot validation: %s\n", err.toRawUTF8());
+      ++errorCount;
+    }
+    captured += report.captured;
+    if (report.captured == 1) {
+      auto shot = skellcore::ui::headless::capture(editor, scene.width, scene.height);
+      fingerprints[scene.id.toStdString()] = shot.fingerprint;
+      juce::var row(new juce::DynamicObject());
+      row.getDynamicObject()->setProperty("file", scene.id + ".png");
+      row.getDynamicObject()->setProperty("width", scene.width);
+      row.getDynamicObject()->setProperty("height", scene.height);
+      row.getDynamicObject()->setProperty("mode", scene.mode);
+      row.getDynamicObject()->setProperty("sampledColours", shot.distinctColours);
+      rows.add(row);
+    }
+    ++next;
+    phase = 0;
+    if (next == options.scenes.size()) finish();
+  }
+
+  void finish() {
+    if (captured != int(options.scenes.size())) {
+      std::fprintf(stderr, "Expected %zu screenshots, captured %d\n",
+                   options.scenes.size(), captured);
+      ++errorCount;
+    }
+    for (const auto& pair : options.mustDiffer) {
+      const auto lhs = fingerprints.find(pair.first.toStdString());
+      const auto rhs = fingerprints.find(pair.second.toStdString());
+      if (lhs == fingerprints.end() || rhs == fingerprints.end()
+          || lhs->second == rhs->second) {
+        std::fprintf(stderr, "Unchanged real UI state: %s / %s\n",
+                     pair.first.toRawUTF8(), pair.second.toRawUTF8());
+        ++errorCount;
+      }
+    }
+    juce::var manifest(new juce::DynamicObject());
+    manifest.getDynamicObject()->setProperty("renderer", "SkellCore real-editor JUCE v1");
+    manifest.getDynamicObject()->setProperty("project", options.project);
+    manifest.getDynamicObject()->setProperty("count", captured);
+    manifest.getDynamicObject()->setProperty("scenes", juce::var(rows));
+    if (!output.getChildFile("manifest.json").replaceWithText(
+            juce::JSON::toString(manifest, false))) ++errorCount;
+    if (!makeContactSheet(output)) {
+      std::fprintf(stderr, "Contact sheet render failed\n");
+      ++errorCount;
+    }
+    std::printf("SkellCore actual-editor capture: %d/%zu scenes, %d errors\n",
+                captured, options.scenes.size(), errorCount);
+    stopTimer();
+    juce::MessageManager::getInstance()->stopDispatchLoop();
+  }
+
+  juce::Component& editor;
+  juce::File output;
+  const Options& options;
+  size_t next = 0;
+  int phase = 0, captured = 0, errorCount = 0;
+  juce::Array<juce::var> rows;
+  std::map<std::string, std::uint64_t> fingerprints;
+};
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -173,6 +288,10 @@ int main(int argc, char** argv) {
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
   if (!testDryLatency()) {
     std::fprintf(stderr, "Dry impulse / PDC alignment test failed\n");
+    return 1;
+  }
+  if (!testMidiGapPositions()) {
+    std::fprintf(stderr, "Sample-accurate MIDI gap position test failed\n");
     return 1;
   }
   SkellSilenceAudioProcessor p;
@@ -212,7 +331,6 @@ int main(int argc, char** argv) {
     };
     Mode currentScene = idle;
     options.configure = [&](const Scene& scene) {
-      closeExistingOverlays(editor);
       editor.setSize(scene.width, scene.height);
       const auto mode = static_cast<Mode>(scene.mode);
       currentScene = mode;
@@ -234,9 +352,6 @@ int main(int argc, char** argv) {
       if (mode == midi) setParameter(p, "triggerSource", 3.f);
       if (auto* timeline = dynamic_cast<skell::ui::GapTimeline*>(findById(editor, "timeline")))
         timeline->selectRecentGap(mode == selected ? 0 : -1);
-      // APVTS choice/button attachments may post asynchronous UI updates.
-      // Flush JUCE's message queue before snapshotting the real components.
-      juce::MessageManager::getInstance()->runDispatchLoopUntil(70);
       if (mode == editRanges || (mode >= instrument0 && mode <= instrument6)
           || mode == workspaceMenu) {
         const juce::String id = mode == editRanges ? juce::String("edit-ranges")
@@ -244,7 +359,6 @@ int main(int argc, char** argv) {
             : juce::String("instrument-settings-") + juce::String(int(mode - instrument0));
         if (auto* button = dynamic_cast<juce::Button*>(findById(editor, id)))
           if (button->onClick) button->onClick();
-        juce::MessageManager::getInstance()->runDispatchLoopUntil(70);
       }
     };
     options.inspect = [&] {
@@ -262,27 +376,36 @@ int main(int argc, char** argv) {
       if (auto* lookahead = dynamic_cast<juce::ComboBox*>(findById(editor, "lookahead")))
         if (lookahead->getSelectedId() <= 0)
           issues.add("LOOKAHEAD chooser has no current value");
-      if (auto* source = dynamic_cast<juce::ComboBox*>(findById(editor, "trigger-source")))
-        if (source->getSelectedId() <= 0)
-          issues.add("Trigger chooser has no current value");
+      if (auto* source = dynamic_cast<juce::ComboBox*>(findById(editor, "trigger-source"))) {
+        const int expected = currentScene == grid ? 3 : currentScene == sidechain ? 2
+                           : currentScene == midi ? 4 : 1;
+        if (source->getSelectedId() != expected)
+          issues.add("Trigger dropdown attachment did not reach expected selection "
+                     + juce::String(expected));
+      } else issues.add("Missing trigger dropdown");
+      if (auto* mix = dynamic_cast<juce::Slider*>(findById(editor, "mix"))) {
+        const double expected = currentScene == dryMix ? 0.0 : 0.65;
+        if (std::abs(mix->getValue() - expected) > 0.002)
+          issues.add("MIX knob/parameter attachment did not update");
+      } else issues.add("Missing MIX control");
+      for (int i = 0; i < 7; ++i) {
+        const auto id = "instrument-enable-" + juce::String(i);
+        if (auto* button = dynamic_cast<juce::Button*>(findById(editor, id))) {
+          const bool expected = currentScene != dryMix;
+          if (button->getToggleState() != expected)
+            issues.add(id + " is not in the expected automation state");
+        } else issues.add("Missing instrument control " + id);
+      }
       return issues;
     };
-    const auto report = skellcore::ui::headless::render(editor, output, options);
-    for (const auto& err : report.errors) {
-      std::fprintf(stderr, "Screenshot validation: %s\n", err.toRawUTF8());
-      ++failures;
-    }
-    if (report.captured != static_cast<int>(options.scenes.size())) {
-      std::fprintf(stderr, "Expected %zu actual-editor PNGs; got %d\n",
-                   options.scenes.size(), report.captured);
-      ++failures;
-    }
-    if (!makeContactSheet(output)) {
-      std::fprintf(stderr, "Cannot write contact sheet\n");
-      ++failures;
-    }
-    std::printf("SkellCore real-editor screenshots: %d / %zu scenes, errors %d\n",
-                report.captured, options.scenes.size(), failures);
+    // The plugin's JUCE build disables nested/modal message dispatch loops.
+    // Use the one genuine JUCE runDispatchLoop, scheduling each cleanup,
+    // configuration and capture on separate message-loop turns. This is the
+    // same asynchronous lifecycle the VST3 uses, not a mocked UI.
+    ScreenshotDriver driver(editor, output, options);
+    driver.start();
+    juce::MessageManager::getInstance()->runDispatchLoop();
+    failures += driver.failures();
     closeExistingOverlays(editor);
   }
   p.releaseResources();

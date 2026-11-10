@@ -110,6 +110,8 @@ public:
   InstrumentStrip(SkellSilenceAudioProcessor& p,int i):processor(p),index(i),
     enableAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"On",enabled),
     levelAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"Level",level) {
+    enabled.setComponentID("instrument-enable-"+juce::String(index));
+    level.setComponentID("instrument-level-"+juce::String(index));
     enabled.setButtonText(juce::String(skell::dsp::instrumentNames[size_t(i)]));
     enabled.setColour(juce::ToggleButton::tickColourId,Theme::instruments[size_t(index)]);
     level.setSliderStyle(juce::Slider::LinearHorizontal);
