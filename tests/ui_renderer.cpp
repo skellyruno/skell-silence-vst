@@ -183,6 +183,19 @@ bool makeContactSheet(const juce::File& folder) {
   return skellcore::ui::headless::writePng(sheet,
                                           folder.getChildFile("contact-sheet.png"));
 }
+// Compare real scene pixels at finer resolution than the lightweight SkellCore
+// blank-frame sampler. A ComboBox label can change inside a ~30x9 px region;
+// the renderer's coarse fingerprint can correctly miss that subtle difference.
+std::uint64_t visualFingerprint(const juce::Image& image) {
+  std::uint64_t hash = 14695981039346656037ull;
+  for (int y = 0; y < image.getHeight(); y += 2)
+    for (int x = 0; x < image.getWidth(); x += 2) {
+      hash ^= static_cast<std::uint64_t>(image.getPixelAt(x, y).getARGB());
+      hash *= 1099511628211ull;
+    }
+  return hash;
+}
+
 // A normal single JUCE message loop (works when JUCE_MODAL_LOOPS_PERMITTED=0).
 // The three phases deliberately yield to the event queue so attachment changes
 // and async popup dismissal are applied before screenshots are taken.
@@ -223,7 +236,7 @@ private:
     captured += report.captured;
     if (report.captured == 1) {
       auto shot = skellcore::ui::headless::capture(editor, scene.width, scene.height);
-      fingerprints[scene.id.toStdString()] = shot.fingerprint;
+      fingerprints[scene.id.toStdString()] = visualFingerprint(shot.image);
       juce::var row(new juce::DynamicObject());
       row.getDynamicObject()->setProperty("file", scene.id + ".png");
       row.getDynamicObject()->setProperty("width", scene.width);
