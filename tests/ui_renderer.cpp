@@ -219,6 +219,11 @@ private:
     if (phase == 1) {
       if (options.configure) options.configure(scene);
       phase = 2;
+      // PopupMenu is a real JUCE menu parented to the editor. In a truly
+      // headless component host the native focus timer dismisses it shortly
+      // after opening; capture it in the same message-loop turn instead of
+      // creating an X11 desktop peer (which fails on some Xvfb servers).
+      if (scene.mode == static_cast<int>(workspaceMenu)) timerCallback();
       return;
     }
     Options one;
@@ -313,15 +318,6 @@ int main(int argc, char** argv) {
   int failures = 0;
   {
     SkellSilenceAudioProcessorEditor editor(p);
-    // Use a real offscreen desktop peer under Xvfb. JUCE's PopupMenu will
-    // dismiss itself after a few milliseconds if its host has no focused
-    // window; a bare Component snapshot cannot exercise that menu lifecycle.
-    // This is the actual AudioProcessorEditor, not a screenshot substitute.
-    editor.setWantsKeyboardFocus(true);
-    editor.addToDesktop(0);
-    editor.setVisible(true);
-    editor.toFront(true);
-    editor.grabKeyboardFocus();
     Options options;
     options.project = "Skell Silence actual JUCE PluginEditor (SkellCore pinned)";
     for (const auto& s : sizes) {
