@@ -28,9 +28,16 @@ struct InstrumentSettings {
 };
 class InstrumentMixer {
 public:
-  void prepare(double sampleRate) {reverb.prepare(sampleRate);reset();}
-  void reset() {beginGap();reverb.reset();}
-  void beginGap() noexcept {stop.reset();air.reset();fade.reset();impact.reset();riser.reset();stutter.reset();}
+  void prepare(double sampleRate) {reverb.prepare(sampleRate);air.prepare(sampleRate);reset();}
+  void reset() {beginGap();air.reset();reverb.reset();}
+  void beginGap(const AirNoise::Spectrum* frozenProfile=nullptr) noexcept {
+    stop.reset();
+    if(frozenProfile!=nullptr)air.setProfile(*frozenProfile);
+    else air.captureProfile();
+    air.resetPlayback();fade.reset();impact.reset();riser.reset();stutter.reset();
+  }
+  void observeInput(float sample) noexcept {air.observe(sample);}
+  AirNoise::Spectrum snapshotSpectrum() const noexcept {return air.snapshotProfile();}
   float process(const GapContext& c, const InstrumentSettings& p,int lengthClass) noexcept {
     const auto allowed=[&](int i){return p.enabled[size_t(i)] && p.rules[size_t(i)][size_t(lengthClass)];};
     float v=0, wetFeed=0;

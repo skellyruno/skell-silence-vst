@@ -18,7 +18,12 @@ public:
     for(const auto* id : names[index]) {
       if(id==nullptr) continue;
       auto* label=labels.emplace_back(std::make_unique<juce::Label>()).get();
-      label->setText(juce::String(id).replaceCharacter('_',' ').toUpperCase(),juce::dontSendNotification);
+      juce::String caption(id);
+      // Human-readable parameter captions: "stopSpeedCurve" -> "STOP SPEED CURVE".
+      for(int j=caption.length()-1;j>0;--j)
+        if(caption[j]>='A' && caption[j]<='Z' &&
+           caption[j-1]>='a' && caption[j-1]<='z')caption=caption.substring(0,j)+" "+caption.substring(j);
+      label->setText(caption.replaceCharacter('_',' ').toUpperCase(),juce::dontSendNotification);
       label->setColour(juce::Label::textColourId,Theme::text);addAndMakeVisible(*label);
       if(auto* choice=dynamic_cast<juce::AudioParameterChoice*>(p.parameters.getParameter(id))) {
         auto* combo=combos.emplace_back(std::make_unique<juce::ComboBox>()).get();
@@ -33,17 +38,26 @@ public:
       }
       types.push_back(dynamic_cast<juce::AudioParameterChoice*>(p.parameters.getParameter(id))!=nullptr);
     }
-    setSize(310,int(48+types.size()*46));
+    setSize(360,int(72+types.size()*52));
   }
   void resized() override {
     int sliderIndex=0,comboIndex=0;
     for(size_t i=0;i<types.size();++i){
-      labels[i]->setBounds(14,int(15+i*46),110,26);
-      if(types[i])combos[size_t(comboIndex++)]->setBounds(128,int(15+i*46),166,26);
-      else sliders[size_t(sliderIndex++)]->setBounds(128,int(15+i*46),166,26);
+      const int y=58+int(i)*52;
+      labels[i]->setBounds(17,y,151,27);
+      if(types[i])combos[size_t(comboIndex++)]->setBounds(171,y,170,28);
+      else sliders[size_t(sliderIndex++)]->setBounds(171,y,170,28);
     }
   }
-  void paint(juce::Graphics& g) override {g.fillAll(Theme::panel);}
+  void paint(juce::Graphics& g) override {
+    g.fillAll(Theme::panel);
+    g.setColour(Theme::green);g.fillRoundedRectangle(15.0f,17.0f,3.0f,20.0f,1.0f);
+    g.setFont(Theme::font(15,true));g.setColour(Theme::text);
+    g.drawText("INSTRUMENT SETTINGS",26,12,getWidth()-40,31,juce::Justification::centredLeft);
+    g.setColour(Theme::border);g.drawHorizontalLine(46,15.0f,float(getWidth()-15));
+    for(size_t i=1;i<types.size();++i)
+      g.drawHorizontalLine(50+int(i)*52,15.0f,float(getWidth()-15));
+  }
 private:
   std::vector<std::unique_ptr<juce::Label>> labels;
   std::vector<std::unique_ptr<juce::Slider>> sliders;
@@ -59,24 +73,35 @@ public:
     levelAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"Level",level) {
     enabled.setButtonText(juce::String(skell::dsp::instrumentNames[size_t(i)]));
     enabled.setColour(juce::ToggleButton::tickColourId,Theme::green);
-    level.setSliderStyle(juce::Slider::LinearHorizontal);level.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
+    level.setSliderStyle(juce::Slider::LinearHorizontal);
+    level.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
+    level.setColour(juce::Slider::trackColourId,Theme::instruments[size_t(index)]);
+    level.setTooltip("Instrument level. Double-click the parameter in settings to restore its default.");
     settings.setButtonText("...");settings.setTooltip("Open instrument settings");
     settings.onClick=[this]{juce::CallOutBox::launchAsynchronously(std::make_unique<InstrumentPopup>(processor,index),settings.getScreenBounds(),nullptr);};
     addAndMakeVisible(enabled);addAndMakeVisible(level);addAndMakeVisible(settings);
   }
   void paint(juce::Graphics& g) override {
+    const bool playing=(processor.activeMask.load(std::memory_order_relaxed)&(1<<index))!=0;
+    const bool on=enabled.getToggleState();
     const auto c=Theme::instruments[size_t(index)];
-    if(index%2==0){g.setColour(Theme::raised.withAlpha(0.25f));g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(1,2),5.0f);}
+    if(index%2==0 || playing){
+      g.setColour(playing?c.withAlpha(0.12f):Theme::raised.withAlpha(0.25f));
+      g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(1,2),5.0f);
+    }
     g.setColour(Theme::border.withAlpha(0.7f));g.drawHorizontalLine(getHeight()-1,8.0f,float(getWidth()-8));
-    g.setColour(c);g.fillRoundedRectangle(5.0f,18.0f,3.0f,23.0f,1.5f);
+    g.setColour(on?c:Theme::border);g.fillRoundedRectangle(5.0f,18.0f,3.0f,23.0f,1.5f);
     juce::Path env;
     const float x=float(getWidth()-87),y=float(getHeight()/2);
     env.startNewSubPath(x,y);
-    for(int i=1;i<=32;++i){const float t=float(i)/32;
+    for(int i=1;i<=32;++i){
+       const float t=float(i)/32;
        const float yy=y-8.0f*std::sin(3.14159265f*t)*std::sin(t*7.5f+float(index));
-       env.lineTo(x+54.0f*t,yy);
+       env.lineTo(x+49.0f*t,yy);
     }
-    g.setColour(c.withAlpha(0.7f));g.strokePath(env,juce::PathStrokeType(1.5f));
+    g.setColour(on?c.withAlpha(playing?1.0f:0.55f):Theme::border);
+    g.strokePath(env,juce::PathStrokeType(playing?2.0f:1.2f));
+    if(playing){g.setColour(c);g.fillEllipse(float(getWidth()-99),float(getHeight()/2-3),6.0f,6.0f);}
   }
   void resized() override {
     enabled.setBounds(11,8,153,41);

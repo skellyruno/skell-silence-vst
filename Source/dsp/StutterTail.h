@@ -14,9 +14,10 @@ public:
      lastIndex=index;lastDecay=decay;
      cachedGain=std::pow(std::max(0.0f,1.0f-decay),index);
    }
-   const auto phase=std::fmod(c.time,slice)/slice;
-   const float taper=float(std::min(1.0, std::min(phase*18.0,(1-phase)*18.0)));
-   return c.history.read(c.start-slice+std::fmod(c.time,slice))*cachedGain*taper;
+   const double offset=c.time-double(index)*slice;
+   const double phase=std::clamp(offset/slice,0.0,1.0);
+   const float taper=float(std::clamp(std::min(phase,1.0-phase)*18.0,0.0,1.0));
+   return c.history.readCubic(c.start-slice+offset)*cachedGain*taper;
  }
 private:
  int lastIndex=-1;

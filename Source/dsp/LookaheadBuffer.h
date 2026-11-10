@@ -36,6 +36,23 @@ public:
     const auto a=samples[size_t(p%int64_t(samples.size()))],b=samples[size_t((p+1)%int64_t(samples.size()))];
     return a+(b-a)*frac;
   }
+  // Four-point Hermite interpolation for variable-rate tape and granular playback.
+  // Preserve the existing linear read() for detector/preview compatibility and
+  // avoid reading outside the retained history near its oldest/newest edges.
+  float readCubic(double sampleTime) const noexcept {
+    if(sampleTime<1.0 || sampleTime+2.0>=double(position) ||
+       double(position)-sampleTime>=double(samples.size()-3)) return read(sampleTime);
+    const int64_t p=int64_t(std::floor(sampleTime));
+    const float t=float(sampleTime-double(p));
+    const auto at=[this](int64_t index) noexcept {
+      return samples[size_t(index%int64_t(samples.size()))];
+    };
+    const float a=at(p-1),b=at(p),c=at(p+1),d=at(p+2);
+    const float slope=0.5f*(c-a);
+    const float t2=t*t,t3=t2*t;
+    return (2*t3-3*t2+1)*b+(t3-2*t2+t)*slope+
+           (-2*t3+3*t2)*c+(t3-t2)*0.5f*(d-b);
+  }
 private:
   std::vector<float> samples;
   int64_t position=0;

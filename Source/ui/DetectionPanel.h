@@ -44,6 +44,12 @@ public:
    g.setColour(Theme::cyan);g.fillRoundedRectangle(555.0f,17.0f,w*std::clamp(fast/mx,0.0f,1.0f),2,1);
    g.setColour(Theme::amber);g.fillRoundedRectangle(555.0f,21.0f,w*std::clamp(slow/mx,0.0f,1.0f),2,1);
    g.setColour(Theme::violet);g.fillRoundedRectangle(555.0f,25.0f,w*std::clamp(limit/mx,0.0f,1.0f),2,1);
+   const int state=processor.detectorState.load(std::memory_order_relaxed);
+   const char* stateNames[]{"SOUND","PENDING","GAP","RECOVERING"};
+   g.setColour(state==2?Theme::violet:state==1?Theme::amber:Theme::muted);
+   g.fillEllipse(317.0f,16.5f,6.0f,6.0f);
+   g.setFont(Theme::font(10,true));
+   g.drawText(stateNames[std::clamp(state,0,3)],328,9,94,22,juce::Justification::centredLeft);
    g.setColour(Theme::border);g.drawVerticalLine(607,48,130);
    g.setFont(Theme::font(10,true));g.setColour(Theme::muted);
    g.drawText("TRIGGER",621,41,94,16,juce::Justification::centredLeft);
@@ -61,7 +67,7 @@ public:
 private:
  void timerCallback() override {
    latency.setText("HOST DELAY  "+juce::String(1000.0*processor.latencyRequested.load()/std::max(1.0,processor.sampleRateAtomic.load()),0)+" ms",juce::dontSendNotification);
-   repaint(548,12,240,25);
+   repaint(310,9,480,27);
  }
  SkellSilenceAudioProcessor& processor;
  std::array<juce::Slider,6> knobs;

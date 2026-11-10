@@ -90,3 +90,30 @@ Known limitations: the model-based spectrum-following air texture and fully
 predicted reverse swells remain future work; a live, zero-lookahead detector
 cannot know the final length of a gap before its end. Only portable DSP tests
 can run without the JUCE dependency; Windows/macOS Actions compile the plugin.
+
+## v1.3 UI and spectral-DSP polish
+
+- **Existing compact geometry preserved:** 912×578 px default, resizable with the same
+  1200×760 logical design space. No panel overlap reintroduced.
+- The rack now highlights the *currently rendering* instruments, dims disabled
+  devices, uses per-effect accent colours for their level controls, and labels
+  its LIVE/ARMED state. The rules matrix highlights the active length class.
+  Detector state (SOUND/PENDING/GAP/RECOVERING) is shown beside the envelope strip.
+- Instrument settings have readable parameter captions and more spacious
+  controls. Rotary knobs use vector hardware bezels and accurate position arcs.
+- **Filtered Air FOLLOW is no longer a fixed low-pass approximation.** Six
+  spectral bands are followed continuously from the incoming source; each
+  detected gap stores its pre-gap envelope in its preallocated event record, so
+  lookahead doesn't accidentally analyze a *future* hit. The noise generator
+  can also use pink-tilted or white spectra, plus a color/brightness control.
+- Hermite resampling improves the continuity of tape and granular reads.
+  Tape Stop uses inexpensive polynomial slowing curves instead of a per-sample
+  power function. Stutter Tail avoids duplicate remainder calculations.
+- No new audio parameters or plugin IDs were added; old sessions and presets
+  retain their automation and state. All new DSP state is bounded/preallocated.
+
+**Verification:** portable C++17 tests cover spectrum tracking, Hermite reads,
+FDN tails, gap events and 192 kHz numerical safety. GCC/Clang and AddressSanitizer/
+UBSan runs passed locally. The real JUCE VST3 and DAW session still require the
+GitHub Actions build and listening checks; no measured DAW CPU reduction or
+commercial-quality separation is claimed here.

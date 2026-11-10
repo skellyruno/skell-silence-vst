@@ -37,24 +37,46 @@ public:
     const float radius=std::max(8.0f,std::min(r.getWidth(),r.getHeight())*0.34f);
     const auto center=r.getCentre();
     const auto accent=slider.getComponentID()=="tension"?Theme::amber:Theme::green;
-    g.setColour(Theme::inset);g.fillEllipse(center.x-radius,center.y-radius,2*radius,2*radius);
-    g.setColour(Theme::raised.brighter(0.3f));g.drawEllipse(center.x-radius,center.y-radius,2*radius,2*radius,2.0f);
+    // Quiet hardware bezel: graded metal centre, precise ticks and a readable
+    // illuminated sweep without high-cost drop shadows or bitmap assets.
+    g.setColour(Theme::border.withAlpha(0.75f));
+    g.fillEllipse(center.x-radius-2,center.y-radius-2,2*radius+4,2*radius+4);
+    g.setGradientFill(juce::ColourGradient(Theme::raised.brighter(0.13f),center.x,center.y-radius,
+                                           Theme::inset,center.x,center.y+radius,false));
+    g.fillEllipse(center.x-radius,center.y-radius,2*radius,2*radius);
+    g.setColour(Theme::raised.brighter(0.45f));
+    g.drawEllipse(center.x-radius+2,center.y-radius+2,2*radius-4,2*radius-4,1.0f);
+    const float a=start+std::clamp(pos,0.0f,1.0f)*(end-start);
+    for(int i=0;i<=10;++i){
+      const float angle=start+float(i)/10.0f*(end-start);
+      const float inner=radius+8.0f,outer=inner+(i%5==0?4.0f:2.0f);
+      g.setColour(Theme::muted.withAlpha(i%5==0?0.55f:0.28f));
+      g.drawLine(center.x+std::sin(angle)*inner,center.y-std::cos(angle)*inner,
+                 center.x+std::sin(angle)*outer,center.y-std::cos(angle)*outer,1.0f);
+    }
     juce::Path track,arc;
-    const float a=start+pos*(end-start);
     track.addCentredArc(center.x,center.y,radius+5,radius+5,0,start,end,true);
     arc.addCentredArc(center.x,center.y,radius+5,radius+5,0,start,a,true);
-    g.setColour(Theme::border.brighter(0.30f));g.strokePath(track,juce::PathStrokeType(3.0f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-    g.setColour(accent);g.strokePath(arc,juce::PathStrokeType(3.0f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-    g.setColour(Theme::text);g.drawLine(center.x,center.y,center.x+std::sin(a)*radius*0.72f,center.y-std::cos(a)*radius*0.72f,2.5f);
-    g.setColour(Theme::muted.withAlpha(0.6f));g.fillEllipse(center.x-2,center.y-2,4,4);
+    g.setColour(Theme::border.brighter(0.15f));
+    g.strokePath(track,juce::PathStrokeType(3.0f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    g.setColour(accent.withAlpha(0.18f));
+    g.strokePath(arc,juce::PathStrokeType(5.4f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    g.setColour(accent);
+    g.strokePath(arc,juce::PathStrokeType(2.8f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    const float tip=radius*0.72f;
+    g.setColour(Theme::text);g.drawLine(center.x,center.y,
+                                       center.x+std::sin(a)*tip,center.y-std::cos(a)*tip,2.2f);
+    g.setColour(accent.withAlpha(0.85f));g.fillEllipse(center.x-2,center.y-2,4,4);
   }
   void drawLinearSlider(juce::Graphics& g,int x,int y,int width,int height,float sliderPos,float,float,juce::Slider::SliderStyle style,juce::Slider& s) override {
     if(style!=juce::Slider::LinearHorizontal){juce::LookAndFeel_V4::drawLinearSlider(g,x,y,width,height,sliderPos,sliderPos,sliderPos,style,s);return;}
     const float cy=float(y+height/2);
     g.setColour(Theme::border);g.fillRoundedRectangle(float(x+7),cy-2,float(width-14),4,2);
-    g.setColour(s.getComponentID()=="mix"?Theme::cyan:Theme::green);
-    g.fillRoundedRectangle(float(x+7),cy-2,std::max(0.0f,sliderPos-float(x+7)),4,2);
-    const auto c=s.getComponentID()=="mix"?Theme::cyan:Theme::green;
+    const auto c=s.getComponentID()=="mix"?Theme::cyan:s.findColour(juce::Slider::trackColourId);
+    g.setColour(c.withAlpha(0.18f));
+    g.fillRoundedRectangle(float(x+7),cy-3,std::max(0.0f,sliderPos-float(x+7)),6,3);
+    g.setColour(c);
+    g.fillRoundedRectangle(float(x+7),cy-1.5f,std::max(0.0f,sliderPos-float(x+7)),3,1.5f);
     g.setColour(Theme::inset);g.fillEllipse(sliderPos-7,cy-7,14,14);
     g.setColour(c);g.fillEllipse(sliderPos-4,cy-4,8,8);
   }

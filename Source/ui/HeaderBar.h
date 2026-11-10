@@ -45,14 +45,16 @@ public:
     g.drawText("SKELL",36,13,98,39,juce::Justification::centredLeft);
     g.setColour(Theme::violet);g.drawText("SILENCE",132,13,143,39,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
-    g.drawText("GAP DESIGNER  /  V1.2",282,18,146,29,juce::Justification::centredLeft);
+    g.drawText("GAP DESIGNER  /  V1.3",282,18,146,29,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
     g.drawText("WET MIX",905,22,61,25,juce::Justification::centredLeft);
     const bool running=processor.isPlaying.load();
     Theme::pill(g,{776.0f,22.0f,109.0f,25.0f},running?Theme::green:Theme::muted,running);
     g.setColour(running?Theme::green:Theme::muted);g.fillEllipse(786.0f,31.0f,6,6);
     g.setColour(Theme::text);g.setFont(Theme::font(10,true));
-    g.drawText(running?"ANALYZING":"READY / IDLE",799,22,80,25,juce::Justification::centredLeft);
+    const bool learning=processor.parameters.getRawParameterValue("learnArmed")->load()>0.5f;
+    const bool locked=processor.parameters.getRawParameterValue("lockToMap")->load()>0.5f;
+    g.drawText(learning?"LEARNING":locked?"MAP LOCK":running?"ANALYZING":"READY / IDLE",799,22,80,25,juce::Justification::centredLeft);
   }
   void resized() override {
     load.setBounds(447,20,69,29);save.setBounds(524,20,69,29);

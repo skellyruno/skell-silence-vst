@@ -148,7 +148,7 @@ void SkellSilenceAudioProcessor::handleAsyncUpdate() {
   if(getLatencySamples()!=requested) setLatencySamples(requested);
 }
 void SkellSilenceAudioProcessor::addEvent(int64_t start,double bpm) noexcept {
-  auto& e=events[size_t(writtenEvents%events.size())];e={start,-1,bpm};++writtenEvents;
+  auto& e=events[size_t(writtenEvents%events.size())];e={start,-1,bpm,instruments.snapshotSpectrum()};++writtenEvents;
   if(writtenEvents-readEvents>events.size())readEvents=writtenEvents-events.size();
 }
 void SkellSilenceAudioProcessor::closeEvent(int64_t end) noexcept {
@@ -234,6 +234,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
     const float sideMono=sideL?0.5f*(sideL[i]+(sideR?sideR[i]:sideL[i])):mono;
     delay.push(0,inL);delay.push(1,inR);
     history.push(mono);
+    instruments.observeInput(mono); // cheap analysis even before a gap is armed
     const double ppq=blockPpq+i*ppqPerSample;
     DetectionResult detected;
     bool begin=false,end=false;
@@ -306,7 +307,13 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       --previewRemaining;
     }
     float wet=0;
-    if(active && !wasFxActive)instruments.beginGap();
+    if(active && !wasFxActive) {
+      // The preceding spectral profile is captured at the detector event, not
+      // 250ms/one-beat later when the delayed render reaches that gap.
+      if(transportPlaying && !lock && readEvents<writtenEvents)
+        instruments.beginGap(&events[size_t(readEvents%events.size())].spectrum);
+      else instruments.beginGap();
+    }
     wasFxActive=active;
     if(active && gapLen>1) {
       const double renderTime=transportPlaying?double(delayedClock)-gapStart:double(clock-previewStartSample);

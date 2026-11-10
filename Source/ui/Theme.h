@@ -12,7 +12,8 @@ inline juce::Font font(float height,bool bold=false) { return juce::Font(juce::F
 inline void panelBackground(juce::Graphics& g,juce::Rectangle<float> r,float radius=11.0f) {
     g.setColour(panel); g.fillRoundedRectangle(r,radius);
     g.setColour(border); g.drawRoundedRectangle(r.reduced(0.6f),radius,1.0f);
-    g.setColour(juce::Colours::white.withAlpha(0.025f));g.drawHorizontalLine(int(r.getY()+1),r.getX()+radius,r.getRight()-radius);
+    g.setColour(juce::Colours::white.withAlpha(0.047f));
+    g.drawHorizontalLine(int(r.getY()+1),r.getX()+radius,r.getRight()-radius);
 }
 inline void title(juce::Graphics& g,const juce::String& label,juce::Rectangle<int> r) {
     g.setColour(muted); g.setFont(font(11.0f,true));g.drawFittedText(label,r,juce::Justification::centredLeft,1);

@@ -59,7 +59,11 @@ private:
   void addEvent(int64_t start,double bpm) noexcept;
   void closeEvent(int64_t end) noexcept;
   void clearRuntime(bool preserveHistory=false) noexcept;
-  struct Event {int64_t start=0,end=-1; double bpm=120;};
+  struct Event {
+    int64_t start=0,end=-1;
+    double bpm=120;
+    skell::dsp::AirNoise::Spectrum spectrum{};
+  };
   std::array<Event,256> events{};
   uint64_t writtenEvents=0,readEvents=0;
   int64_t samples=0;
