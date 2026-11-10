@@ -7,13 +7,13 @@ jobs:
   dsp-portable:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test C++ DSP (without JUCE)
         run: bash tests/run_cpp_tests.sh
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Configure JUCE plugin
         run: cmake -S . -B build -A x64
       - name: Build VST3 and Standalone
@@ -27,9 +27,8 @@ jobs:
           Copy-Item -Path $vst.FullName -Destination dist -Recurse -Force
           $app = Get-ChildItem -Path build -File -Recurse -Filter 'Skell Silence.exe' | Select-Object -First 1
           if ($app) { Copy-Item $app.FullName dist/SkellSilence-Standalone.exe }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
-          retention-days: 1
           name: SkellSilence-Windows
           path: |
             dist/**
@@ -37,12 +36,11 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: cmake -S . -B build -G Xcode
       - run: cmake --build build --config Release --parallel 2
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
-          retention-days: 1
           name: SkellSilence-macOS
           path: |
             build/SkellSilence_artefacts/Release/VST3/*.vst3
