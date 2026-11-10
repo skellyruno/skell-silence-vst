@@ -74,6 +74,8 @@ private:
   bool lastTransport=false;
   int pendingLearnEvent=-1;
   bool gridInGap=false,wasFxActive=false;
+  int lastTriggerSource=-1;
+  bool lastLockToMap=false;
   double openGapPpq=0;
   std::array<std::atomic<float>*,7> onParams{},levelParams{};
   std::array<std::array<std::atomic<float>*,4>,7> ruleParams{};

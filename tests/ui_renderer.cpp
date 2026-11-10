@@ -125,6 +125,30 @@ bool testMidiOverlap() {
   return passed;
 }
 
+bool testMidiModeSwitchAndTelemetry() {
+  SkellSilenceAudioProcessor p;
+  setParameter(p,"triggerSource",3.f);
+  setParameter(p,"mix",0.f);
+  p.prepareToPlay(48000.,256);
+  juce::AudioBuffer<float> audio(2,256);audio.clear();
+  juce::MidiBuffer midi;
+  midi.addEvent(juce::MidiMessage::noteOn(1,55,juce::uint8(100)),32);
+  p.processBlock(audio,midi);
+  if(p.detectorState.load()!=2)return false;
+  setParameter(p,"triggerSource",2.f);midi.clear();audio.clear();
+  p.processBlock(audio,midi);
+  if(p.detectorState.load()!=0)return false;
+  setParameter(p,"triggerSource",3.f);midi.clear();audio.clear();
+  midi.addEvent(juce::MidiMessage::noteOff(1,55),25); // stale off ignored
+  midi.addEvent(juce::MidiMessage::noteOn(1,60,juce::uint8(100)),64);
+  midi.addEvent(juce::MidiMessage::noteOff(1,60),120);
+  p.processBlock(audio,midi);
+  const auto gap=p.getRecentGap(0);
+  const bool passed=gap.start==2*256+64 && gap.end==2*256+120
+      && p.detectorState.load()==0;
+  p.releaseResources();return passed;
+}
+
 bool testZeroLookaheadDry() {
   SkellSilenceAudioProcessor p;
   setParameter(p, "lookahead", 0.f);
@@ -358,6 +382,10 @@ int main(int argc, char** argv) {
   }
   if(!testMidiOverlap()) {
     std::fprintf(stderr, "Overlapping-note MIDI gap regression failed\n");
+    return 1;
+  }
+  if(!testMidiModeSwitchAndTelemetry()) {
+    std::fprintf(stderr,"MIDI trigger-mode switching or gap telemetry failed\n");
     return 1;
   }
   if(!testZeroLookaheadDry()) {

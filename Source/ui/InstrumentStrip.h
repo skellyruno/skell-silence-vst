@@ -124,7 +124,7 @@ public:
       ruleParameters[size_t(category)] = p.parameters.getRawParameterValue(
         "rule_" + juce::String(skell::dsp::instrumentIds[size_t(i)]) + "_"
         + juce::String(category));
-    setTooltip("Four bottom indicators: SHORT / MEDIUM / LONG / EXTRA LONG. "
+    enabled.setTooltip("Four bottom indicators: SHORT / MEDIUM / LONG / EXTRA LONG. "
                "Edit the rules in the performance matrix.");
     enabled.setComponentID("instrument-enable-"+juce::String(index));
     level.setComponentID("instrument-level-"+juce::String(index));

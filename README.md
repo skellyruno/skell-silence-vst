@@ -220,3 +220,7 @@ The brand glyph and rolling signal display are rendered directly by JUCE vectors
 - Keyboard focus is more visible on buttons and matrix switches.
 - The SkellCore real-editor screenshot suite adds rule-change and disabled
   states and a JUCE-processor MIDI-overlap regression test.
+
+- Trigger-source/LOCK changes reset only detector and MIDI gate state (not the
+  audio delay/history), closing stale open events safely. GRID/MIDI and LOCK
+  now publish their real gate state to the detector badge.

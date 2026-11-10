@@ -135,6 +135,7 @@ void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
   for(size_t ch=0;ch<2;++ch){if(!preserveHistory)histories[ch].reset(samples);instruments[ch].reset();}
   readEvents=writtenEvents=0;pendingLearnEvent=-1;previewRemaining=0;gridInGap=false;wasFxActive=false;
   gapClassLatch.reset();wetTransition.reset();midiGate.reset();
+  lastTriggerSource=-1;lastLockToMap=false;
   wetTailRemaining=0;lastGapSample=-1000000000LL;
   peak=0;peakSamples=0;activeMask.store(0);activeLengthClass.store(-1);
 }
@@ -213,6 +214,14 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   smoothMix.setTargetValue(param("mix"));smoothTension.setTargetValue(param("tension"));smoothSpace.setTargetValue(param("space"));
   const float duck=param("duckAfter"),shortMax=param("classShortMax"),mediumMax=param("classMediumMax"),longMax=param("classLongMax");
   const int source=int(param("triggerSource"));
+  if(source!=lastTriggerSource || lock!=lastLockToMap){
+    // Change trigger mode without flushing delay or effect histories. An old
+    // held MIDI key or open detector event must never survive re-entry into
+    // MIDI/GRID/LOCK mode and silently keep the next gap open.
+    if(lastTriggerSource>=0)closeEvent(samples);
+    midiGate.reset();gridInGap=false;detector.reset();
+    lastTriggerSource=source;lastLockToMap=lock;
+  }
   constexpr double gridBeats[4]={1.0,0.5,0.25,0.125};
   const double gridDivision=gridBeats[std::clamp(int(param("gridDivision")),0,3)];
   const double gridOffset=param("gridOffset");
@@ -288,7 +297,6 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       if(end){closeEvent(eventEnd);if(learn && ppq>openGapPpq)gapMap.append(openGapPpq,ppq);}
       if(begin){ addEvent(eventStart,bpm);openGapPpq=ppq-double(clock-eventStart)*ppqPerSample; }
     }
-    if(i==n-1){fastMeter.store(detected.fast);slowMeter.store(detected.slow);thresholdMeter.store(detected.threshold);detectorState.store(int(detector.getState()));}
     peak=std::max(peak,std::max(std::abs(inL),std::abs(inR)));
     if(++peakSamples>=size_t(sr/72)){
       const auto index=waveformSequence.fetch_add(1)%waveformSize;
@@ -392,6 +400,16 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
               ?dryL:protect(outL);
     if(right)right[i]=(wetMix<=0.0f && lift<=0.0f) || (std::abs(wetR)<1.0e-9f && lift<=0.0f)
               ?dryR:protect(outR);
+    if(i==n-1){
+      const bool followsAudio=!lock && (source==0 || source==1);
+      fastMeter.store(followsAudio ? detected.fast : 0.0f,std::memory_order_relaxed);
+      slowMeter.store(followsAudio ? detected.slow : 0.0f,std::memory_order_relaxed);
+      thresholdMeter.store(followsAudio ? detected.threshold : 0.0f,std::memory_order_relaxed);
+      const int status=!transportPlaying ? 0 : lock ? (active?2:0)
+        : source==3 ? (midiGate.activeCount()>0?2:0)
+        : source==2 ? (gridInGap?2:0) : int(detector.getState());
+      detectorState.store(status,std::memory_order_release);
+    }
     delay.next();
     if(source==2) {
       gridPhase+=ppqPerSample;
