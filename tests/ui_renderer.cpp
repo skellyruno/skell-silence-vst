@@ -24,7 +24,7 @@ constexpr std::array<Size, 4> sizes {{
 // Modes are real controls/states of the same editor, never a mock GUI.
 enum Mode { idle, playing, dryMix, grid, sidechain, midi, selected,
             editRanges, instrument0, instrument1, instrument2, instrument3,
-            instrument4, instrument5, instrument6, workspaceMenu };
+            instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet };
 
 void setParameter(SkellSilenceAudioProcessor& p, const juce::String& id, float value) {
   if (auto* parameter = p.parameters.getParameter(id))
@@ -98,6 +98,50 @@ bool testMidiGapPositions() {
                       && recent.end == 192;
   p.releaseResources();
   return passed;
+}
+
+// Real JUCE processBlock regression: overlapping notes form one held interval,
+// then a new note retriggers cleanly. This catches MIDI state bugs that a
+// portable gate unit test alone cannot detect in the audio processor.
+bool testMidiOverlap() {
+  SkellSilenceAudioProcessor p;
+  setParameter(p, "triggerSource", 3.f);
+  setParameter(p, "mix", 0.f);
+  p.prepareToPlay(48000., 256);
+  juce::AudioBuffer<float> audio(2,256);audio.clear();
+  juce::MidiBuffer midi;
+  midi.addEvent(juce::MidiMessage::noteOn(1,60,juce::uint8(100)),32);
+  midi.addEvent(juce::MidiMessage::noteOn(2,72,juce::uint8(95)),48);
+  midi.addEvent(juce::MidiMessage::noteOff(1,60),100);
+  midi.addEvent(juce::MidiMessage::noteOff(2,72),184);
+  midi.addEvent(juce::MidiMessage::noteOn(1,64,juce::uint8(100)),208);
+  midi.addEvent(juce::MidiMessage::noteOff(1,64),248);
+  p.processBlock(audio,midi);
+  const auto first=p.getRecentGap(1),second=p.getRecentGap(0);
+  const bool passed=p.getRecentCount()==2
+      && first.start==32 && first.end==184
+      && second.start==208 && second.end==248;
+  p.releaseResources();
+  return passed;
+}
+
+bool testZeroLookaheadDry() {
+  SkellSilenceAudioProcessor p;
+  setParameter(p, "lookahead", 0.f);
+  setParameter(p, "mix", 0.f);
+  p.prepareToPlay(44100.,256);
+  if(p.latencyRequested.load()!=0)return false;
+  juce::AudioBuffer<float> audio(2,256);
+  for(int i=0;i<256;++i){
+    audio.setSample(0,i,0.4f*std::sin(float(i)*0.129f));
+    audio.setSample(1,i,-0.6f*std::cos(float(i)*0.093f));
+  }
+  juce::AudioBuffer<float> reference;reference.makeCopyOf(audio);
+  juce::MidiBuffer midi;p.processBlock(audio,midi);
+  bool passed=true;
+  for(int ch=0;ch<2;++ch)for(int i=0;i<256;++i)
+    if(audio.getSample(ch,i)!=reference.getSample(ch,i))passed=false;
+  p.releaseResources();return passed;
 }
 
 void generateDetectorInput(SkellSilenceAudioProcessor& p) {
@@ -312,6 +356,14 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "Sample-accurate MIDI gap position test failed\n");
     return 1;
   }
+  if(!testMidiOverlap()) {
+    std::fprintf(stderr, "Overlapping-note MIDI gap regression failed\n");
+    return 1;
+  }
+  if(!testZeroLookaheadDry()) {
+    std::fprintf(stderr, "Zero-lookahead / dry bypass regression failed\n");
+    return 1;
+  }
   SkellSilenceAudioProcessor p;
   p.prepareToPlay(48000., 256);
   generateDetectorInput(p);
@@ -328,6 +380,8 @@ int main(int argc, char** argv) {
       addScene(options, juce::String(s.name) + "-sidechain", s.width, s.height, sidechain);
       addScene(options, juce::String(s.name) + "-midi", s.width, s.height, midi);
       addScene(options, juce::String(s.name) + "-selected", s.width, s.height, selected);
+      addScene(options, juce::String(s.name) + "-rule-override", s.width, s.height, ruleOverride);
+      addScene(options, juce::String(s.name) + "-all-disabled", s.width, s.height, disabledWet);
     }
     // Real control overlays at both the minimum and shipping window sizes.
     for (const auto& s : { sizes[0], sizes[1] }) {
@@ -345,7 +399,9 @@ int main(int argc, char** argv) {
       {"compact-idle", "compact-edit-ranges"},
       {"compact-idle", "compact-instrument-0"},
       {"compact-idle", "compact-instrument-6"},
-      {"compact-idle", "compact-menu"}
+      {"compact-idle", "compact-menu"},
+      {"compact-idle", "compact-rule-override"},
+      {"compact-idle", "compact-all-disabled"}
     };
     Mode currentScene = idle;
     options.configure = [&](const Scene& scene) {
@@ -355,6 +411,15 @@ int main(int argc, char** argv) {
       for (int i = 0; i < 7; ++i)
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
       setParameter(p, "mix", 0.65f);
+      setParameter(p, "rule_tape_0", 1.f);
+      setParameter(p, "rule_swell_2", 1.f);
+      if(mode==ruleOverride){
+        setParameter(p, "rule_tape_0", 0.f);
+        setParameter(p, "rule_swell_2", 0.f);
+      }
+      if(mode==disabledWet)
+        for(int i=0;i<7;++i)
+          setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 0.f);
       setParameter(p, "triggerSource", 0.f);
       p.isPlaying.store(mode == playing);
       p.detectorState.store(mode == playing ? 2 : 0);
@@ -409,10 +474,15 @@ int main(int argc, char** argv) {
       for (int i = 0; i < 7; ++i) {
         const auto id = "instrument-enable-" + juce::String(i);
         if (auto* button = dynamic_cast<juce::Button*>(findById(editor, id))) {
-          const bool expected = currentScene != dryMix;
+          const bool expected = currentScene != dryMix && currentScene != disabledWet;
           if (button->getToggleState() != expected)
             issues.add(id + " is not in the expected automation state");
         } else issues.add("Missing instrument control " + id);
+      }
+      if(currentScene==ruleOverride){
+        for(const auto& id : {"rule_tape_0","rule_swell_2"})
+          if(p.parameters.getRawParameterValue(id)->load() >= 0.5f)
+            issues.add("Rule overlay automation did not update: " + juce::String(id));
       }
       return issues;
     };

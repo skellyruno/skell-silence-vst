@@ -1,11 +1,13 @@
 #pragma once
 #include "InstrumentStrip.h"
 #include <array>
+#include <cstdint>
 #include <memory>
 namespace skell::ui {
 class InstrumentRack final : public juce::Component,private juce::Timer {
 public:
  explicit InstrumentRack(SkellSilenceAudioProcessor& p):processor(p){
+   lastStripSettings.fill(~std::uint32_t(0));
    for(int i=0;i<7;++i){
      strips[size_t(i)]=std::make_unique<InstrumentStrip>(p,i);
      addAndMakeVisible(*strips[size_t(i)]);
@@ -32,13 +34,22 @@ private:
  void timerCallback() override {
    const int mask=processor.activeMask.load(std::memory_order_relaxed);
    const int channels=processor.inputChannels.load(std::memory_order_relaxed);
-   if(mask==lastMask && channels==lastChannels)return;
-   lastMask=mask;lastChannels=channels;
-   repaint(getWidth()-170,7,160,30);
-   for(auto& strip:strips)strip->repaint();
+   const int activeClass=processor.activeLengthClass.load(std::memory_order_relaxed);
+   if(mask!=lastMask || channels!=lastChannels)
+     repaint(getWidth()-195,7,185,30);
+   for(size_t i=0;i<strips.size();++i){
+     const auto fingerprint=strips[i]->settingsFingerprint();
+     if(fingerprint!=lastStripSettings[i] || activeClass!=lastActiveClass
+        || ((mask ^ lastMask) & (1 << int(i))) != 0){
+       lastStripSettings[i]=fingerprint;
+       strips[i]->repaint();
+     }
+   }
+   lastMask=mask;lastChannels=channels;lastActiveClass=activeClass;
  }
  SkellSilenceAudioProcessor& processor;
  std::array<std::unique_ptr<InstrumentStrip>,7> strips;
- int lastMask=-1,lastChannels=-1;
+ std::array<std::uint32_t,7> lastStripSettings{};
+ int lastMask=-1,lastChannels=-1,lastActiveClass=-2;
 };
 }

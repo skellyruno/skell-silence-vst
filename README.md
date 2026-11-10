@@ -206,3 +206,17 @@ toggle targets, and clearer detector and dynamics grouping. Every source UI edit
 existing SkellCore actual-editor screenshot workflow.
 
 The brand glyph and rolling signal display are rendered directly by JUCE vectors using real processor data; no static screenshots are used as editor controls.
+
+
+### v1.8 — MIDI gate and instrument rules glance view
+- The MIDI trigger tracks held notes per channel: one note-off cannot close a
+  gap while other notes remain down. Duplicate on and unmatched off messages
+  are ignored; the gate resets on transport/runtime reset and max-gap timeout.
+- Each instrument row now shows four short rule bars below its envelope
+  (SHORT / MEDIUM / LONG / EXTRA LONG). Bars reflect existing automation,
+  and the active gap length is outlined while that effect plays.
+- Instrument-rack refresh compares actual parameter state and activity instead
+  of repainting all seven rows on every timer tick.
+- Keyboard focus is more visible on buttons and matrix switches.
+- The SkellCore real-editor screenshot suite adds rule-change and disabled
+  states and a JUCE-processor MIDI-overlap regression test.

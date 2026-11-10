@@ -3,6 +3,7 @@
 #include "../Source/dsp/GapDetector.h"
 #include "../Source/dsp/InstrumentMixer.h"
 #include "../Source/dsp/GapTransition.h"
+#include "../Source/dsp/MidiNoteGate.h"
 #include "../Source/ui/LayoutGeometry.h"
 #include <array>
 #include <cassert>
@@ -39,6 +40,29 @@ int main() {
   assert(latch.advance(true,0.9,0.5f,2.0f,4.0f)==1);
   assert(classifyGapBeats(7.0,0.5f,2.0f,4.0f)==3);
   assert(classifyGapBeats(-1,0.5f,2.0f,4.0f)==0);
+
+  // No MIDI allocations: overlapping notes on independent channels form
+  // exactly one gap; repeated note-ons and stray offs are harmless.
+  MidiNoteGate gate;
+  using Edge=MidiNoteGate::Edge;
+  assert(gate.processRaw(0x90,60,100)==Edge::opened);
+  assert(gate.processRaw(0x90,60,127)==Edge::none); // duplicate
+  assert(gate.processRaw(0x91,60,100)==Edge::none); // independent channel
+  assert(gate.processRaw(0x90,67,100)==Edge::none); // overlapping note
+  assert(gate.activeCount()==3);
+  assert(gate.processRaw(0x80,60,0)==Edge::none);
+  assert(gate.processRaw(0x80,60,0)==Edge::none); // stray off
+  assert(gate.processRaw(0x91,60,0)==Edge::none); // note-on zero velocity
+  assert(gate.activeCount()==1);
+  assert(gate.processRaw(0x80,67,0)==Edge::closed);
+  assert(gate.processRaw(0xb0,64,127)==Edge::none); // ignore MIDI CC
+  assert(gate.activeCount()==0);
+  assert(gate.processRaw(0x99,36,100)==Edge::opened);
+  gate.reset();
+  assert(gate.activeCount()==0);
+  assert(gate.processRaw(0x89,36,0)==Edge::none);
+  assert(gate.processRaw(0x90,64,100)==Edge::opened);
+  assert(gate.processRaw(0x80,64,0)==Edge::closed);
 
   // A predicted one-beat gap must not fade out at its guessed endpoint;
   // otherwise an extended phrase audibly dips then comes back.
@@ -113,7 +137,7 @@ int main() {
   }
   const auto elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
   assert(power>0.0001 && peak<2.0f);
-  std::cout<<"PASS layout 760-1800px, gap transition/release, stable class latch, deterministic multi-rate impact, "
+  std::cout<<"PASS MIDI overlap/channel gate, layout 760-1800px, gap transition/release, stable class latch, deterministic multi-rate impact, "
            <<"stereo DSP stress: peak="<<peak<<" render="<<elapsed*1000.0
            <<" ms for 500ms stereo audio, CPU ratio="<<elapsed/0.5<<"\n";
   return 0;

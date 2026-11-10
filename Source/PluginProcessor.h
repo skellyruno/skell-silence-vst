@@ -6,6 +6,7 @@
 #include "dsp/InstrumentMixer.h"
 #include "dsp/GapClass.h"
 #include "dsp/GapTransition.h"
+#include "dsp/MidiNoteGate.h"
 #include <array>
 #include <atomic>
 
@@ -79,6 +80,7 @@ private:
   static constexpr int namedCount=38;
   std::array<std::atomic<float>*,namedCount> namedParams{};
   skell::dsp::GapDetector detector;
+  skell::dsp::MidiNoteGate midiGate;
   skell::dsp::GapClassLatch gapClassLatch;
   skell::dsp::GapTransition wetTransition;
   skell::dsp::LookaheadBuffer delay;

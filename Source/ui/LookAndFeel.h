@@ -36,6 +36,10 @@ public:
     g.drawHorizontalLine(int(r.getY()+1),r.getX()+8,r.getRight()-8);
     g.setColour(active?Theme::green.withAlpha(0.62f):(hover?Theme::muted.withAlpha(0.65f):Theme::border));
     g.drawRoundedRectangle(r,7.0f,1.0f);
+    if (b.hasKeyboardFocus(true)) {
+      g.setColour(Theme::cyan.withAlpha(0.85f));
+      g.drawRoundedRectangle(r.reduced(1.5f),5.5f,1.2f);
+    }
   }
   void drawRotarySlider(juce::Graphics& g,int x,int y,int width,int height,float pos,float start,float end,juce::Slider& slider) override {
     const juce::Rectangle<float> r{float(x),float(y),float(width),float(height)};
@@ -106,6 +110,10 @@ public:
       } else {
         g.setColour(Theme::muted.withAlpha(0.30f));
         g.fillRoundedRectangle(tile.getCentreX()-3,tile.getCentreY()-0.8f,6,1.6f,0.8f);
+      }
+      if(b.hasKeyboardFocus(true)){
+        g.setColour(Theme::cyan.withAlpha(0.8f));
+        g.drawRoundedRectangle(tile.reduced(1.0f),3.0f,1.0f);
       }
       return;
     }

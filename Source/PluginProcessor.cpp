@@ -134,7 +134,7 @@ void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
   detector.reset();delay.reset();
   for(size_t ch=0;ch<2;++ch){if(!preserveHistory)histories[ch].reset(samples);instruments[ch].reset();}
   readEvents=writtenEvents=0;pendingLearnEvent=-1;previewRemaining=0;gridInGap=false;wasFxActive=false;
-  gapClassLatch.reset();wetTransition.reset();
+  gapClassLatch.reset();wetTransition.reset();midiGate.reset();
   wetTailRemaining=0;lastGapSample=-1000000000LL;
   peak=0;peakSamples=0;activeMask.store(0);activeLengthClass.store(-1);
 }
@@ -267,22 +267,23 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
         gridInGap=inGap;
       } else if(source==3){
         while(midiIterator!=midiEnd && (*midiIterator).samplePosition<=i){
-          // Read the metadata's raw note bytes without constructing a MIDI
-          // message on the real-time thread (SysEx could otherwise allocate).
+          // Interpret raw note bytes with a fixed-capacity channel-aware gate.
+          // One overlapping note-off must not end the gap while another note
+          // is held, and repeated note-on messages must not retrigger it.
           const auto event=*midiIterator;
           if(event.numBytes>=3){
-            const auto command=event.data[0]&0xf0;
-            const bool isOn=command==0x90 && event.data[2]!=0;
-            const bool isOff=command==0x80 || (command==0x90 && event.data[2]==0);
-            if(isOff){end=true;eventEnd=clock;}
-            if(isOn){begin=true;eventStart=clock;}
+            const auto edge=midiGate.processRaw(event.data[0],event.data[1],event.data[2]);
+            if(edge==MidiNoteGate::Edge::opened){begin=true;eventStart=clock;}
+            if(edge==MidiNoteGate::Edge::closed){end=true;eventEnd=clock;}
           }
           ++midiIterator;
         }
       }
       if(source==3 && !end && writtenEvents>0) {
         auto& last=events[size_t((writtenEvents-1)%events.size())];
-        if(last.end<0 && clock-last.start>=int64_t(d.maxGapMs*sr/1000.0)){end=true;eventEnd=clock;}
+        if(last.end<0 && clock-last.start>=int64_t(d.maxGapMs*sr/1000.0)){
+          end=true;eventEnd=clock;midiGate.reset();
+        }
       }
       if(end){closeEvent(eventEnd);if(learn && ppq>openGapPpq)gapMap.append(openGapPpq,ppq);}
       if(begin){ addEvent(eventStart,bpm);openGapPpq=ppq-double(clock-eventStart)*ppqPerSample; }

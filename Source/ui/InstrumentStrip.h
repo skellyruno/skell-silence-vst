@@ -2,6 +2,8 @@
 #include "Theme.h"
 #include "../PluginProcessor.h"
 #include <memory>
+#include <cstdint>
+#include <atomic>
 namespace skell::ui {
 class InstrumentPopup final : public juce::Component {
 public:
@@ -116,6 +118,14 @@ public:
   InstrumentStrip(SkellSilenceAudioProcessor& p,int i):processor(p),index(i),
     enableAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"On",enabled),
     levelAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"Level",level) {
+    // Cache the four APVTS rule switches. The rack LEDs mirror the real
+    // automation values; they are not decorative or duplicated state.
+    for (int category=0; category<4; ++category)
+      ruleParameters[size_t(category)] = p.parameters.getRawParameterValue(
+        "rule_" + juce::String(skell::dsp::instrumentIds[size_t(i)]) + "_"
+        + juce::String(category));
+    setTooltip("Four bottom indicators: SHORT / MEDIUM / LONG / EXTRA LONG. "
+               "Edit the rules in the performance matrix.");
     enabled.setComponentID("instrument-enable-"+juce::String(index));
     level.setComponentID("instrument-level-"+juce::String(index));
     enabled.setButtonText(juce::String(skell::dsp::instrumentNames[size_t(i)]));
@@ -135,6 +145,15 @@ public:
     };
     addAndMakeVisible(enabled);addAndMakeVisible(level);addAndMakeVisible(settings);
   }
+  // Cheap UI-side fingerprint: only redraw a strip when its rule/level state
+  // or the DSP active category changes. No polling of this data on the audio thread.
+  std::uint32_t settingsFingerprint() const noexcept {
+    std::uint32_t result = enabled.getToggleState() ? 0x10u : 0u;
+    for(size_t c=0;c<4;++c)
+      if(ruleParameters[c]!=nullptr && ruleParameters[c]->load(std::memory_order_relaxed)>0.5f)
+        result |= (1u << c);
+    return result | (std::uint32_t(juce::roundToInt(level.getValue()*100.0)) << 8u);
+  }
   void paint(juce::Graphics& g) override {
     const bool playing=(processor.activeMask.load(std::memory_order_relaxed)&(1<<index))!=0;
     const bool on=enabled.getToggleState();
@@ -152,7 +171,7 @@ public:
     g.setColour(on?c:Theme::muted);g.setFont(Theme::font(11,true));
     g.drawText(juce::String(index+1).paddedLeft('0',2),11,18,25,23,juce::Justification::centred);
     // Individual waveform accent, rather than an identical decorative meter per row.
-    const auto graph=juce::Rectangle<float>(float(getWidth()-89),14.0f,55.0f,29.0f);
+    const auto graph=juce::Rectangle<float>(float(getWidth()-101),12.0f,65.0f,31.0f);
     g.setColour(Theme::inset.withAlpha(0.68f));g.fillRoundedRectangle(graph,4.0f);
     g.setColour(Theme::border.withAlpha(0.7f));g.drawHorizontalLine(int(graph.getCentreY()),graph.getX()+4,graph.getRight()-4);
     juce::Path env;
@@ -166,16 +185,32 @@ public:
     g.strokePath(env,juce::PathStrokeType(playing?2.4f:1.6f,juce::PathStrokeType::curved));
     if(playing){g.setColour(c);g.fillEllipse(graph.getX()-6.0f,graph.getCentreY()-2.5f,5,5);}
     g.setColour(on?Theme::text:Theme::muted);g.setFont(Theme::font(11.5f,true));
-    g.drawText(juce::String(juce::roundToInt(level.getValue()*100.0))+"%",166,36,65,16,juce::Justification::centred);
+    g.drawText(juce::String(juce::roundToInt(level.getValue()*100.0))+"%",151,36,53,15,juce::Justification::centred);
+    // Compact four-step rule strip under the actual effect envelope.
+    // Highlight the length currently selected by the audio engine.
+    const int selected=processor.activeLengthClass.load(std::memory_order_relaxed);
+    for(int category=0;category<4;++category){
+      const bool assigned=ruleParameters[size_t(category)] != nullptr
+        && ruleParameters[size_t(category)]->load(std::memory_order_relaxed)>0.5f;
+      const auto marker=juce::Rectangle<float>(graph.getX()+4.0f+category*15.0f,46.0f,11.0f,4.0f);
+      g.setColour(on && assigned ? c.withAlpha(selected==category && playing?1.0f:0.72f)
+                                 : Theme::border.withAlpha(0.42f));
+      g.fillRoundedRectangle(marker,1.3f);
+      if(on && assigned && selected==category && playing){
+        g.setColour(Theme::text.withAlpha(0.7f));
+        g.drawRoundedRectangle(marker.expanded(1.0f),2.0f,0.8f);
+      }
+    }
   }
   void resized() override {
-    enabled.setBounds(35,8,124,40);
-    level.setBounds(159,11,71,30);
+    enabled.setBounds(35,8,113,40);
+    level.setBounds(151,11,53,27);
     settings.setBounds(getWidth()-30,16,25,26);
   }
 
 private:
   SkellSilenceAudioProcessor& processor;int index;
+  std::array<std::atomic<float>*,4> ruleParameters{};
   juce::ToggleButton enabled;
   juce::Slider level;
   juce::TextButton settings;

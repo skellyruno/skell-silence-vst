@@ -62,7 +62,7 @@ public:
     g.drawText("GAP DESIGN ENGINE",311,15,139,15,juce::Justification::centredLeft);
     g.setColour(Theme::green.withAlpha(0.70f));g.fillRoundedRectangle(311.0f,36.0f,29.0f,2.0f,1.0f);
     g.setColour(Theme::muted);g.setFont(Theme::font(9.5f,true));
-    g.drawText("V1.7 / STEREO FX",346,28,100,20,juce::Justification::centredLeft);
+    g.drawText("V1.8 / STEREO FX",346,28,100,20,juce::Justification::centredLeft);
     const bool running=processor.isPlaying.load();
     Theme::pill(g,{772.0f,20.0f,122.0f,30.0f},running?Theme::green:Theme::muted,running);
     g.setColour(running?Theme::green:Theme::muted);g.fillEllipse(784.0f,32.0f,7,7);
