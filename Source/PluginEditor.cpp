@@ -1,36 +1,36 @@
 #include "PluginEditor.h"
 SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceAudioProcessor& p)
- : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p) {
+  : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p) {
   setLookAndFeel(&look);
   addAndMakeVisible(header);addAndMakeVisible(timeline);addAndMakeVisible(detection);
   addAndMakeVisible(rack);addAndMakeVisible(matrix);addAndMakeVisible(macros);
-  constrainer.setSizeLimits(720,456,2400,1520);
+  constrainer.setSizeLimits(760,481,1800,1140);
   constrainer.setFixedAspectRatio(1200.0/760.0);
   setConstrainer(&constrainer);setResizable(true,true);
   header.onScaleChange=[this](float s){setSize(juce::roundToInt(1200*s),juce::roundToInt(760*s));};
-  setSize(p.windowW.load(),p.windowH.load());
+  setSize(juce::jlimit(760,1800,p.windowW.load()),juce::jlimit(481,1140,p.windowH.load()));
 }
-SkellSilenceAudioProcessorEditor::~SkellSilenceAudioProcessorEditor() {
-  setLookAndFeel(nullptr);
-}
-void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g) {
+SkellSilenceAudioProcessorEditor::~SkellSilenceAudioProcessorEditor(){setLookAndFeel(nullptr);}
+void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g){
   g.fillAll(skell::ui::Theme::ink);
-  g.setColour(skell::ui::Theme::violet.withAlpha(0.08f));
-  g.fillRect(getLocalBounds().withTrimmedTop(getHeight()-3));
+  g.setColour(skell::ui::Theme::green.withAlpha(0.13f));
+  g.drawHorizontalLine(getHeight()-1,0.0f,float(getWidth()));
 }
-void SkellSilenceAudioProcessorEditor::resized() {
-  // Keep all controls, hit targets, labels, and strokes in 1200x760 design space.
-  // Scaling only component bounds previously left fonts & child hit targets unscaled.
+void SkellSilenceAudioProcessorEditor::resized(){
+  // IMPORTANT: transform child content AND its location once, in the same
+  // 1200 x 760 coordinate system. The old code pre-scaled positions and then
+  // transformed them again, causing panel overlap at reduced window sizes.
   const float scale=float(getWidth())/1200.0f;
   auto place=[scale](juce::Component& c,int x,int y,int w,int h){
-    c.setBounds(juce::roundToInt(x*scale),juce::roundToInt(y*scale),w,h);
+    c.setTransform(juce::AffineTransform());
+    c.setBounds(x,y,w,h);
     c.setTransform(juce::AffineTransform::scale(scale));
   };
-  place(header,0,0,1200,64);
-  place(timeline,30,84,800,316);
-  place(detection,30,420,800,140);
-  place(rack,850,84,320,476);
-  place(matrix,30,580,800,160);
-  place(macros,850,580,320,160);
+  place(header,0,0,1200,70);
+  place(timeline,24,86,805,300);
+  place(detection,24,402,805,145);
+  place(matrix,24,563,805,171);
+  place(rack,846,86,330,461);
+  place(macros,846,563,330,171);
   processor.windowW.store(getWidth());processor.windowH.store(getHeight());
 }

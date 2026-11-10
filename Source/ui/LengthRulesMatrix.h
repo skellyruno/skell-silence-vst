@@ -46,22 +46,29 @@ public:
  }
  void paint(juce::Graphics& g) override {
    Theme::panelBackground(g,getLocalBounds().toFloat());
-   Theme::title(g,"LENGTH RULES  /  BEAT-SYNCED",{14,6,getWidth()-190,22});
-   const int x=180,top=38,cw=std::max(1,(getWidth()-x-14)/4),rh=std::max(1,(getHeight()-top-7)/8);
-   g.setFont(Theme::font(10.0f,true));
-   for(int c=0;c<4;++c){g.setColour(Theme::violet.withAlpha(0.75f));g.drawFittedText(dsp::classNames[size_t(c)],x+c*cw,top,cw,rh,juce::Justification::centred,1);}
+   Theme::title(g,"04  /  LENGTH RULES  -  BEAT SYNCED",{15,8,getWidth()-189,22});
+   const int x=193,top=42,cw=(getWidth()-x-17)/4,rh=17;
+   g.setColour(Theme::inset);g.fillRoundedRectangle(juce::Rectangle<float>(float(x-6),float(top),float(getWidth()-x-7),float(rh*8)),5.0f);
+   g.setFont(Theme::font(10.5f,true));
+   for(int c=0;c<4;++c){
+     g.setColour(c==0?Theme::cyan:c==1?Theme::green:c==2?Theme::violet:Theme::amber);
+     g.drawFittedText(dsp::classNames[size_t(c)],x+c*cw,top,cw,rh,juce::Justification::centred,1);
+   }
    for(int i=0;i<7;++i){
-     g.setColour(Theme::text);g.drawFittedText(dsp::instrumentNames[size_t(i)],14,top+(i+1)*rh,160,rh,juce::Justification::centredLeft,1);
-     g.setColour(Theme::border);g.drawHorizontalLine(top+(i+2)*rh,14.0f,float(getWidth()-14));
+     const int cy=top+(i+1)*rh;
+     if(i%2==0){g.setColour(Theme::raised.withAlpha(0.32f));g.fillRect(x-5,cy,getWidth()-x-8,rh);}
+     g.setColour(Theme::text);g.setFont(Theme::font(11.0f));
+     g.drawFittedText(dsp::instrumentNames[size_t(i)],17,cy,167,rh,juce::Justification::centredLeft,1);
+     g.setColour(Theme::border.withAlpha(0.68f));g.drawHorizontalLine(cy+rh,15.0f,float(getWidth()-16));
    }
  }
  void resized() override {
-   rangeButton.setBounds(getWidth()-138,5,126,27);
-   const int x=180,top=38,cw=std::max(1,(getWidth()-x-14)/4),rh=std::max(1,(getHeight()-top-7)/8);
-   for(int i=0;i<7;++i)for(int c=0;c<4;++c) {
-     buttons[size_t(i*4+c)].setBounds(x+c*cw+cw/2-12,top+(i+1)*rh+rh/2-12,24,24);
-   }
+   rangeButton.setBounds(getWidth()-144,8,127,26);
+   const int x=193,top=42,cw=(getWidth()-x-17)/4,rh=17;
+   for(int i=0;i<7;++i)for(int c=0;c<4;++c)
+     buttons[size_t(i*4+c)].setBounds(x+c*cw+cw/2-11,top+(i+1)*rh,22,rh);
  }
+
 private:
  juce::TextButton rangeButton;
  std::array<juce::ToggleButton,28> buttons;

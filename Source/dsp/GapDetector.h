@@ -16,7 +16,7 @@ public:
     sr=std::max(8000.0,sampleRate);
     fastCoefficient=std::exp(-1.0f/(float(sr)*0.010f));
     slowCoefficient=std::exp(-1.0f/(float(sr)*1.50f));
-    cachedThresholdDb=-1000.0f;
+    cachedThresholdDb=cachedMinGapMs=cachedMaxGapMs=cachedHoldMs=cachedArmTime=-1000.0f;
     reset();
   }
   void reset() noexcept { fastPower=slowPower=previousFast=0; age=0; pending=0; recover=0; armedSamples=0; state=Sound; activeStart=0; }
@@ -36,14 +36,18 @@ public:
     const float decay=std::clamp((previousFast-fast)/std::max(0.0001f,previousFast)*80.0f,0.0f,1.0f);
     const float thresh=std::max(0.000025f,slow*thresholdRatio*(1.0f+0.35f*p.tailSensitivity*decay));
     previousFast=fast;
-    const int64_t minSamples=std::max<int64_t>(1,int64_t(p.minGapMs*sr/1000.0));
-    const int64_t holdSamples=std::max<int64_t>(1,int64_t(p.holdMs*sr/1000.0));
-    const int64_t maxSamples=std::max<int64_t>(minSamples,int64_t(p.maxGapMs*sr/1000.0));
+    // Convert time parameters only when they change, not for every sample.
+    if (p.minGapMs!=cachedMinGapMs) {cachedMinGapMs=p.minGapMs;minSamples=std::max<int64_t>(1,int64_t(p.minGapMs*sr/1000.0));}
+    if (p.holdMs!=cachedHoldMs) {cachedHoldMs=p.holdMs;holdSamples=std::max<int64_t>(1,int64_t(p.holdMs*sr/1000.0));}
+    if (p.maxGapMs!=cachedMaxGapMs || maxSamples<minSamples) {
+      cachedMaxGapMs=p.maxGapMs;maxSamples=std::max<int64_t>(minSamples,int64_t(p.maxGapMs*sr/1000.0));
+    }
+    if (p.armTimeSeconds!=cachedArmTime) {cachedArmTime=p.armTimeSeconds;armSamples=std::max<int64_t>(0,int64_t(sr*p.armTimeSeconds));}
     const bool below=fast<thresh && fast<0.15f;
     const bool hasSignal=slow>0.00020f;
     if (hasSignal && !below) ++armedSamples;
     if (!hasSignal && state==Sound) armedSamples=0;
-    const bool canArm=armedSamples>=int64_t(p.armTimeSeconds*sr);
+    const bool canArm=armedSamples>=armSamples;
     DetectionResult r; r.fast=fast; r.slow=slow; r.threshold=thresh;
     switch(state) {
       case Sound:
@@ -73,6 +77,8 @@ private:
   float fastPower=0, slowPower=0, previousFast=0;
   float fastCoefficient=0.998f, slowCoefficient=0.99999f;
   float cachedThresholdDb=-1000.0f,thresholdRatio=0.15f;
+  float cachedMinGapMs=-1000.0f,cachedMaxGapMs=-1000.0f,cachedHoldMs=-1000.0f,cachedArmTime=-1000.0f;
+  int64_t minSamples=1,holdSamples=1,maxSamples=1,armSamples=0;
   int64_t age=0,pending=0,recover=0,armedSamples=0,activeStart=0;
   State state=Sound;
 };

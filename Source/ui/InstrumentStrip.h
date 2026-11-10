@@ -58,27 +58,32 @@ public:
     enableAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"On",enabled),
     levelAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"Level",level) {
     enabled.setButtonText(juce::String(skell::dsp::instrumentNames[size_t(i)]));
-    enabled.setColour(juce::ToggleButton::tickColourId,Theme::violet);
+    enabled.setColour(juce::ToggleButton::tickColourId,Theme::green);
     level.setSliderStyle(juce::Slider::LinearHorizontal);level.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
-    settings.setButtonText(juce::String::fromUTF8("\xE2\x9A\x99"));
+    settings.setButtonText("...");settings.setTooltip("Open instrument settings");
     settings.onClick=[this]{juce::CallOutBox::launchAsynchronously(std::make_unique<InstrumentPopup>(processor,index),settings.getScreenBounds(),nullptr);};
     addAndMakeVisible(enabled);addAndMakeVisible(level);addAndMakeVisible(settings);
   }
   void paint(juce::Graphics& g) override {
-    const auto c=juce::Colour::fromHSV(float(index)/7.0f,0.45f,0.95f,1.0f);
-    g.setColour(Theme::border);g.drawHorizontalLine(getHeight()-1,8.0f,float(getWidth()-8));
-    g.setColour(c);g.fillRoundedRectangle(10.0f,float(getHeight()/2-6),3.0f,12.0f,1.5f);
-    juce::Path shape;const float x=float(getWidth()-72),y=float(getHeight()/2);
-    shape.startNewSubPath(x,y);
-    for(int j=1;j<=35;++j){float t=float(j)/35.0f;shape.lineTo(x+45*t,y-8*std::sin(3.14159f*t)*std::sin(7*t+index));}
-    g.setColour(c.withAlpha(0.65f));g.strokePath(shape,juce::PathStrokeType(1.3f));
+    const auto c=Theme::instruments[size_t(index)];
+    if(index%2==0){g.setColour(Theme::raised.withAlpha(0.25f));g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(1,2),5.0f);}
+    g.setColour(Theme::border.withAlpha(0.7f));g.drawHorizontalLine(getHeight()-1,8.0f,float(getWidth()-8));
+    g.setColour(c);g.fillRoundedRectangle(5.0f,18.0f,3.0f,23.0f,1.5f);
+    juce::Path env;
+    const float x=float(getWidth()-87),y=float(getHeight()/2);
+    env.startNewSubPath(x,y);
+    for(int i=1;i<=32;++i){const float t=float(i)/32;
+       const float yy=y-8.0f*std::sin(3.14159265f*t)*std::sin(t*7.5f+float(index));
+       env.lineTo(x+54.0f*t,yy);
+    }
+    g.setColour(c.withAlpha(0.7f));g.strokePath(env,juce::PathStrokeType(1.5f));
   }
   void resized() override {
-    const int h=getHeight();
-    enabled.setBounds(19,2,145,h-4);
-    level.setBounds(160,h/2-12,std::max(35,getWidth()-270),24);
-    settings.setBounds(getWidth()-28,h/2-13,26,26);
+    enabled.setBounds(11,8,153,41);
+    level.setBounds(158,14,71,30);
+    settings.setBounds(getWidth()-30,16,25,26);
   }
+
 private:
   SkellSilenceAudioProcessor& processor;int index;
   juce::ToggleButton enabled;

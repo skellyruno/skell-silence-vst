@@ -12,11 +12,11 @@ public:
    addAndMakeVisible(preview);setWantsKeyboardFocus(true);startTimerHz(30);
  }
  void paint(juce::Graphics& g) override {
-   Theme::panelBackground(g,getLocalBounds().toFloat());Theme::title(g,"GAP TIMELINE  /  LAST 8 SEC",{16,12,260,22});
+   Theme::panelBackground(g,getLocalBounds().toFloat());Theme::title(g,"01  /  GAP TIMELINE  -  LAST 8 SECONDS",{16,12,300,22});
    const auto inner=getLocalBounds().reduced(15).withTrimmedTop(50).withTrimmedBottom(32);
    const float x=float(inner.getX()),y=float(inner.getY()),width=float(inner.getWidth()),height=float(inner.getHeight());
-   g.setColour(juce::Colour(0xff0a0f15));g.fillRoundedRectangle(inner.toFloat(),5);
-   g.setColour(Theme::border);
+   g.setColour(Theme::inset);g.fillRoundedRectangle(inner.toFloat(),7);
+   g.setColour(Theme::border.withAlpha(0.65f));
    for(int j=1;j<=7;++j)g.drawVerticalLine(int(x+width*j/8),y,y+height);
    for(int j=1;j<=3;++j)g.drawHorizontalLine(int(y+height*j/4),x,x+width);
    auto const seq=processor.waveformSequence.load(std::memory_order_acquire);
@@ -29,7 +29,7 @@ public:
      if(i==0)wave.startNewSubPath(wx,center-amp*height*0.42f);
      else wave.lineTo(wx,center-amp*height*0.42f);
    }
-   g.setColour(Theme::cyan.withAlpha(0.8f));g.strokePath(wave,juce::PathStrokeType(1.4f));
+   g.setColour(Theme::green.withAlpha(0.84f));g.strokePath(wave,juce::PathStrokeType(1.65f));
    juce::Path reflection;
    for(int i=0;i<SkellSilenceAudioProcessor::waveformSize;++i){
      const auto slot=size_t((seq+i)%SkellSilenceAudioProcessor::waveformSize);
@@ -38,7 +38,8 @@ public:
      if(i==0)reflection.startNewSubPath(wx,center+amp*height*0.42f);
      else reflection.lineTo(wx,center+amp*height*0.42f);
    }
-   g.setColour(Theme::cyan.withAlpha(0.35f));g.strokePath(reflection,juce::PathStrokeType(1.2f));
+   g.setColour(Theme::cyan.withAlpha(0.46f));g.strokePath(reflection,juce::PathStrokeType(1.2f));
+   if(seq<12){g.setColour(Theme::muted.withAlpha(0.8f));g.setFont(Theme::font(12.0f));g.drawText("PLAY AUDIO TO DETECT AND DESIGN GAPS",inner,juce::Justification::centred);}
    const auto clock=processor.totalSamples.load();
    const auto sr=std::max(8000.0,processor.sampleRateAtomic.load());
    const auto bpm=processor.bpmAtomic.load();
@@ -82,8 +83,11 @@ public:
    g.setColour(Theme::cyan.withAlpha(0.85f));g.drawVerticalLine(int(x+width-2),y,y+height);
    g.setColour(Theme::muted);g.setFont(Theme::font(11.0f));
    for(int i=0;i<=4;++i)g.drawText(juce::String(-8+i*2)+"s",int(x+width*i/4),int(y+height)+6,35,18,juce::Justification::centredLeft);
-   g.drawText("BPM "+juce::String(bpm,1),getWidth()-126,13,100,22,juce::Justification::centredRight);
-   if(processor.gapMap.size()>0){g.setColour(Theme::violet);g.drawText("MAP  "+juce::String(processor.gapMap.size())+"  LOCKED EVENTS",20,getHeight()-28,180,22,juce::Justification::centredLeft);}
+   g.drawText("BPM "+juce::String(bpm,1),getWidth()-128,11,100,22,juce::Justification::centredRight);
+   g.setColour(Theme::green);g.fillEllipse(18.0f,float(getHeight()-24),6.0f,6.0f);
+   g.setColour(Theme::muted);g.setFont(Theme::font(10.0f));
+   g.drawText("WAVEFORM  /  GAP OVERLAYS",31,getHeight()-30,255,19,juce::Justification::centredLeft);
+   if(processor.gapMap.size()>0){g.setColour(Theme::violet);g.drawText("LEARNED  "+juce::String(processor.gapMap.size()),280,getHeight()-30,175,19,juce::Justification::centredLeft);}
  }
  void resized() override {preview.setBounds(getWidth()-110,getHeight()-32,90,25);}
  void mouseDown(const juce::MouseEvent& e) override {

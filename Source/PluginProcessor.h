@@ -42,7 +42,7 @@ public:
   std::atomic<double> sampleRateAtomic{44100.0},bpmAtomic{120.0},currentPpqAtomic{0.0};
   std::atomic<int> latencyRequested{0};
   std::atomic<bool> isPlaying{false};
-  std::atomic<int> windowW{1080},windowH{684};
+  std::atomic<int> windowW{912},windowH{578};
   skell::dsp::GapMap gapMap;
   void requestClearMap() noexcept {clearMapRequested.store(true);}
   void requestMapEdit(int index,double deltaPpq,bool remove=false) noexcept;
@@ -55,6 +55,7 @@ private:
   void cacheParameters();
   float param(const char*) const noexcept;
   int latencyFor(double bpm) const noexcept;
+  int activeLatency=0;
   void addEvent(int64_t start,double bpm) noexcept;
   void closeEvent(int64_t end) noexcept;
   void clearRuntime(bool preserveHistory=false) noexcept;

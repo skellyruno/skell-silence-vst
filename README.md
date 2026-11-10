@@ -70,3 +70,23 @@ This plugin uses the operating system's licensed sans-serif fallback font; no th
 - Reverb continues releasing for at most two seconds after a gap, then parks processing. MIX=0 remains dry (except normal lookahead delay).
 - Preserve the existing shared SkellCore subtree and optional CMake linkage when updating this repository. DSP modules remain separate pending A/B validation.
 - CI includes a native DSP test before release packaging. Full VST3 success is determined by GitHub Actions, not the portable test suite alone.
+
+## v1.2 interface and DSP upgrade
+
+- **Compact default:** 912 × 578 (76% of 1200 × 760). All panels share one
+  design-space transform. Earlier versions applied scaling to panel coordinates
+  *and* their transforms, making the rack overlap and clipping the rule matrix.
+  Resize the bottom-right corner or use MENU to select 76%, 90%, 100% or 125%.
+- **Interface:** Redesigned header and transport status, 7 visible instrument
+  strips, high-contrast custom controls, complete 7 × 4 rule matrix, detector
+  envelope strip, clear timeline idle hint, and three dedicated macro controls.
+- **DSP:** Stable host PDC within each transport pass (tempo or lookahead
+  changes are applied at stop/restart), energy-preserving 8-line FDN mixing,
+  cached detector time conversions, and click-free post-gap lift envelopes.
+- **Compatibility:** Parameter IDs, all seven instruments, learned-map format,
+  presets and existing automation are unchanged.
+
+Known limitations: the model-based spectrum-following air texture and fully
+predicted reverse swells remain future work; a live, zero-lookahead detector
+cannot know the final length of a gap before its end. Only portable DSP tests
+can run without the JUCE dependency; Windows/macOS Actions compile the plugin.

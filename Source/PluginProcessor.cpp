@@ -128,7 +128,7 @@ void SkellSilenceAudioProcessor::prepareToPlay(double rate,int /*blockSize*/) {
   smoothMix.reset(sr,0.012);smoothTension.reset(sr,0.020);smoothSpace.reset(sr,0.020);
   smoothMix.setCurrentAndTargetValue(param("mix"));smoothTension.setCurrentAndTargetValue(param("tension"));smoothSpace.setCurrentAndTargetValue(param("space"));
   clearRuntime();
-  latencyRequested.store(latencyFor(lastBpm));triggerAsyncUpdate();
+  activeLatency=latencyFor(lastBpm);latencyRequested.store(activeLatency);triggerAsyncUpdate();
 }
 void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
   detector.reset();delay.reset();if(!preserveHistory)history.reset(samples);instruments.reset();
@@ -194,11 +194,15 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   const double blockPpq=pos?pos->getPpqPosition().orFallback(lastExpectedPpq):lastExpectedPpq;
   const bool jumped=lastTransport && transportPlaying && std::abs(blockPpq-lastExpectedPpq)>0.15;
   if(jumped || (lastTransport && !transportPlaying)) clearRuntime(!jumped && !transportPlaying);
+  const bool wasPlaying=lastTransport;
   isPlaying.store(transportPlaying);lastTransport=transportPlaying;lastBpm=bpm;bpmAtomic.store(bpm);
   const bool lock=param("lockToMap")>0.5f;
   // Never toggle PDC to zero when LOCK is enabled. A stable latency contract is
   // essential for hosts that cannot reconfigure compensation mid-playback.
-  const int latency=latencyFor(bpm);
+  // Keep audio delay and host PDC consistent through an entire transport pass.
+  // Tempo/choice changes are adopted when stopped or when playback begins.
+  if(!transportPlaying || !wasPlaying) activeLatency=latencyFor(bpm);
+  const int latency=activeLatency;
   if(latencyRequested.exchange(latency)!=latency) triggerAsyncUpdate();
   smoothMix.setTargetValue(param("mix"));smoothTension.setTargetValue(param("tension"));smoothSpace.setTargetValue(param("space"));
   const float duck=param("duckAfter"),shortMax=param("classShortMax"),mediumMax=param("classMediumMax"),longMax=param("classLongMax");
@@ -323,7 +327,9 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       }
     }
     // At MIX 0 preserve the original signal bit-for-bit (including high peaks).
-    const float lift=(!active && delayedClock-lastGapSample<sr*0.055 && delayedClock>=lastGapSample)?duck*0.18f*wetMix:0;
+    const double postGap=double(delayedClock-lastGapSample)/sr;
+    const float lift=(!active && postGap>=0.0 && postGap<0.055)
+      ? duck*0.18f*wetMix*std::sin(float(3.14159265358979323846*postGap/0.055)) : 0.0f;
     const float outL=dryL*(1.0f+lift)+wet*wetMix;
     const float outR=dryR*(1.0f+lift)+wet*wetMix;
     left[i]=(wetMix<=0 && lift<=0)?dryL:protect(outL);
@@ -352,8 +358,8 @@ void SkellSilenceAudioProcessor::setStateInformation(const void* data,int size) 
     auto state=juce::ValueTree::fromXml(*xml);
     const auto ui=state.getChildWithName("SKELL_UI");
     if(ui.isValid()){
-      windowW.store(juce::jlimit(720,2400,int(ui.getProperty("width",1080))));
-      windowH.store(juce::jlimit(456,1520,int(ui.getProperty("height",684))));
+      windowW.store(juce::jlimit(760,1800,int(ui.getProperty("width",912))));
+      windowH.store(juce::jlimit(481,1140,int(ui.getProperty("height",578))));
       gapMap.clear();const auto map=ui.getChildWithName("GAPS");
       for(const auto& item:map)gapMap.append(double(item.getProperty("from",0.0)),double(item.getProperty("to",0.0)));
       state.removeChild(ui,nullptr);

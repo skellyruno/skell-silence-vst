@@ -8,10 +8,17 @@ public:
  explicit InstrumentRack(SkellSilenceAudioProcessor& p){
    for(int i=0;i<7;++i){strips[size_t(i)]=std::make_unique<InstrumentStrip>(p,i);addAndMakeVisible(*strips[size_t(i)]);}
  }
- void paint(juce::Graphics& g) override {Theme::panelBackground(g,getLocalBounds().toFloat());Theme::title(g,"GAP INSTRUMENTS",{14,8,getWidth()-30,22});}
- void resized() override {const int top=35;const int room=getHeight()-top-10;
-   for(int i=0;i<7;++i)strips[size_t(i)]->setBounds(8,top+i*room/7,getWidth()-16,room/7);
+ void paint(juce::Graphics& g) override {
+   Theme::panelBackground(g,getLocalBounds().toFloat());
+   Theme::title(g,"03  /  GAP INSTRUMENTS",{15,11,245,20});
+   g.setColour(Theme::green.withAlpha(0.8f));g.fillEllipse(float(getWidth()-30),15.0f,6,6);
  }
-private:std::array<std::unique_ptr<InstrumentStrip>,7> strips;
+ void resized() override {
+   constexpr int top=41;
+   constexpr int row=58;
+   for(int i=0;i<7;++i)strips[size_t(i)]->setBounds(9,top+i*row,getWidth()-18,row);
+ }
+private:
+ std::array<std::unique_ptr<InstrumentStrip>,7> strips;
 };
 }

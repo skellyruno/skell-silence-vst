@@ -4,54 +4,69 @@
 #include <memory>
 #include <functional>
 namespace skell::ui {
-class HeaderBar final : public juce::Component {
+class HeaderBar final : public juce::Component,private juce::Timer {
 public:
-  explicit HeaderBar(SkellSilenceAudioProcessor& p):processor(p),learnAttachment(p.parameters,"learnArmed",learn),lockAttachment(p.parameters,"lockToMap",lock),mixAttachment(p.parameters,"mix",mix) {
-    learn.setButtonText("LEARN");lock.setButtonText("LOCK");
-    learn.setColour(juce::ToggleButton::tickColourId,Theme::violet);
-    lock.setColour(juce::ToggleButton::tickColourId,Theme::amber);
-    mix.setSliderStyle(juce::Slider::LinearHorizontal);mix.setTextBoxStyle(juce::Slider::TextBoxRight,false,48,22);
+  explicit HeaderBar(SkellSilenceAudioProcessor& p)
+   :processor(p),learnAttachment(p.parameters,"learnArmed",learn),
+    lockAttachment(p.parameters,"lockToMap",lock),mixAttachment(p.parameters,"mix",mix) {
+    learn.setButtonText("LEARN"); lock.setButtonText("LOCK");
+    learn.setTooltip("Capture detected gaps at project beat positions while the song plays.");
+    lock.setTooltip("Trigger from the learned gap map for repeatable playback and bounces.");
+    mix.setComponentID("mix");mix.setSliderStyle(juce::Slider::LinearHorizontal);
+    mix.setTextBoxStyle(juce::Slider::TextBoxRight,false,55,24);
+    mix.setTooltip("Wet effect blend. At 0%, the delayed dry signal is preserved.");
     load.setButtonText("LOAD");save.setButtonText("SAVE");menu.setButtonText("MENU");
     load.onClick=[this]{openPreset(false);};save.onClick=[this]{openPreset(true);};
     menu.onClick=[this]{
       juce::PopupMenu popup;
-      popup.addItem(1,"Reset learned gaps");popup.addSeparator();
-      popup.addItem(2,"UI 80%");popup.addItem(3,"UI 100%");popup.addItem(4,"UI 125%");popup.addSeparator();
-      popup.addItem(5,"About Skell Silence");
+      popup.addSectionHeader("WORKSPACE");
+      popup.addItem(1,"Clear learned gap map");popup.addSeparator();
+      popup.addSectionHeader("INTERFACE SIZE");
+      popup.addItem(2,"Compact / 76%");popup.addItem(3,"90%");popup.addItem(4,"100%");popup.addItem(5,"125%");
+      popup.addSeparator();popup.addItem(6,"About Skell Silence");
       juce::Component::SafePointer<HeaderBar> safeThis(this);
       popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&menu),[safe=safeThis](int result){
         if(safe==nullptr)return;
         if(result==1)safe->processor.requestClearMap();
-        if(result>=2&&result<=4 && safe->onScaleChange)safe->onScaleChange(result==2?0.8f:result==3?1.0f:1.25f);
-        if(result==5)juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,"Skell Silence","Gap-aware effects designer. Skell Audio | Version 1.0");
+        if(result>=2&&result<=5&&safe->onScaleChange){const float sizes[]{0.76f,0.9f,1.0f,1.25f};safe->onScaleChange(sizes[result-2]);}
+        if(result==6)juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,"Skell Silence","Gap-aware effect designer | Skell Audio\nSeven instruments | beat-synced rules | LEARN / LOCK");
       });
     };
+    for(auto* b:{&load,&save,&menu})addAndMakeVisible(*b);
     addAndMakeVisible(learn);addAndMakeVisible(lock);addAndMakeVisible(mix);
-    addAndMakeVisible(load);addAndMakeVisible(save);addAndMakeVisible(menu);
+    startTimerHz(6);
   }
   std::function<void(float)> onScaleChange;
   void paint(juce::Graphics& g) override {
-    g.setColour(Theme::ink);g.fillAll();
-    g.setColour(Theme::border);g.drawHorizontalLine(63,0.0f,1200.0f);
-    g.setColour(Theme::text);g.setFont(Theme::font(24.0f,true));g.drawText("SKELL",30,12,104,33,juce::Justification::centredLeft);
-    g.setColour(Theme::violet);g.drawText("SILENCE",114,12,146,33,juce::Justification::centredLeft);
-    g.setColour(Theme::muted);g.setFont(Theme::font(10.0f));g.drawText("GAP EFFECT DESIGNER",270,21,155,24,juce::Justification::centredLeft);
-    g.setColour(Theme::muted);g.drawText("MIX",932,20,33,25,juce::Justification::centredLeft);
+    g.fillAll(Theme::ink);
+    g.setColour(Theme::border);g.drawHorizontalLine(69,0,1200);
+    g.setColour(Theme::green);g.fillRoundedRectangle(24.0f,19.0f,3.0f,30.0f,1.5f);
+    g.setColour(Theme::text);g.setFont(Theme::font(25,true));
+    g.drawText("SKELL",36,13,98,39,juce::Justification::centredLeft);
+    g.setColour(Theme::violet);g.drawText("SILENCE",132,13,143,39,juce::Justification::centredLeft);
+    g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
+    g.drawText("GAP DESIGNER  /  V1.2",282,18,146,29,juce::Justification::centredLeft);
+    g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
+    g.drawText("WET MIX",905,22,61,25,juce::Justification::centredLeft);
+    const bool running=processor.isPlaying.load();
+    Theme::pill(g,{776.0f,22.0f,109.0f,25.0f},running?Theme::green:Theme::muted,running);
+    g.setColour(running?Theme::green:Theme::muted);g.fillEllipse(786.0f,31.0f,6,6);
+    g.setColour(Theme::text);g.setFont(Theme::font(10,true));
+    g.drawText(running?"ANALYZING":"READY / IDLE",799,22,80,25,juce::Justification::centredLeft);
   }
   void resized() override {
-    const auto set=[](juce::Component& c,int x,int y,int w,int h){c.setBounds(x,y,w,h);};
-    set(load,430,17,63,27);set(save,500,17,63,27);
-    set(learn,593,17,92,27);set(lock,687,17,77,27);
-    set(mix,964,16,132,27);set(menu,1102,17,80,27);
+    load.setBounds(447,20,69,29);save.setBounds(524,20,69,29);
+    learn.setBounds(609,20,82,29);lock.setBounds(689,20,76,29);
+    mix.setBounds(963,18,145,31);menu.setBounds(1113,20,70,29);
   }
 private:
+  void timerCallback() override {repaint(770,17,121,35);}
   void openPreset(bool doSave){
     chooser=std::make_unique<juce::FileChooser>(doSave?"Save Skell Silence preset":"Open Skell Silence preset",juce::File{},"*.skellsilence");
     const int flags=doSave?(juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles):
                             (juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles);
     chooser->launchAsync(flags,[safe=juce::Component::SafePointer<HeaderBar>(this),doSave](const juce::FileChooser& dialog){
-      if(safe==nullptr)return;
-      const auto file=dialog.getResult();if(file==juce::File{})return;
+      if(safe==nullptr)return;const auto file=dialog.getResult();if(file==juce::File{})return;
       if(doSave){juce::MemoryBlock data;safe->processor.getStateInformation(data);file.replaceWithData(data.getData(),data.getSize());}
       else {juce::MemoryBlock data;if(file.loadFileAsData(data))safe->processor.setStateInformation(data.getData(),int(data.getSize()));}
     });
