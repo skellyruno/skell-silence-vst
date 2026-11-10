@@ -59,11 +59,11 @@ public:
    g.setFont(Theme::font(11,true));
    g.drawText(stateNames[std::clamp(state,0,3)],307,9,98,22,juce::Justification::centredLeft);
    g.setColour(Theme::border);g.drawVerticalLine(608,43,136);
-   g.setColour(Theme::cyan.withAlpha(0.30f));g.fillRoundedRectangle(615.0f,37.0f,173.0f,100.0f,6.0f);
-   g.setColour(Theme::inset);g.fillRoundedRectangle(617.0f,39.0f,169.0f,96.0f,5.0f);
+   g.setColour(Theme::cyan.withAlpha(0.30f));g.fillRoundedRectangle(615.0f,37.0f,173.0f,105.0f,6.0f);
+   g.setColour(Theme::inset);g.fillRoundedRectangle(617.0f,39.0f,169.0f,101.0f,5.0f);
    g.setFont(Theme::font(11,true));g.setColour(Theme::muted);
    g.drawText("TRIGGER",621,41,94,16,juce::Justification::centredLeft);
-   g.drawText("LOOKAHEAD",621,84,125,16,juce::Justification::centredLeft);
+   g.drawText("LOOKAHEAD",621,83,125,14,juce::Justification::centredLeft);
  }
  void resized() override {
    for(int i=0;i<6;++i){const int x=13+i*98;
@@ -71,8 +71,8 @@ public:
      knobs[size_t(i)].setBounds(x+4,53,86,78);
    }
    source.setBounds(620,57,165,26);
-   lookahead.setBounds(620,100,165,26);
-   latency.setBounds(623,127,164,15);
+   lookahead.setBounds(620,97,165,25);
+   latency.setBounds(623,125,164,14);
  }
 private:
  void timerCallback() override {

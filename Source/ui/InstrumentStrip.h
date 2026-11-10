@@ -6,7 +6,8 @@ namespace skell::ui {
 class InstrumentPopup final : public juce::Component {
 public:
   InstrumentPopup(SkellSilenceAudioProcessor& p,int index)
-    :instrumentTitle(skell::dsp::instrumentNames[size_t(index)]) {
+    :instrumentTitle(skell::dsp::instrumentNames[size_t(index)]),
+     accent(Theme::instruments[size_t(index)]) {
     const char* names[7][4] = {
       {"stopSpeedCurve","stopTime","stopLowpass",nullptr},
       {"airColor","airShape",nullptr,nullptr},
@@ -59,11 +60,15 @@ public:
     }
   }
   void paint(juce::Graphics& g) override {
-    g.fillAll(Theme::panel);
-    g.setColour(Theme::green);g.fillRoundedRectangle(15.0f,17.0f,3.0f,20.0f,1.0f);
-    g.setFont(Theme::font(15,true));g.setColour(Theme::text);
-    g.drawFittedText(instrumentTitle+"  /  SETTINGS",26,12,getWidth()-40,31,juce::Justification::centredLeft,1);
-    g.setColour(Theme::border);g.drawHorizontalLine(46,15.0f,float(getWidth()-15));
+    g.setGradientFill(juce::ColourGradient(Theme::raised,0,0,Theme::panel,
+                                            float(getWidth()),float(getHeight()),false));
+    g.fillAll();
+    g.setColour(accent.withAlpha(0.08f));
+    g.fillRoundedRectangle(12.0f,10.0f,float(getWidth()-24),35.0f,6.0f);
+    g.setColour(accent);g.fillRoundedRectangle(15.0f,17.0f,4.0f,23.0f,2.0f);
+    g.setColour(Theme::text);g.setFont(Theme::font(16,true));
+    g.drawFittedText(instrumentTitle+"  /  SETTINGS",29,12,getWidth()-44,31,juce::Justification::centredLeft,1);
+    g.setColour(Theme::border);g.drawHorizontalLine(47,15.0f,float(getWidth()-15));
     for(size_t i=0;i<types.size();++i) {
       g.setColour(Theme::muted);g.setFont(Theme::font(10.0f));
       g.drawFittedText(hints[i],17,85+int(i)*52,325,17,juce::Justification::centredLeft,1);
@@ -97,6 +102,7 @@ private:
     return "Drag to adjust; shift for fine control";
   }
   juce::String instrumentTitle;
+  juce::Colour accent;
   std::vector<juce::String> hints;
   std::vector<std::unique_ptr<juce::Label>> labels;
   std::vector<std::unique_ptr<juce::Slider>> sliders;
