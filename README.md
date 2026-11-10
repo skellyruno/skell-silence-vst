@@ -157,3 +157,42 @@ All existing automation IDs and the original compact 912 × 578 initial size are
 - The timeline caches rules and level parameter pointers, redraws when they change even with playback stopped, and keeps a recent-gap selection tied to its sample timestamp as new gaps arrive.
 - Portable regression tests cover unknown-end vs known-end gain, attack/release continuity, stereo balance, transport-reset silence, gap length latch, panel geometry and stress/CPU timing. See `bash tests/run_cpp_tests.sh`.
 - The regression benchmarks are indicative only. Windows/macOS VST3 compilation and real DAW/FL Studio UI interaction, latency, CPU and audio comparison need separate verification.
+
+## Permanent real-editor visual regression workflow
+
+The optional **Skell Silence UI Renderer** builds the **actual**
+`SkellSilenceAudioProcessor` and `SkellSilenceAudioProcessorEditor` as a separate
+JUCE executable. It does **not** add GUI capture code to the released VST3 or
+replace the UI with a mockup. It links `SkellCore::UIRenderer` from the immutable
+`skellyruno/skell-vst-template` revision
+`438bc74a86a40bf54cfa8089832a477822c8ccda`. The shipping VST3 continues
+to use the repository's existing bundled SkellCore.
+
+Configure, compile, and render the editor on a machine with JUCE and Xvfb
+(or a desktop GUI session):
+
+```bash
+cmake -S . -B build-ui -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DSKELL_SILENCE_BUILD_UI_RENDERER=ON
+cmake --build build-ui --target SkellSilenceUIRenderer --parallel 2
+xvfb-run -a build-ui/SkellSilenceUIRenderer --output ui-screenshots
+```
+
+The `.github/workflows/ui-screenshots.yml` workflow runs these steps on every
+meaningful UI source change and uploads PNG screenshots, a scene manifest, and
+`contact-sheet.png` as `SkellSilence-JUCE-UI-Screenshots`. A failing render,
+flat/blank image, or controls that clip panel bounds fails the job. Capture
+scenes cover the one available Skell Ink theme and single workspace at the
+minimum 760×481, shipping 912×578, standard 1200×760, and large 1500×950
+sizes. State coverage includes idle, running detector, dry mix/disabled
+instruments, grid, sidechain, MIDI, selected gaps, parameter range editor,
+real instrument settings callouts, and the workspace menu. No extra theme,
+tab, or preset browser is invented for tests: LOAD/SAVE use native file
+choosers and must additionally be examined in a real host session.
+
+The screenshot executable calls the plugin's actual parameter attachments,
+buttons and look-and-feel. Whenever a UI control, style or layout changes,
+inspect the downloadable screenshot contact sheet and full-size minimum/compact
+PNGs, correct clipping and hit targets, and rerun the workflow. Passing static
+bounds checks alone is not a substitute for visual inspection or testing the
+native file chooser and plugin in FL Studio.

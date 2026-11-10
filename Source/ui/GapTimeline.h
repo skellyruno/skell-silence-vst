@@ -8,7 +8,7 @@ namespace skell::ui {
 class GapTimeline final : public juce::Component,private juce::Timer {
 public:
  explicit GapTimeline(SkellSilenceAudioProcessor& p):processor(p) {
-   preview.setButtonText("PREVIEW");
+   preview.setButtonText("PREVIEW");preview.setComponentID("preview");
    preview.setTooltip("Select a recent gap, stop the transport, then audition its processing.");
    preview.onClick=[this]{if(selected>=0 && !processor.isPlaying.load())processor.requestPreview(selected);};
    preview.setEnabled(false);
@@ -124,6 +124,13 @@ public:
      g.drawFittedText(item.end>item.start?"SELECTED  /  "+juce::String(1000.0*double(item.end-item.start)/sr,0)+" ms":"SELECT A GAP",
                        380,getHeight()-30,getWidth()-505,19,juce::Justification::centredLeft,1);
    }else g.drawFittedText("CLICK A GAP TO PREVIEW",380,getHeight()-30,getWidth()-505,19,juce::Justification::centredLeft,1);
+ }
+ // Select a real detector-recorded gap; also used by automated JUCE UI tests.
+ void selectRecentGap(int index) {
+   selected=index>=0 && index<processor.getRecentCount()?index:-1;
+   selectedStart=selected>=0?processor.getRecentGap(selected).start:-1;
+   preview.setEnabled(selected>=0 && !processor.isPlaying.load());
+   repaint();
  }
  void resized() override {preview.setBounds(getWidth()-110,getHeight()-32,90,25);}
  void mouseDown(const juce::MouseEvent& e) override {

@@ -3,6 +3,9 @@
 SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceAudioProcessor& p)
   : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p) {
   setLookAndFeel(&look);
+  header.setComponentID("header"); timeline.setComponentID("timeline");
+  detection.setComponentID("detection"); rack.setComponentID("instruments");
+  matrix.setComponentID("rules"); macros.setComponentID("dynamics");
   addAndMakeVisible(header);addAndMakeVisible(timeline);addAndMakeVisible(detection);
   addAndMakeVisible(rack);addAndMakeVisible(matrix);addAndMakeVisible(macros);
   constrainer.setSizeLimits(760,481,1800,1140);

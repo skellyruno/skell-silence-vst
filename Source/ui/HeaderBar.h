@@ -16,6 +16,7 @@ public:
     mix.setTextBoxStyle(juce::Slider::TextBoxRight,false,55,24);
     mix.setTooltip("Wet effect blend. At 0%, the delayed dry signal is preserved.");
     load.setButtonText("LOAD");save.setButtonText("SAVE");menu.setButtonText("MENU");
+    load.setComponentID("preset-load"); save.setComponentID("preset-save"); menu.setComponentID("menu");
     load.onClick=[this]{openPreset(false);};save.onClick=[this]{openPreset(true);};
     menu.onClick=[this]{
       juce::PopupMenu popup;
@@ -25,7 +26,9 @@ public:
       popup.addItem(2,"Compact / 76%");popup.addItem(3,"90%");popup.addItem(4,"100%");popup.addItem(5,"125%");
       popup.addSeparator();popup.addItem(6,"About Skell Silence");
       juce::Component::SafePointer<HeaderBar> safeThis(this);
-      popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&menu),[safe=safeThis](int result){
+      popup.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&menu)
+        .withParentComponent(findParentComponentOfClass<juce::AudioProcessorEditor>()),
+        [safe=safeThis](int result){
         if(safe==nullptr)return;
         if(result==1)safe->processor.requestClearMap();
         if(result>=2&&result<=5&&safe->onScaleChange){const float sizes[]{0.76f,0.9f,1.0f,1.25f};safe->onScaleChange(sizes[result-2]);}

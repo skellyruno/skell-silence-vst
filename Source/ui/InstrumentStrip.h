@@ -119,7 +119,12 @@ public:
     level.setDoubleClickReturnValue(true,0.6);
     level.onValueChange=[this]{repaint(157,34,77,21);};
     settings.setButtonText("...");settings.setTooltip("Open detailed settings for "+juce::String(skell::dsp::instrumentNames[size_t(index)]));
-    settings.onClick=[this]{juce::CallOutBox::launchAsynchronously(std::make_unique<InstrumentPopup>(processor,index),settings.getScreenBounds(),nullptr);};
+    settings.setComponentID("instrument-settings-"+juce::String(index));
+    settings.onClick=[this]{
+      auto* editor=findParentComponentOfClass<juce::AudioProcessorEditor>();
+      juce::CallOutBox::launchAsynchronously(
+        std::make_unique<InstrumentPopup>(processor,index),settings.getScreenBounds(),editor);
+    };
     addAndMakeVisible(enabled);addAndMakeVisible(level);addAndMakeVisible(settings);
   }
   void paint(juce::Graphics& g) override {

@@ -32,7 +32,12 @@ class LengthRulesMatrix final : public juce::Component,private juce::Timer {
 public:
  explicit LengthRulesMatrix(SkellSilenceAudioProcessor& p):processor(p) {
    rangeButton.setButtonText("EDIT RANGES");
-   rangeButton.onClick=[this,&p]{juce::CallOutBox::launchAsynchronously(std::make_unique<ClassThresholdPopup>(p),rangeButton.getScreenBounds(),nullptr);};
+   rangeButton.setComponentID("edit-ranges");
+   rangeButton.onClick=[this,&p]{
+     auto* editor=findParentComponentOfClass<juce::AudioProcessorEditor>();
+     juce::CallOutBox::launchAsynchronously(
+       std::make_unique<ClassThresholdPopup>(p),rangeButton.getScreenBounds(),editor);
+   };
    addAndMakeVisible(rangeButton);
    for(int i=0;i<7;++i)for(int c=0;c<4;++c){
      const int k=i*4+c;
