@@ -111,6 +111,37 @@ int main() {
       assert(impact.process(c,0.7f,0.5f,0.7f)==reference[size_t(i)]);
     }
   }
+  // A 0% instrument level must also mute its send into the shared reverb.
+  // Previously the dry instrument was muted while its unscaled reverb bloom
+  // still leaked into the gap; test both send-producing effects.
+  {
+    constexpr double rate=48000.0;
+    HistoryBuffer source;source.prepare(rate);
+    for(int i=0;i<48000;++i)
+      source.push(0.36f*std::sin(float(i)*0.0143f));
+    InstrumentMixer mixer;mixer.prepare(rate,0);
+    for(int instrument : {2,6}) {
+      InstrumentSettings settings;
+      settings.enabled[size_t(instrument)]=true;
+      settings.rules[size_t(instrument)][2]=true;
+      settings.levels[size_t(instrument)]=0.0f;
+      mixer.reset();
+      for(int i=0;i<12000;++i) {
+        GapContext c{source,rate,120.0,48000.0,12000.0,double(i),float(i)/12000.0f,0.7f,0.9f};
+        const float sample=mixer.process(c,settings,2);
+        assert(std::isfinite(sample) && std::abs(sample)<1.e-9f);
+      }
+      settings.levels[size_t(instrument)]=1.0f;
+      mixer.reset();
+      float peakWithLevel=0.0f;
+      for(int i=0;i<12000;++i){
+        GapContext c{source,rate,120.0,48000.0,12000.0,double(i),float(i)/12000.0f,0.7f,0.9f};
+        peakWithLevel=std::max(peakWithLevel,std::abs(mixer.process(c,settings,2)));
+      }
+      assert(peakWithLevel>0.00001f);
+    }
+  }
+
   // Real-time stress: all seven instruments together, 2 independent channels,
   // high-energy stereo history, no non-finite samples or sustained overload.
   constexpr double sr=48000.0;
@@ -137,7 +168,7 @@ int main() {
   }
   const auto elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
   assert(power>0.0001 && peak<2.0f);
-  std::cout<<"PASS MIDI overlap/channel gate, layout 760-1800px, gap transition/release, stable class latch, deterministic multi-rate impact, "
+  std::cout<<"PASS muted instrument reverb sends, MIDI overlap/channel gate, layout 760-1800px, gap transition/release, stable class latch, deterministic multi-rate impact, "
            <<"stereo DSP stress: peak="<<peak<<" render="<<elapsed*1000.0
            <<" ms for 500ms stereo audio, CPU ratio="<<elapsed/0.5<<"\n";
   return 0;

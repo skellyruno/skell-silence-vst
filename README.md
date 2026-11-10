@@ -224,3 +224,6 @@ The brand glyph and rolling signal display are rendered directly by JUCE vectors
 - Trigger-source/LOCK changes reset only detector and MIDI gate state (not the
   audio delay/history), closing stale open events safely. GRID/MIDI and LOCK
   now publish their real gate state to the detector badge.
+
+- The REVERSE SWELL and STUTTER TAIL reverb sends now follow their instrument
+  level; 0% genuinely means silent (validated at 90% SPACE in regression tests).

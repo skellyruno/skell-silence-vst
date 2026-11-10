@@ -54,7 +54,7 @@ public:
     const float t=0.55f+c.tension*0.9f;
     if(allowed(0)) v+=p.levels[0]*stop.process(c,p.stopSpeedCurve,p.stopTime,p.stopLowpass);
     if(allowed(1)) v+=p.levels[1]*air.process(c,p.airColor,p.airShape);
-    if(allowed(2)) {float s=swell.process(c,p.swellLength,p.swellReverb)*t;v+=p.levels[2]*s;wetFeed+=s;}
+    if(allowed(2)) {float s=swell.process(c,p.swellLength,p.swellReverb)*t;v+=p.levels[2]*s;wetFeed+=p.levels[2]*s;}
     if(allowed(3)) v+=p.levels[3]*fade.process(c,p.noiseType,p.noiseFadeIn,p.noiseFadeOut);
     if(allowed(4)) {
       auto hit=c;
@@ -66,7 +66,7 @@ public:
         v+=p.levels[4]*impact.process(hit,p.impactPitch,p.impactDecay,p.impactClick);
     }
     if(allowed(5)) v+=p.levels[5]*riser.process(c,p.riserStart,p.riserCurve,p.riserNoiseMix)*t;
-    if(allowed(6)) {float s=stutter.process(c,p.stutterDiv,p.stutterDecay,p.stutterCount);v+=p.levels[6]*s;wetFeed+=s;}
+    if(allowed(6)) {float s=stutter.process(c,p.stutterDiv,p.stutterDecay,p.stutterCount);v+=p.levels[6]*s;wetFeed+=p.levels[6]*s;}
     const float bloom=reverb.process(wetFeed,c.space);
     v+=bloom*c.space*0.5f*(1.0f-c.progress*c.progress);
     const float edge=gapBoundaryGain(c); // 5 ms on known boundaries
