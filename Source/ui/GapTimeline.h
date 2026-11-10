@@ -8,7 +8,9 @@ class GapTimeline final : public juce::Component,private juce::Timer {
 public:
  explicit GapTimeline(SkellSilenceAudioProcessor& p):processor(p) {
    preview.setButtonText("PREVIEW");
-   preview.onClick=[this]{processor.requestPreview(std::max(0,selected));};
+   preview.setTooltip("Select a recent gap, stop the transport, then audition its processing.");
+   preview.onClick=[this]{if(selected>=0 && !processor.isPlaying.load())processor.requestPreview(selected);};
+   preview.setEnabled(false);
    addAndMakeVisible(preview);setWantsKeyboardFocus(true);startTimerHz(30);
  }
  void paint(juce::Graphics& g) override {
@@ -39,7 +41,12 @@ public:
      else reflection.lineTo(wx,center+amp*height*0.42f);
    }
    g.setColour(Theme::cyan.withAlpha(0.46f));g.strokePath(reflection,juce::PathStrokeType(1.2f));
-   if(seq<12){g.setColour(Theme::muted.withAlpha(0.8f));g.setFont(Theme::font(12.0f));g.drawText("PLAY AUDIO TO DETECT AND DESIGN GAPS",inner,juce::Justification::centred);}
+   if(seq<12){
+     g.setColour(Theme::muted.withAlpha(0.90f));g.setFont(Theme::font(12.0f,true));
+     g.drawText("WAITING FOR AUDIO",inner.withTrimmedBottom(20),juce::Justification::centred);
+     g.setColour(Theme::muted.withAlpha(0.60f));g.setFont(Theme::font(10.0f));
+     g.drawText("PLAY YOUR TRACK TO MAP THE SILENCE",inner.withTrimmedTop(28),juce::Justification::centred);
+   }
    const auto clock=processor.totalSamples.load();
    const auto sr=std::max(8000.0,processor.sampleRateAtomic.load());
    const auto bpm=processor.bpmAtomic.load();
@@ -55,6 +62,7 @@ public:
      g.fillRoundedRectangle(x1,y,std::max(2.0f,x2-x1),height,3.0f);
      g.setColour(Theme::violet.withAlpha(i==selected?0.9f:0.45f));
      g.drawVerticalLine(int(x1),y,y+height);
+     if(i==selected)g.drawRoundedRectangle(x1+0.5f,y+0.5f,std::max(2.0f,x2-x1)-1.0f,height-1.0f,3.0f,1.0f);
      const auto duration=juce::String(1000.0*double(e.end-e.start)/sr,0)+" ms";
      g.setFont(Theme::font(10.0f));g.drawFittedText(duration,int(x1)+3,int(y)+8,std::max(20,int(x2-x1-6)),17,juce::Justification::centredLeft,1);
      for(int layer=0;layer<3;++layer){
@@ -73,12 +81,12 @@ public:
      const auto item=processor.gapMap.get(k);
      const auto secsFrom=(nowPpq-item.from)*60.0/bpm;
      const auto secsTo=(nowPpq-item.to)*60.0/bpm;
-     if(secsFrom<0||secsTo>8.0) continue;
+     if(secsFrom<=0.0 || secsTo>=8.0 || secsFrom<secsTo)continue;
      const float gx1=x+width*float(std::clamp((8-secsFrom)/8.0,0.0,1.0));
      const float gx2=x+width*float(std::clamp((8-secsTo)/8.0,0.0,1.0));
      g.setColour(Theme::violet.withAlpha(k==selectedMap?0.95f:0.52f));
      g.drawRoundedRectangle(gx1,y+2,std::max(2.0f,gx2-gx1),height-4,3.0f,1.5f);
-     g.setFont(Theme::font(9.0f,true));g.drawText("L",int(gx1)+3,int(y)+25,16,16,juce::Justification::centredLeft);
+     g.setFont(Theme::font(9.0f,true));g.drawText("M",int(gx1)+3,int(y)+25,16,16,juce::Justification::centredLeft);
    }
    g.setColour(Theme::cyan.withAlpha(0.85f));g.drawVerticalLine(int(x+width-2),y,y+height);
    g.setColour(Theme::muted);g.setFont(Theme::font(11.0f));
@@ -111,6 +119,8 @@ public:
      const auto deltaPpq=deltaSeconds*processor.bpmAtomic.load()/60.0;
      if(std::abs(deltaPpq)>0.001)processor.requestMapEdit(selectedMap,deltaPpq);
    }
+   // Each move is relative to the previous pointer position. Do not reapply
+   // the entire drag distance at every mouse callback.
    lastX=e.position.x;
  }
  bool keyPressed(const juce::KeyPress& key) override {
@@ -121,9 +131,22 @@ public:
    return false;
  }
 private:
- void timerCallback() override {repaint();}
+ void timerCallback() override {
+   const bool playing=processor.isPlaying.load();
+   const bool canPreview=selected>=0 && !playing;
+   if(preview.isEnabled()!=canPreview)preview.setEnabled(canPreview);
+   const auto sequence=processor.waveformSequence.load(std::memory_order_acquire);
+   const auto gaps=processor.getRecentCount();
+   const auto mapped=processor.gapMap.size();
+   if(sequence!=lastSequence || gaps!=lastGapCount || mapped!=lastMapCount || playing!=lastPlaying){
+     lastSequence=sequence;lastGapCount=gaps;lastMapCount=mapped;lastPlaying=playing;
+     repaint();
+   }
+ }
  SkellSilenceAudioProcessor& processor;
  juce::TextButton preview;
  int selected=-1,selectedMap=-1;float lastX=0;
+ uint64_t lastSequence=~uint64_t(0);
+ int lastGapCount=-1,lastMapCount=-1;bool lastPlaying=false;
 };
 }

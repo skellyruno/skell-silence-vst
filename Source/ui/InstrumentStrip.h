@@ -5,7 +5,8 @@
 namespace skell::ui {
 class InstrumentPopup final : public juce::Component {
 public:
-  InstrumentPopup(SkellSilenceAudioProcessor& p,int index) {
+  InstrumentPopup(SkellSilenceAudioProcessor& p,int index)
+    :instrumentTitle(skell::dsp::instrumentNames[size_t(index)]) {
     const char* names[7][4] = {
       {"stopSpeedCurve","stopTime","stopLowpass",nullptr},
       {"airColor","airShape",nullptr,nullptr},
@@ -24,15 +25,23 @@ public:
         if(caption[j]>='A' && caption[j]<='Z' &&
            caption[j-1]>='a' && caption[j-1]<='z')caption=caption.substring(0,j)+" "+caption.substring(j);
       label->setText(caption.replaceCharacter('_',' ').toUpperCase(),juce::dontSendNotification);
+      const auto explanation=parameterHint(juce::String(id));
+      label->setTooltip(explanation);
+      hints.push_back(explanation);
       label->setColour(juce::Label::textColourId,Theme::text);addAndMakeVisible(*label);
       if(auto* choice=dynamic_cast<juce::AudioParameterChoice*>(p.parameters.getParameter(id))) {
         auto* combo=combos.emplace_back(std::make_unique<juce::ComboBox>()).get();
-        combo->addItemList(choice->choices,1);addAndMakeVisible(*combo);
+        combo->addItemList(choice->choices,1);
+        combo->setTooltip(explanation);
+        addAndMakeVisible(*combo);
         comboAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(p.parameters,id,*combo));
       } else {
         auto* slider=sliders.emplace_back(std::make_unique<juce::Slider>()).get();
         slider->setSliderStyle(juce::Slider::LinearHorizontal);
         slider->setTextBoxStyle(juce::Slider::TextBoxRight,false,60,24);
+        if(auto* parameter=p.parameters.getParameter(id))
+          slider->setDoubleClickReturnValue(true,parameter->convertFrom0to1(parameter->getDefaultValue()));
+        slider->setTooltip(explanation);
         addAndMakeVisible(*slider);
         sliderAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.parameters,id,*slider));
       }
@@ -53,12 +62,42 @@ public:
     g.fillAll(Theme::panel);
     g.setColour(Theme::green);g.fillRoundedRectangle(15.0f,17.0f,3.0f,20.0f,1.0f);
     g.setFont(Theme::font(15,true));g.setColour(Theme::text);
-    g.drawText("INSTRUMENT SETTINGS",26,12,getWidth()-40,31,juce::Justification::centredLeft);
+    g.drawFittedText(instrumentTitle+"  /  SETTINGS",26,12,getWidth()-40,31,juce::Justification::centredLeft,1);
     g.setColour(Theme::border);g.drawHorizontalLine(46,15.0f,float(getWidth()-15));
-    for(size_t i=1;i<types.size();++i)
-      g.drawHorizontalLine(50+int(i)*52,15.0f,float(getWidth()-15));
+    for(size_t i=0;i<types.size();++i) {
+      g.setColour(Theme::muted);g.setFont(Theme::font(10.0f));
+      g.drawFittedText(hints[i],17,85+int(i)*52,325,17,juce::Justification::centredLeft,1);
+      if(i+1<types.size()){
+        g.setColour(Theme::border);
+        g.drawHorizontalLine(104+int(i)*52,15.0f,float(getWidth()-15));
+      }
+    }
   }
 private:
+  static juce::String parameterHint(const juce::String& id) {
+    if(id=="stopSpeedCurve")return "Brake shape from smooth to aggressive";
+    if(id=="stopTime")return "Time until the tape reaches zero speed";
+    if(id=="stopLowpass")return "Tone rolloff as playback decelerates";
+    if(id=="airColor")return "Match preceding sound or use pink / white";
+    if(id=="airShape")return "Tilt the air spectrum darker or brighter";
+    if(id=="swellLength")return "Reverse pre-gap audio into the next hit";
+    if(id=="swellReverb")return "Reverb bloom on reverse material";
+    if(id=="noiseType")return "Choose the texture filling quiet passages";
+    if(id=="noiseFadeIn")return "Fade-in proportion of the gap";
+    if(id=="noiseFadeOut")return "Fade-out proportion before the next hit";
+    if(id=="impactPitch")return "Sub impact pitch / tonal weight";
+    if(id=="impactDecay")return "Tail length of the impact";
+    if(id=="impactClick")return "Transient snap at impact onset";
+    if(id=="riserStart")return "Initial filter brightness";
+    if(id=="riserCurve")return "Acceleration into the next hit";
+    if(id=="riserNoiseMix")return "Blend filtered noise and pitched sweep";
+    if(id=="stutterDiv")return "Slice duration synced to host tempo";
+    if(id=="stutterDecay")return "Gain loss after every repeated slice";
+    if(id=="stutterCount")return "Number of repeats in the gap";
+    return "Drag to adjust; shift for fine control";
+  }
+  juce::String instrumentTitle;
+  std::vector<juce::String> hints;
   std::vector<std::unique_ptr<juce::Label>> labels;
   std::vector<std::unique_ptr<juce::Slider>> sliders;
   std::vector<std::unique_ptr<juce::ComboBox>> combos;
@@ -72,11 +111,13 @@ public:
     enableAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"On",enabled),
     levelAttachment(p.parameters,juce::String(skell::dsp::instrumentIds[size_t(i)])+"Level",level) {
     enabled.setButtonText(juce::String(skell::dsp::instrumentNames[size_t(i)]));
-    enabled.setColour(juce::ToggleButton::tickColourId,Theme::green);
+    enabled.setColour(juce::ToggleButton::tickColourId,Theme::instruments[size_t(index)]);
     level.setSliderStyle(juce::Slider::LinearHorizontal);
     level.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
     level.setColour(juce::Slider::trackColourId,Theme::instruments[size_t(index)]);
-    level.setTooltip("Instrument level. Double-click the parameter in settings to restore its default.");
+    level.setTooltip("Instrument output level. Shift-drag for fine adjustment; double-click to reset.");
+    level.setDoubleClickReturnValue(true,0.6);
+    level.onValueChange=[this]{repaint(157,34,77,21);};
     settings.setButtonText("...");settings.setTooltip("Open instrument settings");
     settings.onClick=[this]{juce::CallOutBox::launchAsynchronously(std::make_unique<InstrumentPopup>(processor,index),settings.getScreenBounds(),nullptr);};
     addAndMakeVisible(enabled);addAndMakeVisible(level);addAndMakeVisible(settings);
@@ -102,6 +143,9 @@ public:
     g.setColour(on?c.withAlpha(playing?1.0f:0.55f):Theme::border);
     g.strokePath(env,juce::PathStrokeType(playing?2.0f:1.2f));
     if(playing){g.setColour(c);g.fillEllipse(float(getWidth()-99),float(getHeight()/2-3),6.0f,6.0f);}
+    g.setColour(on?Theme::muted:Theme::border);
+    g.setFont(Theme::font(9.0f,true));
+    g.drawText(juce::String(juce::roundToInt(level.getValue()*100.0))+"%",173,37,52,13,juce::Justification::centred);
   }
   void resized() override {
     enabled.setBounds(11,8,153,41);

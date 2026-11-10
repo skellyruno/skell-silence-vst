@@ -53,6 +53,23 @@ int main(){
   assert(early>1.0e-12 && late<early);
   rv.reset();
   for(int i=0;i<500;++i)assert(std::abs(rv.process(0,0.5f))<1.0e-7f);
+  // Damping remains stable and bounded at standard and extreme host rates.
+  // Re-preparing the engine must clear all previous reverberant energy.
+  for(double rate: {44100.0, 96000.0, 192000.0}) {
+    Reverb multiRate;multiRate.prepare(rate);
+    double earlyEnergy=0,lateEnergy=0;
+    const int end=int(rate*1.5);
+    for(int i=0;i<end;++i) {
+      const auto value=multiRate.process(i==0?1.0f:0.0f,0.98f);
+      assert(std::isfinite(value));
+      assert(std::abs(value)<2.0f);
+      if(i>=int(rate*0.05) && i<int(rate*0.40))earlyEnergy+=double(value)*value;
+      if(i>=int(rate*1.0))lateEnergy+=double(value)*value;
+    }
+    assert(earlyEnergy>0.0 && lateEnergy<earlyEnergy);
+    multiRate.reset();
+    for(int i=0;i<300;++i)assert(std::abs(multiRate.process(0,0.6f))<1.0e-8f);
+  }
   // Spectral FOLLOW must adapt to the preceding sound rather than using one
   // static low-pass color. Verify separation of bass-heavy and bright sources.
   AirNoise air;air.prepare(sampleRate);

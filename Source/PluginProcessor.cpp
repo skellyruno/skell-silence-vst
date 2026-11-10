@@ -216,6 +216,10 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   d.holdMs=param("hold");d.tailSensitivity=param("tailSensitivity");d.armTimeSeconds=param("armTime");
   InstrumentSettings inst;snapshotSettings(inst);
   const double ppqPerSample=bpm/(60.0*sr);
+  // Maintain grid phase by addition: avoid fmod() per sample and support
+  // negative PPQ positions without a large artificial offset.
+  double gridPhase=std::fmod(blockPpq-gridOffset*gridDivision,gridDivision);
+  if(gridPhase<0.0)gridPhase+=gridDivision;
   const int previewIndex=previewRequested.exchange(-1);
   if(previewIndex>=0 && !transportPlaying && getRecentCount()>0) {
     previewStartSample=samples;
@@ -227,6 +231,9 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   juce::MidiMessage midiEvent;
   int nextMidiSample=0;
   bool hasMidi=midiIterator.getNextEvent(midiEvent,nextMidiSample);
+  // Publish activity at block boundaries, not tens of thousands of atomic
+  // writes per second. The UI refreshes independently at 12-30 Hz.
+  int blockActiveClass=-1,blockActiveMask=0;
   for(int i=0;i<n;++i) {
     const auto clock=samples++;
     const float inL=left[i],inR=right?right[i]:inL;
@@ -246,8 +253,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
         if(begin) eventStart=detected.start;
         if(end) eventEnd=detected.end;
       } else if(source==2){
-        const double phase=std::fmod(ppq+1000000.0*gridDivision-gridOffset*gridDivision,gridDivision);
-        const bool inGap=phase>=gridDivision*0.75;
+        const bool inGap=gridPhase>=gridDivision*0.75;
         begin=inGap && !gridInGap;end=!inGap && gridInGap;
         gridInGap=inGap;
       } else if(source==3){
@@ -314,6 +320,11 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
         instruments.beginGap(&events[size_t(readEvents%events.size())].spectrum);
       else instruments.beginGap();
     }
+    if(wasFxActive && !active && transportPlaying) {
+      // Renderer-clock transition, not detector-clock: works identically for
+      // AUTO, SIDECHAIN, GRID, MIDI and learned-map playback.
+      lastGapSample=delayedClock;
+    }
     wasFxActive=active;
     if(active && gapLen>1) {
       const double renderTime=transportPlaying?double(delayedClock)-gapStart:double(clock-previewStartSample);
@@ -322,11 +333,11 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       const GapContext context{history,sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
       wet=instruments.process(context,inst,cl);
       wetTailRemaining=std::max<int64_t>(1,int64_t(sr*2));
-      activeLengthClass.store(cl,std::memory_order_relaxed);
+      blockActiveClass=cl;
       int mask=0;for(int ins=0;ins<7;++ins)if(inst.enabled[size_t(ins)] && inst.rules[size_t(ins)][size_t(cl)])mask|=1<<ins;
-      activeMask.store(mask,std::memory_order_relaxed);
+      blockActiveMask=mask;
     } else {
-      activeMask.store(0,std::memory_order_relaxed);activeLengthClass.store(-1,std::memory_order_relaxed);
+      blockActiveMask=0;blockActiveClass=-1;
       if (wetTailRemaining>0 && transportPlaying) {
         const float fade=std::min(1.0f,float(wetTailRemaining)/(float(sr)*0.5f));
         wet=instruments.tail(space)*fade;
@@ -339,10 +350,20 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       ? duck*0.18f*wetMix*std::sin(float(3.14159265358979323846*postGap/0.055)) : 0.0f;
     const float outL=dryL*(1.0f+lift)+wet*wetMix;
     const float outR=dryR*(1.0f+lift)+wet*wetMix;
-    left[i]=(wetMix<=0 && lift<=0)?dryL:protect(outL);
-    if(right)right[i]=(wetMix<=0 && lift<=0)?dryR:protect(outR);
+    // Do not clamp the unprocessed dry track while an effect is inactive.
+    // In particular this must hold even when MIX is non-zero.
+    const bool unchanged=(wetMix<=0.0f && lift<=0.0f) ||
+                         (std::abs(wet)<1.0e-9f && lift<=0.0f);
+    left[i]=unchanged?dryL:protect(outL);
+    if(right)right[i]=unchanged?dryR:protect(outR);
     delay.next();
+    if(source==2) {
+      gridPhase+=ppqPerSample;
+      if(gridPhase>=gridDivision)gridPhase-=gridDivision;
+    }
   }
+  activeMask.store(blockActiveMask,std::memory_order_release);
+  activeLengthClass.store(blockActiveClass,std::memory_order_release);
   lastExpectedPpq=blockPpq+n*ppqPerSample;currentPpqAtomic.store(lastExpectedPpq);
   totalSamples.store(samples);
   int count=0;

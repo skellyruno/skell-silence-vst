@@ -82,9 +82,10 @@ public:
   }
   void drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool hover,bool /*down*/) override {
     const bool on=b.getToggleState();
+    const auto accent=b.findColour(juce::ToggleButton::tickColourId,true);
     const auto rect=juce::Rectangle<float>(3.0f,float(b.getHeight()/2)-8.0f,16.0f,16.0f);
-    g.setColour(on?Theme::green.withAlpha(0.18f):Theme::inset);g.fillRoundedRectangle(rect,4.0f);
-    g.setColour(on?Theme::green:hover?Theme::muted:Theme::border.brighter(0.1f));g.drawRoundedRectangle(rect.reduced(0.5f),4.0f,1.1f);
+    g.setColour(on?accent.withAlpha(0.18f):Theme::inset);g.fillRoundedRectangle(rect,4.0f);
+    g.setColour(on?accent:hover?Theme::muted:Theme::border.brighter(0.1f));g.drawRoundedRectangle(rect.reduced(0.5f),4.0f,1.1f);
     if(on){juce::Path mark;mark.startNewSubPath(7.0f,float(b.getHeight()/2));mark.lineTo(10.0f,float(b.getHeight()/2)+3);mark.lineTo(15.0f,float(b.getHeight()/2)-4);g.strokePath(mark,juce::PathStrokeType(1.7f));}
     if(b.getButtonText().isNotEmpty()){
       g.setColour(on?Theme::text:Theme::muted);g.setFont(Theme::font(12.0f,on));

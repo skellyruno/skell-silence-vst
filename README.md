@@ -117,3 +117,14 @@ FDN tails, gap events and 192 kHz numerical safety. GCC/Clang and AddressSanitiz
 UBSan runs passed locally. The real JUCE VST3 and DAW session still require the
 GitHub Actions build and listening checks; no measured DAW CPU reduction or
 commercial-quality separation is claimed here.
+
+## v1.4 UI and audio polish
+
+- Instrument enable indicators inherit the instrument color, and each strip shows a numeric level.
+- Timeline recent-gap selection is visible, learned-map markers handle partial display windows, and PREVIEW is unavailable until a recorded gap is selected and playback is stopped.
+- On leaving a gap, DUCK AFTER uses the **rendered, delayed** boundary for all trigger modes, including LEARN / LOCK; the audio-thread grid phase uses a one-step accumulator instead of per-sample `fmod`.
+- Unprocessed samples pass through unchanged even with MIX above zero (no unnecessary limiting while the effects are silent); MIX zero is bit-exact dry.
+- Instrument popups now explain each parameter and support double-click default reset; active-effects UI state is published once per audio block instead of once per sample.
+- Reverb damping is adjusted to sample rate without expensive transcendentals in the per-sample loop.
+
+All existing automation IDs and the original compact 912 × 578 initial size are preserved.
