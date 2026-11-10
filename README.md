@@ -138,3 +138,13 @@ All existing automation IDs and the original compact 912 × 578 initial size are
 - The rack identifies mono vs stereo input, the timeline footer shows the selected gap's length, and the seven mini envelopes now reflect distinct instrument responses. v1.5 retains the default 912 × 578 window, resize behaviour, parameter IDs, automation and presets.
 
 **Performance note:** Stereo uses two renderers instead of one and may cost more CPU on stereo material; the new riser curve reduces per-sample math. Measure full-plugin CPU and listen in FL Studio before a production release.
+
+
+## v1.6 — stable gap rules, lighter impact, truthful timeline, compact layout
+
+- The 4-class rules decision now **latches at the beginning of each rendered gap**. When real-time detection only estimates a gap's length, an updated estimate no longer switches all seven effect rules mid-gap. The following gap can use a different category. Lookahead/LEARN/LOCK still give the best alignment for predictive effects.
+- Impact now uses recursive sub-pitch-glide and exponential envelopes, avoiding repeated per-sample `exp()` calls while retaining sample-rate-aware envelopes. Reset and replay are deterministic.
+- Timeline envelopes reflect the enabled instrument rules for the gap's calculated class, instead of three fixed decorative envelopes. Preview and existing automation IDs are unchanged.
+- Centralized 1200×760 design-space rectangles and increased the rules panel height to keep **all seven rows inside the 912×578 default window**, without overlapping the other panels.
+- `tests/test_regression.cpp` runs geometry checks at 760/912/1200/1800 widths, rule-latch checks, deterministic impact checks at 44.1/48/96/192 kHz, and a maximum-rules stereo DSP stress test with finite-output and peak assertions. The stress test prints an approximate processing-time/audio-time ratio; this is **not an FL Studio CPU or glitch benchmark**. It does not replace host rendering tests.
+- Full JUCE/VST3 builds run in GitHub Actions; portable C++ tests run locally without JUCE. Final host UI rendering, automatable parameter interaction, FL Studio session latency and glitch-free audio still require host validation.

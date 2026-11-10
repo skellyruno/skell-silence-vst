@@ -4,6 +4,7 @@
 #include "dsp/GapMap.h"
 #include "dsp/LookaheadBuffer.h"
 #include "dsp/InstrumentMixer.h"
+#include "dsp/GapClass.h"
 #include <array>
 #include <atomic>
 
@@ -77,6 +78,7 @@ private:
   static constexpr int namedCount=38;
   std::array<std::atomic<float>*,namedCount> namedParams{};
   skell::dsp::GapDetector detector;
+  skell::dsp::GapClassLatch gapClassLatch;
   skell::dsp::LookaheadBuffer delay;
   std::array<skell::dsp::HistoryBuffer,2> histories;
   std::array<skell::dsp::InstrumentMixer,2> instruments;

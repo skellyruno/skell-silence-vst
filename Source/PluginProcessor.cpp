@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "dsp/GapClass.h"
 #include <cmath>
 #include <algorithm>
 
@@ -15,9 +16,6 @@ namespace {
   }
   void addChoice(APVTS::ParameterLayout& l,const juce::String& name,juce::StringArray choices,int index) {
     l.add(std::make_unique<juce::AudioParameterChoice>(id(name),name,choices,index));
-  }
-  int lengthClass(double beats,float shortMax,float mediumMax,float longMax) noexcept {
-    return beats<shortMax?0:beats<mediumMax?1:beats<longMax?2:3;
   }
   float protect(float sample) noexcept {
     const auto amplitude=std::abs(sample);
@@ -136,6 +134,7 @@ void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
   detector.reset();delay.reset();
   for(size_t ch=0;ch<2;++ch){if(!preserveHistory)histories[ch].reset(samples);instruments[ch].reset();}
   readEvents=writtenEvents=0;pendingLearnEvent=-1;previewRemaining=0;gridInGap=false;wasFxActive=false;
+  gapClassLatch.reset();
   wetTailRemaining=0;lastGapSample=-1000000000LL;
   peak=0;peakSamples=0;activeMask.store(0);activeLengthClass.store(-1);
 }
@@ -341,7 +340,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
     if(active && gapLen>1) {
       const double renderTime=transportPlaying?double(delayedClock)-gapStart:double(clock-previewStartSample);
       const float progress=std::clamp(float(renderTime/gapLen),0.0f,1.0f);
-      const int cl=lengthClass(gapLen/sr*bpm/60.0,shortMax,mediumMax,longMax);
+      const int cl=gapClassLatch.advance(true,gapLen/sr*bpm/60.0,shortMax,mediumMax,longMax);
       const GapContext contextL{histories[0],sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
       wetL=instruments[0].process(contextL,inst,cl);
       if(right){
@@ -353,6 +352,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       int mask=0;for(int ins=0;ins<7;++ins)if(inst.enabled[size_t(ins)] && inst.rules[size_t(ins)][size_t(cl)])mask|=1<<ins;
       blockActiveMask=mask;
     } else {
+      gapClassLatch.reset();
       blockActiveMask=0;blockActiveClass=-1;
       if (wetTailRemaining>0 && transportPlaying) {
         const float fade=std::min(1.0f,float(wetTailRemaining)/(float(sr)*0.5f));

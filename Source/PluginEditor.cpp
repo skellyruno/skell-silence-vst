@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "ui/LayoutGeometry.h"
 SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceAudioProcessor& p)
   : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p) {
   setLookAndFeel(&look);
@@ -26,11 +27,10 @@ void SkellSilenceAudioProcessorEditor::resized(){
     c.setBounds(x,y,w,h);
     c.setTransform(juce::AffineTransform::scale(scale));
   };
-  place(header,0,0,1200,70);
-  place(timeline,24,86,805,300);
-  place(detection,24,402,805,145);
-  place(matrix,24,563,805,171);
-  place(rack,846,86,330,461);
-  place(macros,846,563,330,171);
+  std::array<juce::Component*,6> components{{&header,&timeline,&detection,&rack,&matrix,&macros}};
+  for(size_t i=0;i<components.size();++i){
+    const auto r=skell::ui::Layout::panels[i];
+    place(*components[i],r.x,r.y,r.w,r.h);
+  }
   processor.windowW.store(getWidth());processor.windowH.store(getHeight());
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Theme.h"
 #include "../PluginProcessor.h"
+#include "../dsp/GapClass.h"
 #include <array>
 #include <algorithm>
 namespace skell::ui {
@@ -65,15 +66,27 @@ public:
      if(i==selected)g.drawRoundedRectangle(x1+0.5f,y+0.5f,std::max(2.0f,x2-x1)-1.0f,height-1.0f,3.0f,1.0f);
      const auto duration=juce::String(1000.0*double(e.end-e.start)/sr,0)+" ms";
      g.setFont(Theme::font(10.0f));g.drawFittedText(duration,int(x1)+3,int(y)+8,std::max(20,int(x2-x1-6)),17,juce::Justification::centredLeft,1);
-     for(int layer=0;layer<3;++layer){
-       juce::Path curve;
-       for(int step=0;step<12;++step){
-         const float t=float(step)/11.0f;
-         const float yy=y+height*(0.73f+layer*0.07f)-std::sin(t*3.14159f)*height*(0.06f+0.035f*layer);
-         if(step==0)curve.startNewSubPath(x1,yy);else curve.lineTo(x1+(x2-x1)*t,yy);
+     // Reflect the actual enabled length rules, not three decorative curves.
+     const int cl=dsp::classifyGapBeats(double(e.end-e.start)/sr*e.bpm/60.0,
+                 processor.parameters.getRawParameterValue("classShortMax")->load(),
+                 processor.parameters.getRawParameterValue("classMediumMax")->load(),
+                 processor.parameters.getRawParameterValue("classLongMax")->load());
+     for(int ins=0;ins<7;++ins){
+       const auto stem=juce::String(dsp::instrumentIds[size_t(ins)]);
+       const bool enabled=processor.parameters.getRawParameterValue(stem+"On")->load()>0.5f;
+       const bool rule=processor.parameters.getRawParameterValue("rule_"+stem+"_"+juce::String(cl))->load()>0.5f;
+       if(!enabled || !rule)continue;
+       const float level=processor.parameters.getRawParameterValue(stem+"Level")->load();
+       const float baseline=y+height*(0.19f+float(ins)*0.095f);
+       juce::Path envelope;
+       for(int step=0;step<=18;++step){
+         const float t=float(step)/18.0f;
+         const float heightEnvelope=Theme::instrumentEnvelope(ins,t)*height*0.08f*level;
+         const float ex=x1+(x2-x1)*t,ey=baseline-heightEnvelope;
+         if(step==0)envelope.startNewSubPath(ex,ey);else envelope.lineTo(ex,ey);
        }
-       g.setColour((layer==0?Theme::cyan:layer==1?Theme::amber:Theme::violet).withAlpha(0.65f));
-       g.strokePath(curve,juce::PathStrokeType(1.25f));
+       g.setColour(Theme::instruments[size_t(ins)].withAlpha(i==selected?0.95f:0.68f));
+       g.strokePath(envelope,juce::PathStrokeType(1.35f));
      }
    }
    // LEARN/LOCK markers follow project PPQ rather than unbounded sample time.

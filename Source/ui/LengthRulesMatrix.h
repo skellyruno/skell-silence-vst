@@ -48,7 +48,7 @@ public:
  void paint(juce::Graphics& g) override {
    Theme::panelBackground(g,getLocalBounds().toFloat());
    Theme::title(g,"04  /  LENGTH RULES  -  BEAT SYNCED",{15,8,getWidth()-189,22});
-   const int x=193,top=42,cw=(getWidth()-x-17)/4,rh=17;
+   const int x=193,top=38,cw=(getWidth()-x-17)/4,rh=18;
    g.setColour(Theme::inset);g.fillRoundedRectangle(juce::Rectangle<float>(float(x-6),float(top),float(getWidth()-x-7),float(rh*8)),5.0f);
    const int active=processor.activeLengthClass.load(std::memory_order_relaxed);
    if(active>=0&&active<4) {
@@ -71,7 +71,7 @@ public:
  }
  void resized() override {
    rangeButton.setBounds(getWidth()-144,8,127,26);
-   const int x=193,top=42,cw=(getWidth()-x-17)/4,rh=17;
+   const int x=193,top=38,cw=(getWidth()-x-17)/4,rh=18;
    for(int i=0;i<7;++i)for(int c=0;c<4;++c)
      buttons[size_t(i*4+c)].setBounds(x+c*cw+cw/2-11,top+(i+1)*rh,22,rh);
  }
