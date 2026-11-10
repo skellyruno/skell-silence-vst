@@ -30,13 +30,14 @@ public:
 private:
  void timerCallback() override {
    const int mask=processor.activeMask.load(std::memory_order_relaxed);
-   if(mask==lastMask)return;
-   lastMask=mask;
+   const int channels=processor.inputChannels.load(std::memory_order_relaxed);
+   if(mask==lastMask && channels==lastChannels)return;
+   lastMask=mask;lastChannels=channels;
    repaint(getWidth()-170,7,160,30);
    for(auto& strip:strips)strip->repaint();
  }
  SkellSilenceAudioProcessor& processor;
  std::array<std::unique_ptr<InstrumentStrip>,7> strips;
- int lastMask=-1;
+ int lastMask=-1,lastChannels=-1;
 };
 }

@@ -134,7 +134,7 @@ public:
     g.setColour(on?c:Theme::border);g.fillRoundedRectangle(5.0f,18.0f,3.0f,23.0f,1.5f);
     juce::Path env;
     const float x=float(getWidth()-87),y=float(getHeight()/2);
-    env.startNewSubPath(x,y);
+    env.startNewSubPath(x,y-12.0f*envelopeShape(index,0.0f));
     for(int i=1;i<=32;++i){
        const float t=float(i)/32;
        const float yy=y-12.0f*envelopeShape(index,t);
