@@ -313,6 +313,15 @@ int main(int argc, char** argv) {
   int failures = 0;
   {
     SkellSilenceAudioProcessorEditor editor(p);
+    // Use a real offscreen desktop peer under Xvfb. JUCE's PopupMenu will
+    // dismiss itself after a few milliseconds if its host has no focused
+    // window; a bare Component snapshot cannot exercise that menu lifecycle.
+    // This is the actual AudioProcessorEditor, not a screenshot substitute.
+    editor.setWantsKeyboardFocus(true);
+    editor.addToDesktop(0);
+    editor.setVisible(true);
+    editor.toFront(true);
+    editor.grabKeyboardFocus();
     Options options;
     options.project = "Skell Silence actual JUCE PluginEditor (SkellCore pinned)";
     for (const auto& s : sizes) {
