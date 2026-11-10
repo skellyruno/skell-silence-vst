@@ -3,3 +3,7 @@ build/
 *.user
 .vs/
 .idea/
+
+# Renderer-only artifacts (never ship with the VST3)
+build-ui/
+ui-screenshots/

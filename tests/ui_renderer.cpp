@@ -23,7 +23,8 @@ constexpr std::array<Size, 4> sizes {{
 // The plugin currently has one skin and one workspace (not invented themes/tabs).
 // Modes are real controls/states of the same editor, never a mock GUI.
 enum Mode { idle, playing, dryMix, grid, sidechain, midi, selected,
-            editRanges, instrument0, instrument6, workspaceMenu };
+            editRanges, instrument0, instrument1, instrument2, instrument3,
+            instrument4, instrument5, instrument6, workspaceMenu };
 
 void setParameter(SkellSilenceAudioProcessor& p, const juce::String& id, float value) {
   if (auto* parameter = p.parameters.getParameter(id))
@@ -44,6 +45,40 @@ void closeExistingOverlays(juce::Component& editor) {
   for (int i = editor.getNumChildComponents() - 1; i >= 0; --i)
     if (auto* popup = dynamic_cast<juce::CallOutBox*>(editor.getChildComponent(i)))
       popup->dismiss();
+}
+
+// End-to-end host-independent audio regression using the actual processor:
+// MIX=0 must preserve a stereo impulse at the declared lookahead sample offset.
+bool testDryLatency() {
+  SkellSilenceAudioProcessor p;
+  setParameter(p, "mix", 0.f);
+  setParameter(p, "lookahead", 1.f); // 250ms, exact at 48 kHz
+  p.prepareToPlay(48000., 256);
+  const int delay = p.latencyRequested.load();
+  if (delay != 12000) return false;
+  juce::AudioBuffer<float> audio(2, 256);
+  juce::MidiBuffer events;
+  constexpr int total = 12800;
+  for (int start = 0; start < total; start += 256) {
+    audio.clear();
+    if (start == 0) {
+      audio.setSample(0, 0, 0.5f);
+      audio.setSample(1, 0, -0.35f);
+    }
+    events.clear();
+    p.processBlock(audio, events);
+    for (int i = 0; i < 256; ++i) {
+      const int at = start + i;
+      for (int ch = 0; ch < 2; ++ch) {
+        const float sample = audio.getSample(ch, i);
+        const float expected = at == delay ? (ch == 0 ? 0.5f : -0.35f) : 0.f;
+        if (!std::isfinite(sample) || std::abs(sample - expected) > 1.e-5f)
+          return false;
+      }
+    }
+  }
+  p.releaseResources();
+  return true;
 }
 
 void generateDetectorInput(SkellSilenceAudioProcessor& p) {
@@ -136,6 +171,10 @@ int main(int argc, char** argv) {
   const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
+  if (!testDryLatency()) {
+    std::fprintf(stderr, "Dry impulse / PDC alignment test failed\n");
+    return 1;
+  }
   SkellSilenceAudioProcessor p;
   p.prepareToPlay(48000., 256);
   generateDetectorInput(p);
@@ -156,8 +195,9 @@ int main(int argc, char** argv) {
     // Real control overlays at both the minimum and shipping window sizes.
     for (const auto& s : { sizes[0], sizes[1] }) {
       addScene(options, juce::String(s.name) + "-edit-ranges", s.width, s.height, editRanges);
-      addScene(options, juce::String(s.name) + "-instrument-0", s.width, s.height, instrument0);
-      addScene(options, juce::String(s.name) + "-instrument-6", s.width, s.height, instrument6);
+      for (int instrument = 0; instrument < 7; ++instrument)
+        addScene(options, juce::String(s.name) + "-instrument-" + juce::String(instrument),
+                 s.width, s.height, static_cast<Mode>(instrument0 + instrument));
       addScene(options, juce::String(s.name) + "-menu", s.width, s.height, workspaceMenu);
     }
     options.mustDiffer = {
@@ -167,12 +207,15 @@ int main(int argc, char** argv) {
       {"compact-idle", "compact-selected"},
       {"compact-idle", "compact-edit-ranges"},
       {"compact-idle", "compact-instrument-0"},
-      {"compact-idle", "compact-instrument-6"}
+      {"compact-idle", "compact-instrument-6"},
+      {"compact-idle", "compact-menu"}
     };
+    Mode currentScene = idle;
     options.configure = [&](const Scene& scene) {
       closeExistingOverlays(editor);
       editor.setSize(scene.width, scene.height);
       const auto mode = static_cast<Mode>(scene.mode);
+      currentScene = mode;
       for (int i = 0; i < 7; ++i)
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
       setParameter(p, "mix", 0.65f);
@@ -191,18 +234,37 @@ int main(int argc, char** argv) {
       if (mode == midi) setParameter(p, "triggerSource", 3.f);
       if (auto* timeline = dynamic_cast<skell::ui::GapTimeline*>(findById(editor, "timeline")))
         timeline->selectRecentGap(mode == selected ? 0 : -1);
-      if (mode == editRanges || mode == instrument0 || mode == instrument6
+      // APVTS choice/button attachments may post asynchronous UI updates.
+      // Flush JUCE's message queue before snapshotting the real components.
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(70);
+      if (mode == editRanges || (mode >= instrument0 && mode <= instrument6)
           || mode == workspaceMenu) {
-        const auto id = mode == editRanges ? "edit-ranges"
-                        : mode == instrument0 ? "instrument-settings-0"
-                        : mode == instrument6 ? "instrument-settings-6" : "menu";
+        const juce::String id = mode == editRanges ? juce::String("edit-ranges")
+            : mode == workspaceMenu ? juce::String("menu")
+            : juce::String("instrument-settings-") + juce::String(int(mode - instrument0));
         if (auto* button = dynamic_cast<juce::Button*>(findById(editor, id)))
-          { if (button->onClick) button->onClick(); }
+          if (button->onClick) button->onClick();
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(70);
       }
     };
     options.inspect = [&] {
       juce::StringArray issues;
       checkChildren(editor, issues);
+      int callouts = 0;
+      for (int i = 0; i < editor.getNumChildComponents(); ++i)
+        if (dynamic_cast<juce::CallOutBox*>(editor.getChildComponent(i)))
+          ++callouts;
+      const bool shouldHaveCallout = currentScene == editRanges
+          || (currentScene >= instrument0 && currentScene <= instrument6);
+      if (callouts != (shouldHaveCallout ? 1 : 0))
+        issues.add("Expected exactly " + juce::String(shouldHaveCallout ? 1 : 0)
+                   + " callouts, found " + juce::String(callouts));
+      if (auto* lookahead = dynamic_cast<juce::ComboBox*>(findById(editor, "lookahead")))
+        if (lookahead->getSelectedId() <= 0)
+          issues.add("LOOKAHEAD chooser has no current value");
+      if (auto* source = dynamic_cast<juce::ComboBox*>(findById(editor, "trigger-source")))
+        if (source->getSelectedId() <= 0)
+          issues.add("Trigger chooser has no current value");
       return issues;
     };
     const auto report = skellcore::ui::headless::render(editor, output, options);

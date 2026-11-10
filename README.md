@@ -186,7 +186,7 @@ scenes cover the one available Skell Ink theme and single workspace at the
 minimum 760×481, shipping 912×578, standard 1200×760, and large 1500×950
 sizes. State coverage includes idle, running detector, dry mix/disabled
 instruments, grid, sidechain, MIDI, selected gaps, parameter range editor,
-real instrument settings callouts, and the workspace menu. No extra theme,
+all seven real instrument settings callouts (including dropdown choices), and the workspace menu. No extra theme,
 tab, or preset browser is invented for tests: LOAD/SAVE use native file
 choosers and must additionally be examined in a real host session.
 

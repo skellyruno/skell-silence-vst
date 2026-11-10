@@ -23,6 +23,8 @@ public:
       l.setColour(juce::Label::textColourId,Theme::muted);
       addAndMakeVisible(s);addAndMakeVisible(l);
    }
+   source.setComponentID("trigger-source");
+   lookahead.setComponentID("lookahead");
    source.addItemList({"AUTO","SIDECHAIN","GRID","MIDI"},1);
    source.setTooltip("Choose the detector input: source audio, sidechain, tempo grid, or MIDI.");
    lookahead.addItemList({"OFF","250 ms","500 ms","1 BEAT","1 BAR"},1);
