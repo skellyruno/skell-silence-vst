@@ -204,3 +204,5 @@ The hardware console language now uses higher-contrast typography, gradient meta
 colour-coded instrument strips with numerical IDs, integrated envelope cards, wider beat-rule
 toggle targets, and clearer detector and dynamics grouping. Every source UI edit triggers the
 existing SkellCore actual-editor screenshot workflow.
+
+The brand glyph and rolling signal display are rendered directly by JUCE vectors using real processor data; no static screenshots are used as editor controls.

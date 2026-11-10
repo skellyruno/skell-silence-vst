@@ -26,10 +26,18 @@ public:
    addAndMakeVisible(preview);setWantsKeyboardFocus(true);startTimerHz(30);
  }
  void paint(juce::Graphics& g) override {
-   Theme::panelBackground(g,getLocalBounds().toFloat());Theme::title(g,"01  /  GAP TIMELINE  -  LAST 8 SECONDS",{16,12,300,22});
+   Theme::panelBackground(g,getLocalBounds().toFloat());Theme::title(g,"01  /  LIVE GAP SCOPE",{16,11,291,24});
+   Theme::pill(g,{342.0f,14.0f,128.0f,23.0f},Theme::cyan,true);
+   g.setColour(Theme::cyan);g.setFont(Theme::font(10.5f,true));
+   g.drawText("8 SECOND BUFFER",350,14,119,23,juce::Justification::centredLeft);
+   Theme::sectionRule(g,16.0f,46.0f,float(getWidth()-32),Theme::green);
    const auto inner=getLocalBounds().reduced(15).withTrimmedTop(50).withTrimmedBottom(32);
    const float x=float(inner.getX()),y=float(inner.getY()),width=float(inner.getWidth()),height=float(inner.getHeight());
-   g.setColour(Theme::inset);g.fillRoundedRectangle(inner.toFloat(),7);
+   g.setGradientFill(juce::ColourGradient(Theme::inset.brighter(0.09f),x,y,
+       Theme::inset.darker(0.15f),x+width,y+height,false));
+   g.fillRoundedRectangle(inner.toFloat(),7);
+   g.setColour(Theme::green.withAlpha(0.07f));
+   g.fillRoundedRectangle(juce::Rectangle<float>(x,y+height*0.45f,width,height*0.10f),3.0f);
    g.setColour(Theme::border.withAlpha(0.65f));
    for(int j=1;j<=7;++j)g.drawVerticalLine(int(x+width*j/8),y,y+height);
    for(int j=1;j<=3;++j)g.drawHorizontalLine(int(y+height*j/4),x,x+width);
@@ -43,7 +51,16 @@ public:
      if(i==0)wave.startNewSubPath(wx,center-amp*height*0.42f);
      else wave.lineTo(wx,center-amp*height*0.42f);
    }
-   g.setColour(Theme::green.withAlpha(0.84f));g.strokePath(wave,juce::PathStrokeType(1.65f));
+   // Use real telemetry; softly tint the area below the observed waveform.
+   auto filledWave=wave;
+   filledWave.lineTo(x+width,center);
+   filledWave.lineTo(x,center);
+   filledWave.closeSubPath();
+   g.setGradientFill(juce::ColourGradient(Theme::green.withAlpha(0.19f),x,y,
+       Theme::green.withAlpha(0.01f),x,y+height,false));
+   g.fillPath(filledWave);
+   g.setColour(Theme::green.withAlpha(0.32f));g.strokePath(wave,juce::PathStrokeType(3.2f));
+   g.setColour(Theme::green.withAlpha(0.96f));g.strokePath(wave,juce::PathStrokeType(1.7f));
    juce::Path reflection;
    for(int i=0;i<SkellSilenceAudioProcessor::waveformSize;++i){
      const auto slot=size_t((seq+i)%SkellSilenceAudioProcessor::waveformSize);
@@ -52,7 +69,8 @@ public:
      if(i==0)reflection.startNewSubPath(wx,center+amp*height*0.42f);
      else reflection.lineTo(wx,center+amp*height*0.42f);
    }
-   g.setColour(Theme::cyan.withAlpha(0.46f));g.strokePath(reflection,juce::PathStrokeType(1.2f));
+   g.setColour(Theme::cyan.withAlpha(0.58f));g.strokePath(reflection,juce::PathStrokeType(1.5f));
+   g.setColour(Theme::border.brighter(0.12f));g.drawHorizontalLine(int(center),x+1,x+width-1);
    if(seq<12){
      g.setColour(Theme::muted.withAlpha(0.90f));g.setFont(Theme::font(12.0f,true));
      g.drawText("WAITING FOR AUDIO",inner.withTrimmedBottom(20),juce::Justification::centred);
@@ -112,10 +130,13 @@ public:
    g.setColour(Theme::cyan.withAlpha(0.85f));g.drawVerticalLine(int(x+width-2),y,y+height);
    g.setColour(Theme::muted);g.setFont(Theme::font(11.0f));
    for(int i=0;i<=4;++i)g.drawText(juce::String(-8+i*2)+"s",int(x+width*i/4),int(y+height)+6,35,18,juce::Justification::centredLeft);
-   g.drawText("BPM "+juce::String(bpm,1),getWidth()-128,11,100,22,juce::Justification::centredRight);
+   g.setColour(Theme::green);g.setFont(Theme::font(12,true));
+   g.drawText("BPM  "+juce::String(bpm,1),getWidth()-145,11,117,25,juce::Justification::centredRight);
    g.setColour(Theme::green);g.fillEllipse(18.0f,float(getHeight()-24),6.0f,6.0f);
    g.setColour(Theme::muted);g.setFont(Theme::font(10.0f));
-   g.drawText("WAVEFORM  /  GAP OVERLAYS",31,getHeight()-30,255,19,juce::Justification::centredLeft);
+   g.drawText("SIGNAL",31,getHeight()-30,78,19,juce::Justification::centredLeft);
+   g.setColour(Theme::green);g.fillEllipse(101.0f,float(getHeight()-22),5.0f,5.0f);
+   g.setColour(Theme::muted);g.drawText("DETECTED GAPS",113,getHeight()-30,155,19,juce::Justification::centredLeft);
    if(processor.gapMap.size()>0){g.setColour(Theme::violet);g.drawText("MAP  "+juce::String(processor.gapMap.size()),271,getHeight()-30,99,19,juce::Justification::centredLeft);}
    // Interactive gap inspector; never overlaps the footer preview button.
    g.setColour(selected>=0?Theme::green:Theme::muted);g.setFont(Theme::font(10,true));
