@@ -16,7 +16,10 @@ public:
     const double amount=std::clamp(double(speedCurve),0.0,1.0)*2.0;
     const double integrated=duration*(amount<1.0?linear+(quadratic-linear)*amount:
                                                         quadratic+(cubic-quadratic)*(amount-1.0));
-    const double playback=c.start-std::min(c.sampleRate*0.25,c.length*0.5)+integrated;
+    // Freeze at the last pre-gap sample: a long slowdown must not read
+    // forward into the silence it is meant to fill.
+    const double playback=std::min(c.start-1.0,
+                    c.start-std::min(c.sampleRate*0.25,c.length*0.5)+integrated);
     const float x=c.history.readCubic(playback);
     const float cutoff=40.0f+(17000.0f*lp)*(1.0-progress)*(1.0-progress);
     const float a=std::clamp(float(6.2831853*cutoff/c.sampleRate),0.0002f,1.0f);

@@ -124,14 +124,17 @@ bool SkellSilenceAudioProcessor::isBusesLayoutSupported(const BusesLayout& l) co
 }
 void SkellSilenceAudioProcessor::prepareToPlay(double rate,int /*blockSize*/) {
   sr=std::max(8000.0,rate);sampleRateAtomic.store(sr);
-  delay.prepare(sr);history.prepare(sr);instruments.prepare(sr);detector.prepare(sr);
+  delay.prepare(sr);
+  for(size_t ch=0;ch<2;++ch){histories[ch].prepare(sr);instruments[ch].prepare(sr,int(ch));}
+  detector.prepare(sr);
   smoothMix.reset(sr,0.012);smoothTension.reset(sr,0.020);smoothSpace.reset(sr,0.020);
   smoothMix.setCurrentAndTargetValue(param("mix"));smoothTension.setCurrentAndTargetValue(param("tension"));smoothSpace.setCurrentAndTargetValue(param("space"));
   clearRuntime();
   activeLatency=latencyFor(lastBpm);latencyRequested.store(activeLatency);triggerAsyncUpdate();
 }
 void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
-  detector.reset();delay.reset();if(!preserveHistory)history.reset(samples);instruments.reset();
+  detector.reset();delay.reset();
+  for(size_t ch=0;ch<2;++ch){if(!preserveHistory)histories[ch].reset(samples);instruments[ch].reset();}
   readEvents=writtenEvents=0;pendingLearnEvent=-1;previewRemaining=0;gridInGap=false;wasFxActive=false;
   wetTailRemaining=0;lastGapSample=-1000000000LL;
   peak=0;peakSamples=0;activeMask.store(0);activeLengthClass.store(-1);
@@ -148,7 +151,10 @@ void SkellSilenceAudioProcessor::handleAsyncUpdate() {
   if(getLatencySamples()!=requested) setLatencySamples(requested);
 }
 void SkellSilenceAudioProcessor::addEvent(int64_t start,double bpm) noexcept {
-  auto& e=events[size_t(writtenEvents%events.size())];e={start,-1,bpm,instruments.snapshotSpectrum()};++writtenEvents;
+  auto& e=events[size_t(writtenEvents%events.size())];
+  e.start=start;e.end=-1;e.bpm=bpm;
+  for(size_t ch=0;ch<2;++ch)e.spectrum[ch]=instruments[ch].snapshotSpectrum();
+  ++writtenEvents;
   if(writtenEvents-readEvents>events.size())readEvents=writtenEvents-events.size();
 }
 void SkellSilenceAudioProcessor::closeEvent(int64_t end) noexcept {
@@ -177,6 +183,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   if(main.getNumChannels()==0) return;
   const auto side=getBusBuffer(buffer,true,1);
   const int n=main.getNumSamples(),nc=main.getNumChannels();
+  inputChannels.store(nc,std::memory_order_relaxed);
   auto* left=main.getWritePointer(0);
   auto* right=nc==2?main.getWritePointer(1):nullptr;
   const auto* sideL=side.getNumChannels()>0?side.getReadPointer(0):nullptr;
@@ -237,18 +244,21 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   for(int i=0;i<n;++i) {
     const auto clock=samples++;
     const float inL=left[i],inR=right?right[i]:inL;
-    const float mono=0.5f*(inL+inR);
-    const float sideMono=sideL?0.5f*(sideL[i]+(sideR?sideR[i]:sideL[i])):mono;
+    // Stereo detection uses power, not (L+R)/2, to protect anti-phase material.
     delay.push(0,inL);delay.push(1,inR);
-    history.push(mono);
-    instruments.observeInput(mono); // cheap analysis even before a gap is armed
+    histories[0].push(inL);
+    histories[1].push(inR);
+    instruments[0].observeInput(inL);
+    instruments[1].observeInput(inR); // Independent pre-gap spectra per channel.
     const double ppq=blockPpq+i*ppqPerSample;
     DetectionResult detected;
     bool begin=false,end=false;
     int64_t eventStart=clock,eventEnd=clock;
     if(transportPlaying && !lock) {
       if(source==0 || source==1) {
-        detected=detector.process(source==1?sideMono:mono,clock,d);
+        if(source==1 && sideL!=nullptr)
+          detected=detector.processStereo(sideL[i],sideR?sideR[i]:sideL[i],clock,d);
+        else detected=detector.processStereo(inL,inR,clock,d);
         begin=detected.began;end=detected.ended;
         if(begin) eventStart=detected.start;
         if(end) eventEnd=detected.end;
@@ -312,13 +322,15 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       gapLen=double(previewTotal);
       --previewRemaining;
     }
-    float wet=0;
+    float wetL=0.0f,wetR=0.0f;
     if(active && !wasFxActive) {
       // The preceding spectral profile is captured at the detector event, not
       // 250ms/one-beat later when the delayed render reaches that gap.
-      if(transportPlaying && !lock && readEvents<writtenEvents)
-        instruments.beginGap(&events[size_t(readEvents%events.size())].spectrum);
-      else instruments.beginGap();
+      for(size_t ch=0;ch<2;++ch) {
+        if(transportPlaying && !lock && readEvents<writtenEvents)
+          instruments[ch].beginGap(&events[size_t(readEvents%events.size())].spectrum[ch]);
+        else instruments[ch].beginGap();
+      }
     }
     if(wasFxActive && !active && transportPlaying) {
       // Renderer-clock transition, not detector-clock: works identically for
@@ -330,8 +342,12 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       const double renderTime=transportPlaying?double(delayedClock)-gapStart:double(clock-previewStartSample);
       const float progress=std::clamp(float(renderTime/gapLen),0.0f,1.0f);
       const int cl=lengthClass(gapLen/sr*bpm/60.0,shortMax,mediumMax,longMax);
-      const GapContext context{history,sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
-      wet=instruments.process(context,inst,cl);
+      const GapContext contextL{histories[0],sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
+      wetL=instruments[0].process(contextL,inst,cl);
+      if(right){
+        const GapContext contextR{histories[1],sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
+        wetR=instruments[1].process(contextR,inst,cl);
+      }
       wetTailRemaining=std::max<int64_t>(1,int64_t(sr*2));
       blockActiveClass=cl;
       int mask=0;for(int ins=0;ins<7;++ins)if(inst.enabled[size_t(ins)] && inst.rules[size_t(ins)][size_t(cl)])mask|=1<<ins;
@@ -340,7 +356,8 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       blockActiveMask=0;blockActiveClass=-1;
       if (wetTailRemaining>0 && transportPlaying) {
         const float fade=std::min(1.0f,float(wetTailRemaining)/(float(sr)*0.5f));
-        wet=instruments.tail(space)*fade;
+        wetL=instruments[0].tail(space)*fade;
+        if(right)wetR=instruments[1].tail(space)*fade;
         --wetTailRemaining;
       }
     }
@@ -348,14 +365,16 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
     const double postGap=double(delayedClock-lastGapSample)/sr;
     const float lift=(!active && postGap>=0.0 && postGap<0.055)
       ? duck*0.18f*wetMix*std::sin(float(3.14159265358979323846*postGap/0.055)) : 0.0f;
-    const float outL=dryL*(1.0f+lift)+wet*wetMix;
-    const float outR=dryR*(1.0f+lift)+wet*wetMix;
+    const float outL=dryL*(1.0f+lift)+wetL*wetMix;
+    const float outR=dryR*(1.0f+lift)+wetR*wetMix;
     // Do not clamp the unprocessed dry track while an effect is inactive.
     // In particular this must hold even when MIX is non-zero.
-    const bool unchanged=(wetMix<=0.0f && lift<=0.0f) ||
-                         (std::abs(wet)<1.0e-9f && lift<=0.0f);
-    left[i]=unchanged?dryL:protect(outL);
-    if(right)right[i]=unchanged?dryR:protect(outR);
+    // Protect only channels containing added material; dry samples are
+    // bit-exact even if the other stereo channel carries an effect.
+    left[i]=(wetMix<=0.0f && lift<=0.0f) || (std::abs(wetL)<1.0e-9f && lift<=0.0f)
+              ?dryL:protect(outL);
+    if(right)right[i]=(wetMix<=0.0f && lift<=0.0f) || (std::abs(wetR)<1.0e-9f && lift<=0.0f)
+              ?dryR:protect(outR);
     delay.next();
     if(source==2) {
       gridPhase+=ppqPerSample;

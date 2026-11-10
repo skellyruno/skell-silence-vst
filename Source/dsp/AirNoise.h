@@ -12,6 +12,7 @@ class AirNoise {
 public:
   static constexpr size_t bandCount=6;
   using Spectrum=std::array<float,bandCount>;
+  void setChannel(int channel) noexcept {initialSeed=channel==0?0x9e3779b9u:0x85ebca6bu;seed=initialSeed;}
   void prepare(double sampleRate) noexcept {
     constexpr std::array<float,5> crossovers{150.0f,430.0f,1200.0f,3400.0f,8500.0f};
     const float rate=float(std::max(8000.0,sampleRate));
@@ -23,7 +24,7 @@ public:
   }
   void reset() noexcept {
     analysisLow.fill(0); noiseLow.fill(0); energies.fill(0); profile.fill(1.0f);
-    seed=0x9e3779b9u; samplesObserved=0;
+    seed=initialSeed; samplesObserved=0;
   }
   // Call on the undelayed source audio, not on generated gap material.
   void observe(float input) noexcept {
@@ -76,7 +77,7 @@ private:
   std::array<float,5> alpha{},analysisLow{},noiseLow{};
   std::array<float,bandCount> energies{},profile{};
   float envelopeAlpha=0.0001f;
-  uint32_t seed=0x9e3779b9u;
+  uint32_t seed=0x9e3779b9u,initialSeed=0x9e3779b9u;
   int samplesObserved=0;
 };
 }

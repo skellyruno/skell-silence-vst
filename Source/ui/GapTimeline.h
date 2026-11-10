@@ -95,7 +95,14 @@ public:
    g.setColour(Theme::green);g.fillEllipse(18.0f,float(getHeight()-24),6.0f,6.0f);
    g.setColour(Theme::muted);g.setFont(Theme::font(10.0f));
    g.drawText("WAVEFORM  /  GAP OVERLAYS",31,getHeight()-30,255,19,juce::Justification::centredLeft);
-   if(processor.gapMap.size()>0){g.setColour(Theme::violet);g.drawText("LEARNED  "+juce::String(processor.gapMap.size()),280,getHeight()-30,175,19,juce::Justification::centredLeft);}
+   if(processor.gapMap.size()>0){g.setColour(Theme::violet);g.drawText("MAP  "+juce::String(processor.gapMap.size()),271,getHeight()-30,99,19,juce::Justification::centredLeft);}
+   // Interactive gap inspector; never overlaps the footer preview button.
+   g.setColour(selected>=0?Theme::green:Theme::muted);g.setFont(Theme::font(10,true));
+   if(selected>=0){
+     const auto item=processor.getRecentGap(selected);
+     g.drawFittedText(item.end>item.start?"SELECTED  /  "+juce::String(1000.0*double(item.end-item.start)/sr,0)+" ms":"SELECT A GAP",
+                       380,getHeight()-30,getWidth()-505,19,juce::Justification::centredLeft,1);
+   }else g.drawFittedText("CLICK A GAP TO PREVIEW",380,getHeight()-30,getWidth()-505,19,juce::Justification::centredLeft,1);
  }
  void resized() override {preview.setBounds(getWidth()-110,getHeight()-32,90,25);}
  void mouseDown(const juce::MouseEvent& e) override {
@@ -133,7 +140,7 @@ public:
 private:
  void timerCallback() override {
    const bool playing=processor.isPlaying.load();
-   const bool canPreview=selected>=0 && !playing;
+   const bool canPreview=selected>=0 && selected<processor.getRecentCount() && !playing;
    if(preview.isEnabled()!=canPreview)preview.setEnabled(canPreview);
    const auto sequence=processor.waveformSequence.load(std::memory_order_acquire);
    const auto gaps=processor.getRecentCount();

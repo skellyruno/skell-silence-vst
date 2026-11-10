@@ -28,7 +28,10 @@ struct InstrumentSettings {
 };
 class InstrumentMixer {
 public:
-  void prepare(double sampleRate) {reverb.prepare(sampleRate);air.prepare(sampleRate);reset();}
+  void prepare(double sampleRate,int channel=0) {
+    air.setChannel(channel);fade.setChannel(channel);riser.setChannel(channel);impact.setChannel(channel);
+    reverb.prepare(sampleRate);air.prepare(sampleRate);reset();
+  }
   void reset() {beginGap();air.reset();reverb.reset();}
   void beginGap(const AirNoise::Spectrum* frozenProfile=nullptr) noexcept {
     stop.reset();

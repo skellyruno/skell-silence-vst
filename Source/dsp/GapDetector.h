@@ -22,7 +22,14 @@ public:
   void reset() noexcept { fastPower=slowPower=previousFast=0; age=0; pending=0; recover=0; armedSamples=0; state=Sound; activeStart=0; }
   State getState() const noexcept { return state; }
   DetectionResult process(float input, int64_t sample, const DetectorSettings& p) noexcept {
-    const float squared=input*input;
+    return processPower(input*input, sample, p);
+  }
+  // Stereo-aware power detection: opposite-phase channels must not cancel.
+  // Both inputs are squared before combining, avoiding sqrt() in the callback.
+  DetectionResult processStereo(float left,float right,int64_t sample,const DetectorSettings& p) noexcept {
+    return processPower(0.5f*(left*left+right*right),sample,p);
+  }
+  DetectionResult processPower(float squared, int64_t sample, const DetectorSettings& p) noexcept {
     fastPower=fastCoefficient*fastPower+(1.0f-fastCoefficient)*squared;
     slowPower=slowCoefficient*slowPower+(1.0f-slowCoefficient)*squared;
     const float fast=std::sqrt(fastPower+1.0e-15f), slow=std::sqrt(slowPower+1.0e-15f);

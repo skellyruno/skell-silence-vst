@@ -128,3 +128,13 @@ commercial-quality separation is claimed here.
 - Reverb damping is adjusted to sample rate without expensive transcendentals in the per-sample loop.
 
 All existing automation IDs and the original compact 912 × 578 initial size are preserved.
+
+## v1.5 stereo and control polish
+
+- **Stereo-aware detection** accumulates L/R signal powers before thresholding, so opposite-phase mixes and sidechains cannot falsely look silent. Mono still uses the same coherent detector.
+- Separate pre-gap history, six-band FOLLOW profile, tape/stutter reading, synthesized textures and FDN processing for each channel; L/R ambience and source movement are preserved rather than summing wet to dual-mono. The impact's tonal component remains phase-consistent while noise can decorrelate.
+- Tape Stop never advances into the gap after exhausting its pre-gap source; Reverse Swell maps an explicit pre-gap read window over the known gap length, with smooth swell onset. No claim of predicting unknown live gap endpoints without lookahead/map.
+- Riser curves use inexpensive piecewise easing, avoiding per-sample general-purpose `pow` calls.
+- The rack identifies mono vs stereo input, the timeline footer shows the selected gap's length, and the seven mini envelopes now reflect distinct instrument responses. v1.5 retains the default 912 × 578 window, resize behaviour, parameter IDs, automation and presets.
+
+**Performance note:** Stereo uses two renderers instead of one and may cost more CPU on stereo material; the new riser curve reduces per-sample math. Measure full-plugin CPU and listen in FL Studio before a production release.

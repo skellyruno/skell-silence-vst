@@ -40,7 +40,7 @@ public:
   std::atomic<int> detectorState{0},gapsLastMinute{0},activeLengthClass{-1},activeMask{0};
   std::atomic<int64_t> totalSamples{0};
   std::atomic<double> sampleRateAtomic{44100.0},bpmAtomic{120.0},currentPpqAtomic{0.0};
-  std::atomic<int> latencyRequested{0};
+  std::atomic<int> latencyRequested{0}, inputChannels{2};
   std::atomic<bool> isPlaying{false};
   std::atomic<int> windowW{912},windowH{578};
   skell::dsp::GapMap gapMap;
@@ -62,7 +62,7 @@ private:
   struct Event {
     int64_t start=0,end=-1;
     double bpm=120;
-    skell::dsp::AirNoise::Spectrum spectrum{};
+    std::array<skell::dsp::AirNoise::Spectrum,2> spectrum{};
   };
   std::array<Event,256> events{};
   uint64_t writtenEvents=0,readEvents=0;
@@ -78,8 +78,8 @@ private:
   std::array<std::atomic<float>*,namedCount> namedParams{};
   skell::dsp::GapDetector detector;
   skell::dsp::LookaheadBuffer delay;
-  skell::dsp::HistoryBuffer history;
-  skell::dsp::InstrumentMixer instruments;
+  std::array<skell::dsp::HistoryBuffer,2> histories;
+  std::array<skell::dsp::InstrumentMixer,2> instruments;
   juce::SmoothedValue<float,juce::ValueSmoothingTypes::Linear> smoothMix,smoothTension,smoothSpace;
   std::array<std::atomic<int64_t>,32> recentStarts{},recentEnds{};
   std::array<std::atomic<double>,32> recentBpms{};

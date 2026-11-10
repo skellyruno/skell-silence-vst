@@ -3,7 +3,8 @@
 namespace skell::dsp {
 class Impact {
 public:
- void reset() noexcept { phase=0;seed=0x673892ab; }
+ void setChannel(int channel) noexcept {initialSeed=channel==0?0x673892abu:0x2c1b3c6du;seed=initialSeed;}
+ void reset() noexcept { phase=0;seed=initialSeed; }
  float process(const GapContext& c,float pitch,float decay,float click) noexcept {
    const double age=c.time;
    if(age>c.sampleRate*2.0) return 0;
@@ -13,6 +14,6 @@ public:
    const float snap=noise(seed)*std::exp(-float(age/c.sampleRate)*110.0f)*click;
    return 0.48f*body+0.08f*snap;
  }
-private:float phase=0;uint32_t seed=0x673892ab;
+private:float phase=0;uint32_t seed=0x673892abu,initialSeed=0x673892abu;
 };
 }

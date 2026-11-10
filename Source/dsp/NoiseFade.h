@@ -3,7 +3,8 @@
 namespace skell::dsp {
 class NoiseFade {
 public:
-  void reset() noexcept { pink=0; seed=0xc0ffee21; }
+  void setChannel(int channel) noexcept {initialSeed=channel==0?0xc0ffee21u:0x5bd1e995u;seed=initialSeed;}
+  void reset() noexcept { pink=0; seed=initialSeed; }
   float process(const GapContext& c,int type,float fadeIn,float fadeOut) noexcept {
     auto n=noise(seed);pink=0.92f*pink+0.08f*n;
     if(type==1) n=pink*2.5f;
@@ -13,6 +14,6 @@ public:
     const float exit=std::min(1.0f,(1.0f-c.progress)/std::max(0.02f,fadeOut));
     return n*std::min(enter,exit)*0.18f;
   }
-private: float pink=0;uint32_t seed=0xc0ffee21;
+private: float pink=0;uint32_t seed=0xc0ffee21u,initialSeed=0xc0ffee21u;
 };
 }

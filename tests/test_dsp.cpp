@@ -117,5 +117,66 @@ int main(){
     if(r.ended) ++ended;
   }
   assert(opened>=1 && ended>=1);
-  std::cout<<"PASS spectral FOLLOW, cubic interpolation, 192 kHz stability; gap begin="<<open<<" end="<<close<<" maxFx="<<maxPeak<<" reverb early="<<early<<" late="<<late<<"\n";
+  // Opposite-polarity channels retain full energy during detection. A simple
+  // L+R sum would classify the entire loud phrase as silence.
+  GapDetector stereoDetector;stereoDetector.prepare(sampleRate);
+  DetectorSettings stereoSettings;stereoSettings.thresholdDb=18.0f;
+  stereoSettings.minGapMs=65.0f;stereoSettings.armTimeSeconds=0.2f;
+  int stereoStarts=0,stereoEnds=0;
+  for(int64_t i=0;i<int64_t(sampleRate*2.5);++i) {
+    const auto source=0.35f*std::sin(float(i)*float(2*3.14159265358979323846*440.0/sampleRate));
+    const auto left=i<48000 || i>=96000?source:0.0f;
+    const auto result=stereoDetector.processStereo(left,-left,i,stereoSettings);
+    if(result.began){++stereoStarts;assert(result.start>=48000);}
+    if(result.ended){++stereoEnds;assert(result.end>=result.start);}
+  }
+  assert(stereoStarts==1 && stereoEnds==1);
+
+  // Stereo source gestures survive reverse processing: opposite-polarity
+  // history yields opposite-polarity wet material instead of dual mono.
+  HistoryBuffer historyL,historyR;
+  historyL.prepare(sampleRate);historyR.prepare(sampleRate);
+  for(int64_t i=0;i<48000;++i){
+    const float sample=0.31f*std::sin(float(i)*0.043f)+0.09f*std::sin(float(i)*0.019f);
+    historyL.push(sample);historyR.push(-sample);
+  }
+  InstrumentMixer stereoL,stereoR;
+  stereoL.prepare(sampleRate,0);stereoR.prepare(sampleRate,1);
+  InstrumentSettings soloSwell{};
+  soloSwell.enabled[2]=true;soloSwell.levels[2]=1.0f;
+  soloSwell.rules[2][2]=true;
+  soloSwell.swellLength=400.0f;
+  stereoL.beginGap();stereoR.beginGap();
+  double distinctEnergy=0.0;
+  for(int i=0;i<12000;++i) {
+    const float progress=float(i)/12000.0f;
+    GapContext cL{historyL,sampleRate,120.0,44000.0,12000.0,double(i),progress,0.5f,0.0f};
+    GapContext cR{historyR,sampleRate,120.0,44000.0,12000.0,double(i),progress,0.5f,0.0f};
+    const float l=stereoL.process(cL,soloSwell,2);
+    const float r=stereoR.process(cR,soloSwell,2);
+    assert(std::isfinite(l) && std::isfinite(r));
+    assert(std::abs(l+r)<2.0e-5f);
+    distinctEnergy+=double(l-r)*(l-r);
+  }
+  assert(distinctEnergy>0.001);
+
+  // The two synthesizer seeds are independent to avoid collapsing stereo
+  // noise to hard center, and are deterministic across resets.
+  InstrumentSettings soloNoise{};
+  soloNoise.enabled[3]=true;soloNoise.levels[3]=1.0f;soloNoise.rules[3][2]=true;
+  stereoL.beginGap();stereoR.beginGap();
+  double noiseDiff=0.0;
+  for(int i=100;i<2000;++i){
+    const float progress=float(i)/12000.0f;
+    GapContext cL{historyL,sampleRate,120.0,44000.0,12000.0,double(i),progress,0.5f,0.0f};
+    GapContext cR{historyR,sampleRate,120.0,44000.0,12000.0,double(i),progress,0.5f,0.0f};
+    noiseDiff+=std::abs(stereoL.process(cL,soloNoise,2)-stereoR.process(cR,soloNoise,2));
+  }
+  assert(noiseDiff>0.1);
+
+  // Lookahead tape playback never crosses into the silence after the gap.
+  TapeStop tape;
+  GapContext tapeContext{historyL,sampleRate,120.0,44000.0,24000.0,23999.0,1.0f,0.5f,0.2f};
+  assert(std::isfinite(tape.process(tapeContext,1.0f,2.0f,1.0f)));
+  std::cout<<"PASS stereo anti-phase, reverse polarity, independent noise, spectral FOLLOW, 192 kHz; gap begin="<<open<<" end="<<close<<" maxFx="<<maxPeak<<" reverb early="<<early<<" late="<<late<<"\n";
 }

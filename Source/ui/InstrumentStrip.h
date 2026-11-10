@@ -118,7 +118,7 @@ public:
     level.setTooltip("Instrument output level. Shift-drag for fine adjustment; double-click to reset.");
     level.setDoubleClickReturnValue(true,0.6);
     level.onValueChange=[this]{repaint(157,34,77,21);};
-    settings.setButtonText("...");settings.setTooltip("Open instrument settings");
+    settings.setButtonText("...");settings.setTooltip("Open detailed settings for "+juce::String(skell::dsp::instrumentNames[size_t(index)]));
     settings.onClick=[this]{juce::CallOutBox::launchAsynchronously(std::make_unique<InstrumentPopup>(processor,index),settings.getScreenBounds(),nullptr);};
     addAndMakeVisible(enabled);addAndMakeVisible(level);addAndMakeVisible(settings);
   }
@@ -137,7 +137,7 @@ public:
     env.startNewSubPath(x,y);
     for(int i=1;i<=32;++i){
        const float t=float(i)/32;
-       const float yy=y-8.0f*std::sin(3.14159265f*t)*std::sin(t*7.5f+float(index));
+       const float yy=y-12.0f*envelopeShape(index,t);
        env.lineTo(x+49.0f*t,yy);
     }
     g.setColour(on?c.withAlpha(playing?1.0f:0.55f):Theme::border);
@@ -154,6 +154,20 @@ public:
   }
 
 private:
+  // Each mini-envelope represents the actual instrument's musical behavior.
+  static float envelopeShape(int instrument,float t) noexcept {
+    const float x=std::clamp(t,0.0f,1.0f);
+    switch(instrument){
+      case 0: return (1.0f-x)*(1.0f-x);                 // tape stop
+      case 1: return std::sin(3.14159265f*x);            // filtered air
+      case 2: return x*x;                                // reverse swell
+      case 3: return std::min(1.0f,5.0f*x)*std::min(1.0f,5.0f*(1.0f-x));
+      case 4: return std::exp(-7.0f*x);                  // impact
+      case 5: return x*x*x;                              // riser
+      case 6: return std::abs(std::sin(3.14159265f*5.0f*x))*(1.0f-x);
+      default: return x;
+    }
+  }
   SkellSilenceAudioProcessor& processor;int index;
   juce::ToggleButton enabled;
   juce::Slider level;

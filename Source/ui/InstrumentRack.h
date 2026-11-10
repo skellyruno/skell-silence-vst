@@ -20,6 +20,8 @@ public:
    g.fillEllipse(float(getWidth()-87),17.0f,6.0f,6.0f);
    g.setFont(Theme::font(10,true));
    g.drawText(active?"PLAYING":"ARMED",getWidth()-78,9,68,23,juce::Justification::centredLeft);
+   g.setColour(Theme::muted.withAlpha(0.78f));g.setFont(Theme::font(9,true));
+   g.drawText(processor.inputChannels.load(std::memory_order_relaxed)>1?"STEREO":"MONO",getWidth()-164,10,65,21,juce::Justification::centredRight);
  }
  void resized() override {
    constexpr int top=41,row=58;
@@ -30,7 +32,7 @@ private:
    const int mask=processor.activeMask.load(std::memory_order_relaxed);
    if(mask==lastMask)return;
    lastMask=mask;
-   repaint(getWidth()-95,7,88,30);
+   repaint(getWidth()-170,7,160,30);
    for(auto& strip:strips)strip->repaint();
  }
  SkellSilenceAudioProcessor& processor;

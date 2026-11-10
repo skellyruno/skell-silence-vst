@@ -45,7 +45,7 @@ public:
     g.drawText("SKELL",36,13,98,39,juce::Justification::centredLeft);
     g.setColour(Theme::violet);g.drawText("SILENCE",132,13,143,39,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
-    g.drawText("GAP DESIGNER  /  V1.4",282,18,146,29,juce::Justification::centredLeft);
+    g.drawText("GAP DESIGNER  /  V1.5",282,18,146,29,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(10,true));
     g.drawText("WET MIX",905,22,61,25,juce::Justification::centredLeft);
     const bool running=processor.isPlaying.load();
