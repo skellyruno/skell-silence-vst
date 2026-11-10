@@ -8,6 +8,7 @@ struct GapContext {
   const HistoryBuffer& history;
   double sampleRate=44100, bpm=120, start=0, length=0, time=0;
   float progress=0, tension=0.5f, space=0.25f;
+  bool durationKnown=true; // false until real-time gap end is observed
 };
 inline float envelope(float x) noexcept {
   return std::sin(3.14159265358979323846f*std::clamp(x,0.0f,1.0f));

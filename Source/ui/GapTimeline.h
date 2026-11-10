@@ -12,6 +12,17 @@ public:
    preview.setTooltip("Select a recent gap, stop the transport, then audition its processing.");
    preview.onClick=[this]{if(selected>=0 && !processor.isPlaying.load())processor.requestPreview(selected);};
    preview.setEnabled(false);
+   // Cache the UI's read-only automation pointers once. Repainting a stopped
+   // timeline when a rule changes should not depend on the audio waveform.
+   for(int ins=0;ins<7;++ins){
+     const auto stem=juce::String(dsp::instrumentIds[size_t(ins)]);
+     onParameters[size_t(ins)]=p.parameters.getRawParameterValue(stem+"On");
+     levelParameters[size_t(ins)]=p.parameters.getRawParameterValue(stem+"Level");
+     for(int cl=0;cl<4;++cl)
+       ruleParameters[size_t(ins)][size_t(cl)]=p.parameters.getRawParameterValue("rule_"+stem+"_"+juce::String(cl));
+   }
+   constexpr const char* boundaryIds[]{"classShortMax","classMediumMax","classLongMax"};
+   for(size_t i=0;i<3;++i)boundaryParameters[i]=p.parameters.getRawParameterValue(boundaryIds[i]);
    addAndMakeVisible(preview);setWantsKeyboardFocus(true);startTimerHz(30);
  }
  void paint(juce::Graphics& g) override {
@@ -68,15 +79,12 @@ public:
      g.setFont(Theme::font(10.0f));g.drawFittedText(duration,int(x1)+3,int(y)+8,std::max(20,int(x2-x1-6)),17,juce::Justification::centredLeft,1);
      // Reflect the actual enabled length rules, not three decorative curves.
      const int cl=dsp::classifyGapBeats(double(e.end-e.start)/sr*e.bpm/60.0,
-                 processor.parameters.getRawParameterValue("classShortMax")->load(),
-                 processor.parameters.getRawParameterValue("classMediumMax")->load(),
-                 processor.parameters.getRawParameterValue("classLongMax")->load());
+                 boundaryParameters[0]->load(),boundaryParameters[1]->load(),boundaryParameters[2]->load());
      for(int ins=0;ins<7;++ins){
-       const auto stem=juce::String(dsp::instrumentIds[size_t(ins)]);
-       const bool enabled=processor.parameters.getRawParameterValue(stem+"On")->load()>0.5f;
-       const bool rule=processor.parameters.getRawParameterValue("rule_"+stem+"_"+juce::String(cl))->load()>0.5f;
+       const bool enabled=onParameters[size_t(ins)]->load()>0.5f;
+       const bool rule=ruleParameters[size_t(ins)][size_t(cl)]->load()>0.5f;
        if(!enabled || !rule)continue;
-       const float level=processor.parameters.getRawParameterValue(stem+"Level")->load();
+       const float level=levelParameters[size_t(ins)]->load();
        const float baseline=y+height*(0.19f+float(ins)*0.095f);
        juce::Path envelope;
        for(int step=0;step<=18;++step){
@@ -121,9 +129,9 @@ public:
  void mouseDown(const juce::MouseEvent& e) override {
    const auto sr=std::max(8000.0,processor.sampleRateAtomic.load());
    const double age=8.0*(1.0-std::clamp((e.position.x-15.0f)/std::max(1.0f,float(getWidth()-30)),0.0f,1.0f));
-   const auto clock=processor.totalSamples.load();selected=-1;
+   const auto clock=processor.totalSamples.load();selected=-1;selectedStart=-1;
    for(int i=0;i<processor.getRecentCount();++i){const auto gap=processor.getRecentGap(i);
-     if(gap.start<=clock-int64_t(age*sr) && clock-int64_t(age*sr)<gap.end){selected=i;break;}
+     if(gap.start<=clock-int64_t(age*sr) && clock-int64_t(age*sr)<gap.end){selected=i;selectedStart=gap.start;break;}
    }
    const double bpm=processor.bpmAtomic.load();
    const double herePpq=processor.currentPpqAtomic.load()-age*bpm/60.0;
@@ -158,15 +166,39 @@ private:
    const auto sequence=processor.waveformSequence.load(std::memory_order_acquire);
    const auto gaps=processor.getRecentCount();
    const auto mapped=processor.gapMap.size();
-   if(sequence!=lastSequence || gaps!=lastGapCount || mapped!=lastMapCount || playing!=lastPlaying){
-     lastSequence=sequence;lastGapCount=gaps;lastMapCount=mapped;lastPlaying=playing;
+   const auto ruleState=rulesFingerprint();
+   if(selectedStart>=0 && gaps!=lastGapCount){
+     selected=-1;
+     for(int k=0;k<gaps;++k)
+       if(processor.getRecentGap(k).start==selectedStart){selected=k;break;}
+     if(selected<0)selectedStart=-1;
+   }
+   if(sequence!=lastSequence || gaps!=lastGapCount || mapped!=lastMapCount ||
+      playing!=lastPlaying || ruleState!=lastRuleState){
+     lastSequence=sequence;lastGapCount=gaps;lastMapCount=mapped;lastPlaying=playing;lastRuleState=ruleState;
      repaint();
    }
  }
+ uint64_t rulesFingerprint() const noexcept {
+   uint64_t digest=1469598103934665603ULL;
+   const auto add=[&digest](float v) noexcept {
+     digest^=uint64_t(std::lround(double(v)*1000.0));
+     digest*=1099511628211ULL;
+   };
+   for(size_t i=0;i<7;++i){
+     add(onParameters[i]->load());add(levelParameters[i]->load());
+     for(size_t c=0;c<4;++c)add(ruleParameters[i][c]->load());
+   }
+   for(auto* p:boundaryParameters)add(p->load());
+   return digest;
+ }
  SkellSilenceAudioProcessor& processor;
  juce::TextButton preview;
- int selected=-1,selectedMap=-1;float lastX=0;
- uint64_t lastSequence=~uint64_t(0);
+ std::array<std::atomic<float>*,7> onParameters{},levelParameters{};
+ std::array<std::array<std::atomic<float>*,4>,7> ruleParameters{};
+ std::array<std::atomic<float>*,3> boundaryParameters{};
+ int selected=-1,selectedMap=-1;int64_t selectedStart=-1;float lastX=0;
+ uint64_t lastSequence=~uint64_t(0),lastRuleState=0;
  int lastGapCount=-1,lastMapCount=-1;bool lastPlaying=false;
 };
 }

@@ -2,6 +2,7 @@
 #include "../Source/dsp/Impact.h"
 #include "../Source/dsp/GapDetector.h"
 #include "../Source/dsp/InstrumentMixer.h"
+#include "../Source/dsp/GapTransition.h"
 #include "../Source/ui/LayoutGeometry.h"
 #include <array>
 #include <cassert>
@@ -38,6 +39,31 @@ int main() {
   assert(latch.advance(true,0.9,0.5f,2.0f,4.0f)==1);
   assert(classifyGapBeats(7.0,0.5f,2.0f,4.0f)==3);
   assert(classifyGapBeats(-1,0.5f,2.0f,4.0f)==0);
+
+  // A predicted one-beat gap must not fade out at its guessed endpoint;
+  // otherwise an extended phrase audibly dips then comes back.
+  HistoryBuffer edgeHistory;edgeHistory.prepare(48000.0);
+  GapContext estimated{edgeHistory,48000.0,120.0,1000.0,24000.0,23999.0,0.999f,0.5f,0.0f,false};
+  assert(gapBoundaryGain(estimated)>0.99f);
+  estimated.durationKnown=true;
+  assert(gapBoundaryGain(estimated)<0.01f);
+
+  // Confirm sample-wise 5ms fade protects both channels without changing the
+  // stereo relationship or leaking wet material indefinitely after the gap.
+  GapTransition transition;transition.prepare(48000.0);
+  const auto first=transition.process(true,0.8f,-0.6f);
+  assert(first[0]>0.0f && first[0]<0.01f);
+  assert(std::abs(first[0]/first[1]+4.0f/3.0f)<1.0e-5f);
+  for(int i=0;i<260;++i)transition.process(true,0.8f,-0.6f);
+  const auto last=transition.process(true,0.8f,-0.6f);
+  assert(std::abs(last[0]-0.8f)<1.0e-6f);
+  assert(std::abs(last[1]+0.6f)<1.0e-6f);
+  const auto release=transition.process(false,0.0f,0.0f);
+  assert(release==last);
+  for(int i=0;i<260;++i)transition.process(false,0.0f,0.0f);
+  assert(transition.process(false,0.0f,0.0f)[0]==0.0f);
+  transition.reset();
+  assert(transition.process(false,0.0f,0.0f)[0]==0.0f);
 
   // Exercise impact envelopes at different sample rates. Reset and replay
   // must reproduce exactly the same output (offline bounce determinism).
@@ -87,7 +113,7 @@ int main() {
   }
   const auto elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
   assert(power>0.0001 && peak<2.0f);
-  std::cout<<"PASS layout 760-1800px, stable class latch, deterministic multi-rate impact, "
+  std::cout<<"PASS layout 760-1800px, gap transition/release, stable class latch, deterministic multi-rate impact, "
            <<"stereo DSP stress: peak="<<peak<<" render="<<elapsed*1000.0
            <<" ms for 500ms stereo audio, CPU ratio="<<elapsed/0.5<<"\n";
   return 0;

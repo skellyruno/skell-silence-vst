@@ -124,7 +124,7 @@ void SkellSilenceAudioProcessor::prepareToPlay(double rate,int /*blockSize*/) {
   sr=std::max(8000.0,rate);sampleRateAtomic.store(sr);
   delay.prepare(sr);
   for(size_t ch=0;ch<2;++ch){histories[ch].prepare(sr);instruments[ch].prepare(sr,int(ch));}
-  detector.prepare(sr);
+  detector.prepare(sr);wetTransition.prepare(sr);
   smoothMix.reset(sr,0.012);smoothTension.reset(sr,0.020);smoothSpace.reset(sr,0.020);
   smoothMix.setCurrentAndTargetValue(param("mix"));smoothTension.setCurrentAndTargetValue(param("tension"));smoothSpace.setCurrentAndTargetValue(param("space"));
   clearRuntime();
@@ -134,7 +134,7 @@ void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
   detector.reset();delay.reset();
   for(size_t ch=0;ch<2;++ch){if(!preserveHistory)histories[ch].reset(samples);instruments[ch].reset();}
   readEvents=writtenEvents=0;pendingLearnEvent=-1;previewRemaining=0;gridInGap=false;wasFxActive=false;
-  gapClassLatch.reset();
+  gapClassLatch.reset();wetTransition.reset();
   wetTailRemaining=0;lastGapSample=-1000000000LL;
   peak=0;peakSamples=0;activeMask.store(0);activeLengthClass.store(-1);
 }
@@ -291,7 +291,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
     const double delayedPpq=ppq-latency*ppqPerSample;
     const float wetMix=smoothMix.getNextValue(),tension=smoothTension.getNextValue(),space=smoothSpace.getNextValue();
     double gapStart=0,gapLen=0;
-    bool active=false;
+    bool active=false,gapEndKnown=true;
     if(transportPlaying && lock){
       // Map is bounded and only read once per ~32 samples; interpolation below uses PPQ.
       if(i%32==0){
@@ -311,7 +311,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
         const auto& e=events[size_t(readEvents%events.size())];
         if(e.end>=0 && delayedClock>=e.end){++readEvents;continue;}
         if(delayedClock>=e.start && (e.end<0 || delayedClock<e.end)) {
-          active=true;gapStart=double(e.start);
+          active=true;gapStart=double(e.start);gapEndKnown=e.end>=0;
           gapLen=e.end>=0?double(e.end-e.start):std::max(sr*60.0/bpm,double(delayedClock-e.start)+sr*0.1);
         }
         break;
@@ -341,10 +341,10 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       const double renderTime=transportPlaying?double(delayedClock)-gapStart:double(clock-previewStartSample);
       const float progress=std::clamp(float(renderTime/gapLen),0.0f,1.0f);
       const int cl=gapClassLatch.advance(true,gapLen/sr*bpm/60.0,shortMax,mediumMax,longMax);
-      const GapContext contextL{histories[0],sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
+      const GapContext contextL{histories[0],sr,bpm,gapStart,gapLen,renderTime,progress,tension,space,gapEndKnown};
       wetL=instruments[0].process(contextL,inst,cl);
       if(right){
-        const GapContext contextR{histories[1],sr,bpm,gapStart,gapLen,renderTime,progress,tension,space};
+        const GapContext contextR{histories[1],sr,bpm,gapStart,gapLen,renderTime,progress,tension,space,gapEndKnown};
         wetR=instruments[1].process(contextR,inst,cl);
       }
       wetTailRemaining=std::max<int64_t>(1,int64_t(sr*2));
@@ -361,6 +361,14 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
         --wetTailRemaining;
       }
     }
+    // Ramp wet processing at the *rendered* boundary. Lookahead OFF can
+    // confirm a gap after its actual onset, so the instrument's analytical
+    // 5ms edge alone is not sufficient to avoid an abrupt entry.
+    const auto transitioned=wetTransition.process(active && gapLen>1.0,
+                                                   active?wetL:0.0f,
+                                                   active?wetR:0.0f);
+    if(active){wetL=transitioned[0];wetR=transitioned[1];}
+    else {wetL+=transitioned[0];wetR+=transitioned[1];}
     // At MIX 0 preserve the original signal bit-for-bit (including high peaks).
     const double postGap=double(delayedClock-lastGapSample)/sr;
     const float lift=(!active && postGap>=0.0 && postGap<0.055)

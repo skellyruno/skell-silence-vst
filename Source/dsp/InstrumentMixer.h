@@ -26,6 +26,13 @@ struct InstrumentSettings {
   float riserStart=0.4f,riserCurve=0.5f,riserNoiseMix=0.8f;
   int stutterDiv=2,stutterCount=6;float stutterDecay=0.22f;
 };
+// Only taper toward a gap end when that end has actually been detected or
+// loaded from a learned map. A guessed end is not a reliable fade boundary.
+inline float gapBoundaryGain(const GapContext& c) noexcept {
+  const double fromStart=std::max(0.0,c.time);
+  const double remaining=c.durationKnown?std::max(0.0,c.length-c.time):fromStart;
+  return std::clamp(float(std::min(fromStart,remaining)/c.sampleRate*200.0),0.0f,1.0f);
+}
 class InstrumentMixer {
 public:
   void prepare(double sampleRate,int channel=0) {
@@ -62,8 +69,7 @@ public:
     if(allowed(6)) {float s=stutter.process(c,p.stutterDiv,p.stutterDecay,p.stutterCount);v+=p.levels[6]*s;wetFeed+=s;}
     const float bloom=reverb.process(wetFeed,c.space);
     v+=bloom*c.space*0.5f*(1.0f-c.progress*c.progress);
-    const float secondsFromBoundary=std::min(c.time,c.length-c.time)/c.sampleRate;
-    const float edge=std::clamp(secondsFromBoundary*200.0f,0.0f,1.0f); // 5 ms click protection
+    const float edge=gapBoundaryGain(c); // 5 ms on known boundaries
     return v*edge;
   }
   float tail(float space) noexcept { return reverb.process(0,space)*space*0.12f; }

@@ -148,3 +148,12 @@ All existing automation IDs and the original compact 912 × 578 initial size are
 - Centralized 1200×760 design-space rectangles and increased the rules panel height to keep **all seven rows inside the 912×578 default window**, without overlapping the other panels.
 - `tests/test_regression.cpp` runs geometry checks at 760/912/1200/1800 widths, rule-latch checks, deterministic impact checks at 44.1/48/96/192 kHz, and a maximum-rules stereo DSP stress test with finite-output and peak assertions. The stress test prints an approximate processing-time/audio-time ratio; this is **not an FL Studio CPU or glitch benchmark**. It does not replace host rendering tests.
 - Full JUCE/VST3 builds run in GitHub Actions; portable C++ tests run locally without JUCE. Final host UI rendering, automatable parameter interaction, FL Studio session latency and glitch-free audio still require host validation.
+
+
+## v1.6.1 — boundary smoothing and live UI consistency
+
+- InstrumentMixer no longer fades effects toward an *estimated* gap end. While live detection does not know the end yet, it only applies the entry fade; once the end is known it uses its real boundary. This prevents the level from dipping/reopening when a long gap crosses a predicted duration.
+- A **sample-accurate 5 ms wet attack/release** (`GapTransition`) prevents abrupt entry when lookahead is disabled and the gap is confirmed after its true start. The release tapers the last wet sample into the existing reverb tail; it does not allocate in the audio callback.
+- The timeline caches rules and level parameter pointers, redraws when they change even with playback stopped, and keeps a recent-gap selection tied to its sample timestamp as new gaps arrive.
+- Portable regression tests cover unknown-end vs known-end gain, attack/release continuity, stereo balance, transport-reset silence, gap length latch, panel geometry and stress/CPU timing. See `bash tests/run_cpp_tests.sh`.
+- The regression benchmarks are indicative only. Windows/macOS VST3 compilation and real DAW/FL Studio UI interaction, latency, CPU and audio comparison need separate verification.
