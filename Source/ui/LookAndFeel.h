@@ -33,7 +33,7 @@ public:
     g.drawRoundedRectangle(r,6.0f,1.0f);
   }
   void drawRotarySlider(juce::Graphics& g,int x,int y,int width,int height,float pos,float start,float end,juce::Slider& slider) override {
-    const juce::Rectangle<float> r(float(x),float(y),float(width),float(height));
+    const juce::Rectangle<float> r{float(x),float(y),float(width),float(height)};
     const float radius=std::max(8.0f,std::min(r.getWidth(),r.getHeight())*0.34f);
     const auto center=r.getCentre();
     const auto accent=slider.getComponentID()=="tension"?Theme::amber:Theme::green;
