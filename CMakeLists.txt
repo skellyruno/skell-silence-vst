@@ -27,8 +27,8 @@ elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SkellCore/CMakeLists.txt")
   add_subdirectory(SkellCore)
 endif()
 
-// Pin the shared GuidedTour header independently of the existing bundled
-// SkellCore DSP/UI targets to avoid target duplication or audio changes.
+# Pin the shared GuidedTour header independently of the existing bundled
+# SkellCore DSP/UI targets to avoid target duplication or audio changes.
 FetchContent_Declare(SkellGuidedTourHeaders
   GIT_REPOSITORY https://github.com/skellyruno/skell-vst-template.git
   GIT_TAG 3306ad495c93e062e39b8abbf079534b0b53da4e
