@@ -42,16 +42,16 @@ public:
   }
   void paint(juce::Graphics& g) override {
     const auto r=getLocalBounds().toFloat();
-    g.setGradientFill(juce::ColourGradient(Theme::ink.brighter(0.20f),0,0,Theme::ink,0,r.getBottom(),false));
+    g.setGradientFill(juce::ColourGradient(Theme::panel.darker(0.28f),0,0,Theme::ink,0,r.getBottom(),false));
     g.fillRect(r);
     g.setColour(Theme::border.withAlpha(0.75f));g.drawHorizontalLine(76,0.0f,1200.0f);
     drawSkull(g);
     // The name is set as one tight lockup. No large arbitrary gap before SILENCE.
     g.setFont(Theme::font(29,true));
     g.setColour(Theme::text);g.drawText("SKELL",94,11,100,36,juce::Justification::centredLeft);
-    g.setColour(Theme::violet);g.drawText("SILENCE",190,11,146,36,juce::Justification::centredLeft);
+    g.setColour(Theme::green);g.drawText("SILENCE",187,11,153,36,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(13));
-    g.drawText("MAKE THE QUIET MOMENTS MOVE",95,47,360,20,juce::Justification::centredLeft);
+    g.drawText("GAP DESIGNER  /  SKELLCORE NEON",95,47,360,20,juce::Justification::centredLeft);
     const bool playing=processor.isPlaying.load(std::memory_order_relaxed);
     const bool locked=processor.parameters.getRawParameterValue("lockToMap")->load()>0.5f;
     const bool learning=processor.parameters.getRawParameterValue("learnArmed")->load()>0.5f;
@@ -72,27 +72,13 @@ public:
   }
 private:
   void drawSkull(juce::Graphics& g) const {
-    // Lightweight vector icon: square frame, engraved angular skull silhouette.
-    g.setColour(Theme::raised);g.fillRoundedRectangle(22.0f,13.0f,56.0f,53.0f,12.0f);
-    g.setColour(Theme::green.withAlpha(0.75f));
-    g.drawRoundedRectangle(22.7f,13.7f,54.6f,51.6f,11.5f,1.3f);
-    juce::Path silhouette;
-    silhouette.startNewSubPath(38,25); silhouette.quadraticTo(50,17,63,26);
-    silhouette.quadraticTo(70,35,64,45);
-    silhouette.lineTo(60,49);silhouette.lineTo(60,57);
-    silhouette.lineTo(41,57);silhouette.lineTo(41,49);
-    silhouette.quadraticTo(31,42,33,34);silhouette.quadraticTo(34,28,38,25);
-    silhouette.closeSubPath();
-    g.setColour(Theme::green);g.strokePath(silhouette,juce::PathStrokeType(2.5f));
-    g.setColour(Theme::green.withAlpha(0.95f));
-    juce::Path eyes;
-    eyes.addTriangle(38.0f,38.0f,46.0f,41.0f,45.0f,36.0f);
-    eyes.addTriangle(55.0f,36.0f,54.0f,41.0f,62.0f,38.0f);
-    g.fillPath(eyes);
-    g.drawLine(49.0f,43.0f,51.0f,45.0f,1.6f);
-    for(int i=0;i<3;++i)g.drawVerticalLine(45+i*5,51,56);
-    g.setColour(Theme::green.withAlpha(0.24f));
-    g.fillRoundedRectangle(35.0f,62.0f,30.0f,2.0f,1.0f);
+    const juce::Rectangle<float> tile{22.0f,13.0f,56.0f,53.0f};
+    g.setColour(Theme::raised.darker(0.18f));g.fillRoundedRectangle(tile,11.0f);
+    g.setColour(Theme::green.withAlpha(0.67f));
+    g.drawRoundedRectangle(tile.reduced(0.65f),10.5f,1.35f);
+    juce::Graphics::ScopedSaveState save(g);
+    g.addTransform(juce::AffineTransform::scale(0.61f).translated(27.4f,31.0f));
+    skellcore::ui::drawSkullKeyMark(g,0,0,Theme::green,Theme::inset);
   }
   void timerCallback() override {repaint(465,14,485,54);}
   void showWorkspaceMenu() {
