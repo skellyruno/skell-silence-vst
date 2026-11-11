@@ -67,6 +67,7 @@ endif()
 if(SKELL_SILENCE_BUILD_UI_RENDERER)
   add_executable(SkellSilenceUIRenderer tests/ui_renderer.cpp)
   target_include_directories(SkellSilenceUIRenderer PRIVATE
+    "${skellguidedtourheaders_SOURCE_DIR}/SkellCore/include"
     "${CMAKE_CURRENT_BINARY_DIR}/SkellSilence_artefacts/JuceLibraryCode")
   target_link_libraries(SkellSilenceUIRenderer PRIVATE
     SkellSilence SkellCore::DSP SkellCore::UI SkellCore::UIRenderer
