@@ -515,6 +515,8 @@ int main(int argc, char** argv) {
         const double expected = (currentScene == dryMix || currentScene == simpleDry) ? 0.0 : 0.65;
         if (std::abs(mix->getValue() - expected) > 0.002)
           issues.add("MIX knob/parameter attachment did not update");
+        if(mix->getTextFromValue(0.65)!="65%")
+          issues.add("MIX should use whole percentage readouts");
       } else issues.add("Missing MIX control");
       if (editor.isAdvancedMode() != (currentScene < simpleIdle))
         issues.add("Simple/Advanced editor mode did not update");
@@ -540,6 +542,13 @@ int main(int argc, char** argv) {
       std::fprintf(stderr, "Simplified first-run UI did not initialize\n");
       ++failures;
     }
+    // Exercise the actual header mode button (not just the editor test hook).
+    if(auto* toggle=dynamic_cast<juce::Button*>(findById(editor,"toggle-advanced"))) {
+      if(toggle->onClick) toggle->onClick();
+      if(!editor.isAdvancedMode()) {std::fprintf(stderr,"Advanced button failed\n");++failures;}
+      if(toggle->onClick) toggle->onClick();
+      if(editor.isAdvancedMode()) {std::fprintf(stderr,"Simple button failed\n");++failures;}
+    } else {std::fprintf(stderr,"Missing Simple/Advanced toggle\n");++failures;}
     // The plugin's JUCE build disables nested/modal message dispatch loops.
     // Use the one genuine JUCE runDispatchLoop, scheduling each cleanup,
     // configuration and capture on separate message-loop turns. This is the

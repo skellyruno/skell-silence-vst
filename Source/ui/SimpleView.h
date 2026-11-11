@@ -50,7 +50,7 @@ public:
     g.setColour(Theme::muted);g.setFont(Theme::font(14,true));
     g.drawText("1  PLAY AUDIO",40,129,138,22,juce::Justification::centredLeft);
     g.drawText("2  WATCH THE GAPS",192,129,176,22,juce::Justification::centredLeft);
-    g.drawText("3  SHAPE THE EFFECT",381,129,166,22,juce::Justification::centredLeft);
+    g.drawText("3  SHAPE IT",362,129,138,22,juce::Justification::centredLeft);
     g.setColour(Theme::border);g.drawVerticalLine(515,28,getHeight()-28);
     constexpr std::array<const char*,3> titles {{"MIX", "ENERGY", "SPACE"}};
     constexpr std::array<const char*,3> captions {{"EFFECT AMOUNT", "BUILD INTENSITY", "REVERB TAIL"}};
