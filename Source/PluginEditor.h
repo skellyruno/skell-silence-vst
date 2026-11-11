@@ -19,6 +19,11 @@ public:
  void resized() override;
  void setAdvancedMode(bool advanced);
  bool isAdvancedMode() const noexcept {return advancedMode;}
+ void dismissGuidedTourForScreenshot(){guidedTour.dismiss();}
+ bool replayGuidedTourForScreenshot(){
+   showGuidedTour(false);
+   return guidedTour.isShowing();
+ }
 private:
  SkellSilenceAudioProcessor& processor;
  skell::ui::SilenceLookAndFeel look;
