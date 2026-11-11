@@ -11,7 +11,7 @@ endif()
 # All builds use one tested SkellCore Neon skin and master SkullKey mark.
 # The headless renderer remains a separate, development-only executable.
 option(SKELL_SILENCE_BUILD_UI_RENDERER "Build actual JUCE editor screenshot tests" OFF)
-set(SKELL_SILENCE_SKELLCORE_COMMIT "d02d50849123f28bbc2e32cded0e78aced15afb3")
+set(SKELL_SILENCE_SKELLCORE_COMMIT "268cf6ba43e2a7fbb7e7b39bd3855663e00089f2")
 FetchContent_Declare(SkellCorePinned
   GIT_REPOSITORY https://github.com/skellyruno/skellcore-vst-template.git
   GIT_TAG ${SKELL_SILENCE_SKELLCORE_COMMIT}
