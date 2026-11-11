@@ -27,6 +27,15 @@ elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SkellCore/CMakeLists.txt")
   add_subdirectory(SkellCore)
 endif()
 
+// Pin the shared GuidedTour header independently of the existing bundled
+// SkellCore DSP/UI targets to avoid target duplication or audio changes.
+FetchContent_Declare(SkellGuidedTourHeaders
+  GIT_REPOSITORY https://github.com/skellyruno/skell-vst-template.git
+  GIT_TAG 3306ad495c93e062e39b8abbf079534b0b53da4e
+  GIT_SHALLOW FALSE
+  SOURCE_SUBDIR _guided_tour_headers_only)
+FetchContent_MakeAvailable(SkellGuidedTourHeaders)
+
 juce_add_plugin(SkellSilence
   COMPANY_NAME "Skell Audio"
   BUNDLE_ID "uno.skellyr.silence"
@@ -42,6 +51,7 @@ juce_add_plugin(SkellSilence
 juce_generate_juce_header(SkellSilence)
 file(GLOB_RECURSE SKELL_SOURCE CONFIGURE_DEPENDS "Source/*.h" "Source/*.cpp")
 target_sources(SkellSilence PRIVATE ${SKELL_SOURCE})
+target_include_directories(SkellSilence PRIVATE "${skellguidedtourheaders_SOURCE_DIR}/SkellCore/include")
 target_compile_features(SkellSilence PRIVATE cxx_std_17)
 target_compile_definitions(SkellSilence PUBLIC JUCE_VST3_CAN_REPLACE_VST2=0)
 target_compile_definitions(SkellSilence PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
