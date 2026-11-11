@@ -18,8 +18,8 @@ public:
       "A short level boost after a gap ends."
     }};
     for(size_t i=0;i<sliders.size();++i){
-      auto& s=sliders[i];s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-      s.setTextBoxStyle(juce::Slider::TextBoxBelow,false,70,19);
+      auto& s=sliders[i];s.setSliderStyle(juce::Slider::LinearHorizontal);
+      s.setTextBoxStyle(juce::Slider::TextBoxRight,false,49,24);
       s.setComponentID(i==0?"mix":i==1?"tension":i==2?"space":"duck-after");
       if(auto* parameter=p.parameters.getParameter(names[i]))
         s.setDoubleClickReturnValue(true,parameter->convertFrom0to1(parameter->getDefaultValue()));
@@ -37,11 +37,12 @@ public:
     Theme::panelBackground(g,getLocalBounds().toFloat());
     Theme::title(g,"05  /  YOUR SOUND",{15,8,222,23});
     Theme::sectionRule(g,14.0f,145.0f,float(getWidth()-28),Theme::violet);
+    // A two-by-two arrangement avoids knob-value/label collisions at compact sizes.
     for(int i=0;i<4;++i){
       const auto c=i==0?Theme::green:i==1?Theme::amber:i==2?Theme::violet:Theme::cyan;
-      const float x=7.0f+80.0f*i;
-      g.setColour(c.withAlpha(0.08f));g.fillRoundedRectangle(x,36.0f,76.0f,108.0f,7.0f);
-      g.setColour(c.withAlpha(0.48f));g.fillRoundedRectangle(x+22.0f,34.0f,31.0f,2.0f,1.0f);
+      const float x=9.0f+158.0f*float(i%2), y=35.0f+54.0f*float(i/2);
+      g.setColour(c.withAlpha(0.07f));g.fillRoundedRectangle(x,y,151.0f,50.0f,5.0f);
+      g.setColour(c.withAlpha(0.54f));g.fillRoundedRectangle(x+9,y+1,29.0f,2.0f,1.0f);
     }
     g.setColour(Theme::violet);g.setFont(Theme::font(11,true));
     g.drawText("GAPS / MIN",15,149,88,18,juce::Justification::centredLeft);
@@ -54,10 +55,12 @@ public:
  }
  void resized() override {
     for(int i=0;i<4;++i){
-       sliders[size_t(i)].setBounds(7+i*80,48,76,81);
-       label[size_t(i)].setBounds(7+i*80,123,76,19);
+      const int x=9+(i%2)*158, y=35+(i/2)*54;
+      label[size_t(i)].setBounds(x+8,y+2,132,18);
+      sliders[size_t(i)].setBounds(x+8,y+22,136,25);
     }
  }
+
 private:
  void timerCallback() override {repaint(12,145,getWidth()-20,25);}
  SkellSilenceAudioProcessor& processor;
