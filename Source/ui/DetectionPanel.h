@@ -1,5 +1,6 @@
 #pragma once
 #include "Theme.h"
+#include "WholePercentSlider.h"
 #include "../PluginProcessor.h"
 #include <array>
 #include <memory>
@@ -11,7 +12,11 @@ public:
    constexpr std::array<const char*,6> ids{"threshold","minGap","maxGap","hold","tailSensitivity","armTime"};
    constexpr std::array<const char*,6> names{"THRESHOLD","MIN GAP","MAX GAP","HOLD","TAIL SENSE","ARM TIME"};
    for(int i=0;i<6;++i){
-      auto& s=knobs[size_t(i)];s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+      auto& s=knobs[size_t(i)];
+      if(i==4)s.setReadout(100.0,"%");
+      else if(i==5)s.setReadout(1000.0," ms");
+      else if(i>0)s.setReadout(1.0," ms");
+      s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
       s.setTextBoxStyle(juce::Slider::TextBoxBelow,false,74,19);
       const auto* pval=p.parameters.getParameter(ids[size_t(i)]);
       if(pval!=nullptr)s.setDoubleClickReturnValue(true,pval->convertFrom0to1(pval->getDefaultValue()));
@@ -80,7 +85,7 @@ private:
    repaint(310,9,480,27);
  }
  SkellSilenceAudioProcessor& processor;
- std::array<juce::Slider,6> knobs;
+ std::array<WholeNumberSlider,6> knobs;
  std::array<juce::Label,6> knobLabels;
  std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>,6> attachments;
  juce::ComboBox source,lookahead;

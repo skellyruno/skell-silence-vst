@@ -26,7 +26,7 @@ public:
    addAndMakeVisible(preview);setWantsKeyboardFocus(true);startTimerHz(30);
  }
  void paint(juce::Graphics& g) override {
-   Theme::panelBackground(g,getLocalBounds().toFloat());Theme::title(g,"01  /  LIVE GAP SCOPE",{16,11,291,24});
+   Theme::panelBackground(g,getLocalBounds().toFloat());Theme::title(g,"YOUR AUDIO  /  QUIET PARTS HIGHLIGHTED",{16,11,291,24});
    Theme::pill(g,{342.0f,14.0f,128.0f,23.0f},Theme::cyan,true);
    g.setColour(Theme::cyan);g.setFont(Theme::font(10.5f,true));
    g.drawText("8 SECOND BUFFER",350,14,119,23,juce::Justification::centredLeft);

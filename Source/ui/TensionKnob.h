@@ -1,38 +1,47 @@
 #pragma once
 #include "Theme.h"
+#include "WholePercentSlider.h"
 #include "../PluginProcessor.h"
 #include <memory>
 #include <array>
 namespace skell::ui {
+// Advanced performance section keeps all four macros in one logical location.
 class TensionKnob final : public juce::Component,private juce::Timer {
 public:
  explicit TensionKnob(SkellSilenceAudioProcessor& p):processor(p){
-    const char* names[]{"tension","space","duckAfter"};
-    const char* labels[]{"TENSION","SPACE","DUCK AFTER"};
-    for(int i=0;i<3;++i){
-      auto& s=sliders[size_t(i)];s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-      s.setTextBoxStyle(juce::Slider::TextBoxBelow,false,67,19);
-      s.setComponentID(i==0?"tension":i==1?"space":"duck-after");
-      const auto* param=p.parameters.getParameter(names[i]);
-      if(param!=nullptr)s.setDoubleClickReturnValue(true,param->convertFrom0to1(param->getDefaultValue()));
-      s.setTooltip(i==0?"Riser and swell intensity":i==1?"Reverb bloom on gap material":"Short lift after a gap");
-      attachments[size_t(i)]=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.parameters,names[i],s);
+    constexpr std::array<const char*,4> names{{"mix","tension","space","duckAfter"}};
+    constexpr std::array<const char*,4> labels{{"MIX","ENERGY","SPACE","AFTER"}};
+    constexpr std::array<const char*,4> tooltips{{
+      "How much gap effect to blend into your song.",
+      "Strength of risers and swells.",
+      "Reverb on gap effects.",
+      "A short level boost after a gap ends."
+    }};
+    for(size_t i=0;i<sliders.size();++i){
+      auto& s=sliders[i];s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+      s.setTextBoxStyle(juce::Slider::TextBoxBelow,false,70,19);
+      s.setComponentID(i==0?"mix":i==1?"tension":i==2?"space":"duck-after");
+      if(auto* parameter=p.parameters.getParameter(names[i]))
+        s.setDoubleClickReturnValue(true,parameter->convertFrom0to1(parameter->getDefaultValue()));
+      s.setTooltip(tooltips[i]);
+      attachments[i]=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.parameters,names[i],s);
       addAndMakeVisible(s);
-      label[size_t(i)].setText(labels[i],juce::dontSendNotification);
-      label[size_t(i)].setJustificationType(juce::Justification::centred);
-      label[size_t(i)].setColour(juce::Label::textColourId,Theme::text);addAndMakeVisible(label[size_t(i)]);
+      label[i].setText(labels[i],juce::dontSendNotification);
+      label[i].setJustificationType(juce::Justification::centred);
+      label[i].setColour(juce::Label::textColourId,Theme::muted);
+      addAndMakeVisible(label[i]);
     }
     startTimerHz(8);
  }
  void paint(juce::Graphics& g) override {
     Theme::panelBackground(g,getLocalBounds().toFloat());
-    Theme::title(g,"05  /  PERFORMANCE",{15,8,222,23});
+    Theme::title(g,"05  /  YOUR SOUND",{15,8,222,23});
     Theme::sectionRule(g,14.0f,145.0f,float(getWidth()-28),Theme::violet);
-    for(int i=0;i<3;++i){
-      const auto c=i==0?Theme::amber:i==1?Theme::violet:Theme::green;
-      const float x=10.0f+107.0f*i;
-      g.setColour(c.withAlpha(0.08f));g.fillRoundedRectangle(x,29.0f,98.0f,113.0f,7.0f);
-      g.setColour(c.withAlpha(0.48f));g.fillRoundedRectangle(x+32.0f,29.0f,34.0f,2.0f,1.0f);
+    for(int i=0;i<4;++i){
+      const auto c=i==0?Theme::green:i==1?Theme::amber:i==2?Theme::violet:Theme::cyan;
+      const float x=7.0f+80.0f*i;
+      g.setColour(c.withAlpha(0.08f));g.fillRoundedRectangle(x,36.0f,76.0f,108.0f,7.0f);
+      g.setColour(c.withAlpha(0.48f));g.fillRoundedRectangle(x+22.0f,34.0f,31.0f,2.0f,1.0f);
     }
     g.setColour(Theme::violet);g.setFont(Theme::font(11,true));
     g.drawText("GAPS / MIN",15,149,88,18,juce::Justification::centredLeft);
@@ -44,17 +53,16 @@ public:
     g.drawText(mask?"FX ACTIVE":"NO GAP",258,148,70,19,juce::Justification::centredLeft);
  }
  void resized() override {
-    constexpr int w=104;
-    for(int i=0;i<3;++i){
-       sliders[size_t(i)].setBounds(8+i*107,29,99,94);
-       label[size_t(i)].setBounds(8+i*107,123,99,19);
+    for(int i=0;i<4;++i){
+       sliders[size_t(i)].setBounds(7+i*80,48,76,81);
+       label[size_t(i)].setBounds(7+i*80,123,76,19);
     }
  }
 private:
  void timerCallback() override {repaint(12,145,getWidth()-20,25);}
  SkellSilenceAudioProcessor& processor;
- std::array<juce::Slider,3> sliders;
- std::array<juce::Label,3> label;
- std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>,3> attachments;
+ std::array<WholePercentSlider,4> sliders;
+ std::array<juce::Label,4> label;
+ std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>,4> attachments;
 };
 }

@@ -2,6 +2,20 @@
 
 An original JUCE 8 / CMake **VST3 + Standalone** audio effect based on the build organization, JUCE pin and CI conventions of [skellyruno/skell-vst-template](https://github.com/skellyruno/skell-vst-template). The plugin detects gaps and inserts tempo-aware sound design. Product: **Skell Silence**, vendor: **Skell Audio**, unique VST3 code: `Sl01`.
 
+## First-time workflow (v1.9)
+
+Skell Silence opens in **Simple View**. The screen has one live waveform and three controls:
+
+- **MIX 0–100%:** blend of processed gap audio and the delayed original signal. At zero, the sound remains dry (with the selected host-compensated lookahead delay).
+- **ENERGY 0–100%:** intensity of risers and reverse swells (existing `tension` parameter).
+- **SPACE 0–100%:** reverb bloom on processed gaps (existing `space` parameter).
+
+**Getting started:** add the plugin to a track, press Play and look for the highlighted quiet sections. Try MIX 30–60% and then raise ENERGY or SPACE if desired. **EDIT EFFECTS** or the header **ADVANCED** button exposes the detector, seven instruments, gap-length rules and other settings. **SIMPLE VIEW** returns to the clean screen. The header **PRESETS** menu contains file Open/Save and window-size options; it does not claim to ship with factory presets.
+
+Advanced's **CAPTURE GAPS** is the former LEARN: record gap positions on the song timeline. **REPLAY MAP** is the former LOCK: replay that recorded map on subsequent passes. Neither is required for ordinary automatic gap processing. The audio engine, APVTS IDs (`mix`, `tension`, `space`, `learnArmed`, `lockToMap`), automation and preset serialization are unchanged. New readouts display whole percentages or whole time units while preserving their underlying parameter precision.
+
+Automated visual regression covers both Simple and Advanced at the minimum, compact, standard and large UI sizes, plus overlays and preset-menu state. The renderer uses the actual JUCE editor; it does not ship in the plugin.
+
 ## Features in this source release
 
 - Mono/stereo audio effect with optional mono/stereo sidechain bus and MIDI input.
@@ -11,7 +25,7 @@ An original JUCE 8 / CMake **VST3 + Standalone** audio effect based on the build
 - Seven independently enabled and leveled effects: Tape Stop, Filtered Air, Reverse Swell, Noise Fade, Impact, Riser and Stutter Tail. Default 7×4 matrix follows the supplied spec. The EXTRA LONG impact is placed on the last beat.
 - Macro parameters: MIX, TENSION, SPACE and DUCK AFTER (brief transient lift). Gap audio receives a 5 ms edge ramp, a bounded 2-second reverb release and an output soft-peak protector. MIX=0 preserves the dry audio without an extra saturation stage.
 - LEARN records gap start/end PPQ positions while playing. LOCK replays saved PPQ gaps; the map is saved in plugin state. Click a mapped region in the 8-second timeline, drag or press Left/Right to nudge, Delete/Backspace to remove. Header **MENU → Reset learned gaps** clears all. When a region is selected, PREVIEW can audition stored history if the host continues calling `processBlock` while stopped.
-- Scale-consistent, fixed-ratio 1200×760 base interface with dark negative-space original wordmark, waveform/gap overlays, gap detector monitor, instrument rack, settings popups, editable class boundaries and gap/min count. Default opening size is 1080×684.
+- Scale-consistent, fixed-ratio 1200×760 base interface with dark negative-space original wordmark, waveform/gap overlays, gap detector monitor, instrument rack, settings popups, editable class boundaries and gap/min count. Default opening size is 912×578 (24% smaller than the 1200×760 design canvas).
 - Host-automatable APVTS parameters and `.skellsilence` preset save/load, including the learned gap map and editor size.
 - No allocations are made by the custom DSP buffers during `processBlock`. Custom DSP state is preallocated in `prepareToPlay`.
 
@@ -45,11 +59,11 @@ Actual output directory may vary with generator and JUCE configuration. Copy the
 
 ## Workflow
 
-1. Place it on a track/bus, allow 250 ms lookahead, and play audio containing clear phrase gaps.
-2. Set THRESHOLD, MIN GAP, MAX GAP and HOLD. Use the waveform and detector meter to tune detection.
-3. Configure the instruments, edit the 7×4 rule cells, and adjust LENGTH RULES → EDIT RANGES to set each class boundary in beats.
-4. Arm **LEARN** while the timeline plays. Stop learning and enable **LOCK** for PPQ-aligned repeatable playback; the map is serialized with the session.
-5. Use **TENSION**, **SPACE**, **DUCK AFTER** and **MIX** to blend the results. Export using the DAW's normal bounce workflow with latency compensation enabled.
+1. Place it on a track/bus and play audio. Simple View shows the gaps automatically; no capture or replay setup is required.
+2. Adjust MIX, ENERGY and SPACE in Simple View; open ADVANCED only if you want to change gap detection.
+3. In ADVANCED, configure individual instruments and edit the 7×4 length-rule matrix when desired.
+4. Optional: enable **CAPTURE GAPS** while the timeline plays, then disable capture and enable **REPLAY MAP** for PPQ-aligned repeatable playback.
+5. Export using the DAW's normal bounce workflow with latency compensation enabled.
 
 ## Performance / known limitations
 

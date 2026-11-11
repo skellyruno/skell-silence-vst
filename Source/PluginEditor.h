@@ -8,6 +8,7 @@
 #include "ui/InstrumentRack.h"
 #include "ui/LengthRulesMatrix.h"
 #include "ui/TensionKnob.h"
+#include "ui/SimpleView.h"
 
 class SkellSilenceAudioProcessorEditor final : public juce::AudioProcessorEditor {
 public:
@@ -15,6 +16,8 @@ public:
  ~SkellSilenceAudioProcessorEditor() override;
  void paint(juce::Graphics&) override;
  void resized() override;
+ void setAdvancedMode(bool advanced);
+ bool isAdvancedMode() const noexcept {return advancedMode;}
 private:
  SkellSilenceAudioProcessor& processor;
  skell::ui::SilenceLookAndFeel look;
@@ -24,6 +27,8 @@ private:
  skell::ui::InstrumentRack rack;
  skell::ui::LengthRulesMatrix matrix;
  skell::ui::TensionKnob macros;
+ skell::ui::SimpleView quick;
+ bool advancedMode=false;
  juce::ComponentBoundsConstrainer constrainer;
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SkellSilenceAudioProcessorEditor)
 };

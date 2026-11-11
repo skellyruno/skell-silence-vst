@@ -1,20 +1,33 @@
 #include "PluginEditor.h"
 #include "ui/LayoutGeometry.h"
 SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceAudioProcessor& p)
-  : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p) {
+  : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p),quick(p) {
   setLookAndFeel(&look);
   header.setComponentID("header"); timeline.setComponentID("timeline");
   detection.setComponentID("detection"); rack.setComponentID("instruments");
   matrix.setComponentID("rules"); macros.setComponentID("dynamics");
-  addAndMakeVisible(header);addAndMakeVisible(timeline);addAndMakeVisible(detection);
-  addAndMakeVisible(rack);addAndMakeVisible(matrix);addAndMakeVisible(macros);
+  quick.setComponentID("simple-controls");
+  for (auto* c : {static_cast<juce::Component*>(&header),&timeline,&detection,&rack,&matrix,&macros,&quick})
+    addAndMakeVisible(c);
+  header.onModeChange=[this](bool advanced){setAdvancedMode(advanced);};
+  quick.setEditCallback([this]{setAdvancedMode(true);});
   constrainer.setSizeLimits(760,481,1800,1140);
   constrainer.setFixedAspectRatio(1200.0/760.0);
   setConstrainer(&constrainer);setResizable(true,true);
   header.onScaleChange=[this](float s){setSize(juce::roundToInt(1200*s),juce::roundToInt(760*s));};
+  setAdvancedMode(false);
   setSize(juce::jlimit(760,1800,p.windowW.load()),juce::jlimit(481,1140,p.windowH.load()));
 }
 SkellSilenceAudioProcessorEditor::~SkellSilenceAudioProcessorEditor(){setLookAndFeel(nullptr);}
+void SkellSilenceAudioProcessorEditor::setAdvancedMode(bool advanced){
+  advancedMode=advanced;
+  header.setAdvancedMode(advanced);
+  detection.setVisible(advanced);rack.setVisible(advanced);
+  matrix.setVisible(advanced);macros.setVisible(advanced);
+  quick.setVisible(!advanced);
+  resized();
+  repaint();
+}
 void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g){
   const auto r=getLocalBounds().toFloat();
   g.setGradientFill(juce::ColourGradient(skell::ui::Theme::ink.brighter(0.14f),
@@ -23,23 +36,26 @@ void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g){
   const float scale=float(getWidth())/1200.0f;
   g.setColour(skell::ui::Theme::green.withAlpha(0.34f));
   g.fillRect(0.0f,float(getHeight())-2.0f,105.0f*scale,2.0f);
-  g.setColour(skell::ui::Theme::violet.withAlpha(0.28f));
-  g.fillRect(105.0f*scale,float(getHeight())-2.0f,66.0f*scale,2.0f);
 }
 void SkellSilenceAudioProcessorEditor::resized(){
-  // IMPORTANT: transform child content AND its location once, in the same
-  // 1200 x 760 coordinate system. The old code pre-scaled positions and then
-  // transformed them again, causing panel overlap at reduced window sizes.
   const float scale=float(getWidth())/1200.0f;
   auto place=[scale](juce::Component& c,int x,int y,int w,int h){
     c.setTransform(juce::AffineTransform());
     c.setBounds(x,y,w,h);
     c.setTransform(juce::AffineTransform::scale(scale));
   };
-  std::array<juce::Component*,6> components{{&header,&timeline,&detection,&rack,&matrix,&macros}};
-  for(size_t i=0;i<components.size();++i){
-    const auto r=skell::ui::Layout::panels[i];
-    place(*components[i],r.x,r.y,r.w,r.h);
+  place(header,0,0,1200,80);
+  if(advancedMode){
+    place(timeline,24,86,805,300);
+    place(detection,24,402,805,145);
+    place(rack,846,86,330,461);
+    place(matrix,24,563,805,190);
+    place(macros,846,563,330,190);
+  } else {
+    const auto timelineBounds=skell::ui::Layout::simplePanels[1];
+    const auto quickBounds=skell::ui::Layout::simplePanels[2];
+    place(timeline,timelineBounds.x,timelineBounds.y,timelineBounds.w,timelineBounds.h);
+    place(quick,quickBounds.x,quickBounds.y,quickBounds.w,quickBounds.h);
   }
   processor.windowW.store(getWidth());processor.windowH.store(getHeight());
 }

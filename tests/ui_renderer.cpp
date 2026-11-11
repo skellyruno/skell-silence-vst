@@ -24,7 +24,8 @@ constexpr std::array<Size, 4> sizes {{
 // Modes are real controls/states of the same editor, never a mock GUI.
 enum Mode { idle, playing, dryMix, grid, sidechain, midi, selected,
             editRanges, instrument0, instrument1, instrument2, instrument3,
-            instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet };
+            instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet,
+            simpleIdle, simplePlaying, simpleDry, simplePresets };
 
 void setParameter(SkellSilenceAudioProcessor& p, const juce::String& id, float value) {
   if (auto* parameter = p.parameters.getParameter(id))
@@ -220,11 +221,11 @@ void addScene(Options& options, const juce::String& name,
 bool makeContactSheet(const juce::File& folder) {
   struct Tile { const char* file; const char* label; };
   constexpr std::array<Tile, 9> tiles {{
-    {"compact-idle", "DEFAULT / COMPACT"},
-    {"compact-playing", "ACTIVE DETECTOR"},
-    {"compact-selected", "GAP SELECTED"},
-    {"compact-dry-mix", "DRY / DISABLED"},
-    {"compact-grid", "GRID TRIGGER"},
+    {"compact-simple", "SIMPLE / DEFAULT"},
+    {"compact-simple-playing", "SIMPLE / LISTENING"},
+    {"compact-idle", "ADVANCED / CONTROLS"},
+    {"compact-simple-dry", "SIMPLE / DRY MIX"},
+    {"compact-simple-presets", "PRESET MENU"},
     {"compact-midi", "MIDI TRIGGER"},
     {"compact-edit-ranges", "EDIT LENGTHS"},
     {"compact-instrument-0", "TAPE STOP SETTINGS"},
@@ -291,7 +292,7 @@ private:
       // headless component host the native focus timer dismisses it shortly
       // after opening; capture it in the same message-loop turn instead of
       // creating an X11 desktop peer (which fails on some Xvfb servers).
-      if (scene.mode == static_cast<int>(workspaceMenu)) timerCallback();
+      if (scene.mode == static_cast<int>(workspaceMenu) || scene.mode == static_cast<int>(simplePresets)) timerCallback();
       return;
     }
     Options one;
@@ -411,6 +412,14 @@ int main(int argc, char** argv) {
       addScene(options, juce::String(s.name) + "-rule-override", s.width, s.height, ruleOverride);
       addScene(options, juce::String(s.name) + "-all-disabled", s.width, s.height, disabledWet);
     }
+    // The first-run screen is a separate genuine editor mode. Capture it at
+    // every supported size, plus its status / dry / preset states.
+    for (const auto& s : sizes) {
+      addScene(options, juce::String(s.name)+"-simple",s.width,s.height,simpleIdle);
+      addScene(options, juce::String(s.name)+"-simple-playing",s.width,s.height,simplePlaying);
+      addScene(options, juce::String(s.name)+"-simple-dry",s.width,s.height,simpleDry);
+      addScene(options, juce::String(s.name)+"-simple-presets",s.width,s.height,simplePresets);
+    }
     // Real control overlays at both the minimum and shipping window sizes.
     for (const auto& s : { sizes[0], sizes[1] }) {
       addScene(options, juce::String(s.name) + "-edit-ranges", s.width, s.height, editRanges);
@@ -420,6 +429,10 @@ int main(int argc, char** argv) {
       addScene(options, juce::String(s.name) + "-menu", s.width, s.height, workspaceMenu);
     }
     options.mustDiffer = {
+      {"compact-idle", "compact-simple"},
+      {"compact-simple", "compact-simple-playing"},
+      {"compact-simple", "compact-simple-dry"},
+      {"compact-simple", "compact-simple-presets"},
       {"compact-idle", "compact-playing"},
       {"compact-idle", "compact-dry-mix"},
       {"compact-idle", "compact-grid"},
@@ -436,6 +449,10 @@ int main(int argc, char** argv) {
       editor.setSize(scene.width, scene.height);
       const auto mode = static_cast<Mode>(scene.mode);
       currentScene = mode;
+      // Legacy instrument/control scenes intentionally use Advanced; first-run
+      // scenes verify that the simplified view is genuinely the default UI.
+      const bool simplified = mode >= simpleIdle;
+      editor.setAdvancedMode(!simplified);
       for (int i = 0; i < 7; ++i)
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
       setParameter(p, "mix", 0.65f);
@@ -449,11 +466,11 @@ int main(int argc, char** argv) {
         for(int i=0;i<7;++i)
           setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 0.f);
       setParameter(p, "triggerSource", 0.f);
-      p.isPlaying.store(mode == playing);
-      p.detectorState.store(mode == playing ? 2 : 0);
-      p.activeLengthClass.store(mode == playing ? 2 : -1);
-      p.activeMask.store(mode == playing ? 0b0111011 : 0);
-      if (mode == dryMix) {
+      p.isPlaying.store(mode == playing || mode == simplePlaying);
+      p.detectorState.store((mode == playing || mode == simplePlaying) ? 2 : 0);
+      p.activeLengthClass.store((mode == playing || mode == simplePlaying) ? 2 : -1);
+      p.activeMask.store((mode == playing || mode == simplePlaying) ? 0b0111011 : 0);
+      if (mode == dryMix || mode == simpleDry) {
         setParameter(p, "mix", 0.f);
         for (int i = 0; i < 7; ++i)
           setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 0.f);
@@ -464,9 +481,9 @@ int main(int argc, char** argv) {
       if (auto* timeline = dynamic_cast<skell::ui::GapTimeline*>(findById(editor, "timeline")))
         timeline->selectRecentGap(mode == selected ? 0 : -1);
       if (mode == editRanges || (mode >= instrument0 && mode <= instrument6)
-          || mode == workspaceMenu) {
+          || mode == workspaceMenu || mode == simplePresets) {
         const juce::String id = mode == editRanges ? juce::String("edit-ranges")
-            : mode == workspaceMenu ? juce::String("menu")
+            : (mode == workspaceMenu || mode == simplePresets) ? juce::String("menu")
             : juce::String("instrument-settings-") + juce::String(int(mode - instrument0));
         if (auto* button = dynamic_cast<juce::Button*>(findById(editor, id)))
           if (button->onClick) button->onClick();
@@ -495,14 +512,16 @@ int main(int argc, char** argv) {
                      + juce::String(expected));
       } else issues.add("Missing trigger dropdown");
       if (auto* mix = dynamic_cast<juce::Slider*>(findById(editor, "mix"))) {
-        const double expected = currentScene == dryMix ? 0.0 : 0.65;
+        const double expected = (currentScene == dryMix || currentScene == simpleDry) ? 0.0 : 0.65;
         if (std::abs(mix->getValue() - expected) > 0.002)
           issues.add("MIX knob/parameter attachment did not update");
       } else issues.add("Missing MIX control");
+      if (editor.isAdvancedMode() != (currentScene < simpleIdle))
+        issues.add("Simple/Advanced editor mode did not update");
       for (int i = 0; i < 7; ++i) {
         const auto id = "instrument-enable-" + juce::String(i);
         if (auto* button = dynamic_cast<juce::Button*>(findById(editor, id))) {
-          const bool expected = currentScene != dryMix && currentScene != disabledWet;
+          const bool expected = currentScene != dryMix && currentScene != simpleDry && currentScene != disabledWet;
           if (button->getToggleState() != expected)
             issues.add(id + " is not in the expected automation state");
         } else issues.add("Missing instrument control " + id);
@@ -514,6 +533,13 @@ int main(int argc, char** argv) {
       }
       return issues;
     };
+    // Ensure the actual first-run layout is limited to three controls and
+    // never exposes the advanced rack or detector by default.
+    editor.setAdvancedMode(false);
+    if (editor.isAdvancedMode() || findById(editor, "simple-controls")==nullptr) {
+      std::fprintf(stderr, "Simplified first-run UI did not initialize\n");
+      ++failures;
+    }
     // The plugin's JUCE build disables nested/modal message dispatch loops.
     // Use the one genuine JUCE runDispatchLoop, scheduling each cleanup,
     // configuration and capture on separate message-loop turns. This is the

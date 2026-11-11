@@ -1,5 +1,6 @@
 #pragma once
 #include "Theme.h"
+#include "WholePercentSlider.h"
 #include "../PluginProcessor.h"
 #include <memory>
 #include <array>
@@ -12,6 +13,7 @@ public:
    for(int i=0;i<3;++i){
      labels[size_t(i)].setText(captions[i],juce::dontSendNotification);
      labels[size_t(i)].setColour(juce::Label::textColourId,Theme::text);addAndMakeVisible(labels[size_t(i)]);
+     sliders[size_t(i)].setReadout(8.0, "/8 beats");
      sliders[size_t(i)].setSliderStyle(juce::Slider::LinearHorizontal);
      sliders[size_t(i)].setTextBoxStyle(juce::Slider::TextBoxRight,false,65,24);
      attachments[size_t(i)]=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.parameters,ids[i],sliders[size_t(i)]);
@@ -25,7 +27,7 @@ public:
  }
 private:
  std::array<juce::Label,3> labels;
- std::array<juce::Slider,3> sliders;
+ std::array<WholeNumberSlider,3> sliders;
  std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>,3> attachments;
 };
 class LengthRulesMatrix final : public juce::Component,private juce::Timer {

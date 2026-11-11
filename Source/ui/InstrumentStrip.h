@@ -1,5 +1,6 @@
 #pragma once
 #include "Theme.h"
+#include "WholePercentSlider.h"
 #include "../PluginProcessor.h"
 #include <memory>
 #include <cstdint>
@@ -39,7 +40,14 @@ public:
         addAndMakeVisible(*combo);
         comboAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(p.parameters,id,*combo));
       } else {
-        auto* slider=sliders.emplace_back(std::make_unique<juce::Slider>()).get();
+        auto* slider=sliders.emplace_back(std::make_unique<WholeNumberSlider>()).get();
+        // Show approachable whole-number values without changing APVTS ranges.
+        const juce::String key(id);
+        if(key=="stopTime" || key=="noiseFadeIn" || key=="noiseFadeOut")
+          slider->setReadout(1000.0," ms");
+        else if(key=="swellLength") slider->setReadout(1.0," ms");
+        else if(key=="stutterCount") slider->setReadout(1.0);
+        else slider->setReadout(100.0,"%");
         slider->setSliderStyle(juce::Slider::LinearHorizontal);
         slider->setTextBoxStyle(juce::Slider::TextBoxRight,false,60,24);
         if(auto* parameter=p.parameters.getParameter(id))
@@ -107,7 +115,7 @@ private:
   juce::Colour accent;
   std::vector<juce::String> hints;
   std::vector<std::unique_ptr<juce::Label>> labels;
-  std::vector<std::unique_ptr<juce::Slider>> sliders;
+  std::vector<std::unique_ptr<WholeNumberSlider>> sliders;
   std::vector<std::unique_ptr<juce::ComboBox>> combos;
   std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
   std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>> comboAttachments;

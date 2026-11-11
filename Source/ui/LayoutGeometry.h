@@ -11,7 +11,7 @@ struct Rect {int x,y,w,h;
 };
 inline constexpr int designWidth=1200,designHeight=760;
 inline constexpr std::array<Rect,6> panels{{
-  {0,0,1200,70},     // header
+  {0,0,1200,80},     // header
   {24,86,805,300},  // timeline
   {24,402,805,145}, // detector
   {846,86,330,461}, // instrument rack
@@ -30,5 +30,19 @@ constexpr bool valid() noexcept {
   }
   return true;
 }
-static_assert(valid(),"Skell Silence panels must fit without overlapping");
+inline constexpr std::array<Rect,3> simplePanels{{
+  {0,0,1200,80},
+  {24,100,1152,393},
+  {24,515,1152,222}
+}};
+constexpr bool validSimple() noexcept {
+  for(size_t i=0;i<simplePanels.size();++i){
+    const auto r=simplePanels[i];
+    if(r.x<0||r.y<0||r.right()>designWidth||r.bottom()>designHeight) return false;
+    for(size_t j=0;j<i;++j)if(intersects(r,simplePanels[j]))return false;
+  }
+  return true;
+}
+static_assert(valid(),"Skell Silence advanced panels must fit without overlapping");
+static_assert(validSimple(),"Skell Silence simple panels must fit without overlapping");
 }
