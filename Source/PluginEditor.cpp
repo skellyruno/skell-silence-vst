@@ -7,8 +7,8 @@ SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceA
   detection.setComponentID("detection"); rack.setComponentID("instruments");
   matrix.setComponentID("rules"); macros.setComponentID("dynamics");
   quick.setComponentID("simple-controls");
-  for (auto* c : {static_cast<juce::Component*>(&header),&timeline,&detection,&rack,&matrix,&macros,&quick})
-    addAndMakeVisible(c);
+  std::array<juce::Component*,7> children{{&header,&timeline,&detection,&rack,&matrix,&macros,&quick}};
+  for (auto* c : children) addAndMakeVisible(c);
   header.onModeChange=[this](bool advanced){setAdvancedMode(advanced);};
   quick.setEditCallback([this]{setAdvancedMode(true);});
   constrainer.setSizeLimits(760,481,1800,1140);
@@ -38,6 +38,7 @@ void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g){
   g.fillRect(0.0f,float(getHeight())-2.0f,105.0f*scale,2.0f);
 }
 void SkellSilenceAudioProcessorEditor::resized(){
+  if(getWidth() <= 0) return;
   const float scale=float(getWidth())/1200.0f;
   auto place=[scale](juce::Component& c,int x,int y,int w,int h){
     c.setTransform(juce::AffineTransform());
