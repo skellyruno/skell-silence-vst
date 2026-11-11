@@ -32,6 +32,7 @@ public:
   }
   std::function<void(float)> onScaleChange;
   std::function<void(bool)> onModeChange;
+  std::function<void()> onShowTutorial;
   void setAdvancedMode(bool advanced) {
     advancedMode=advanced;
     learn.setVisible(advanced);
@@ -108,6 +109,7 @@ private:
     menu.addItem(2,"Compact (76%)");menu.addItem(3,"90%");
     menu.addItem(4,"100%");menu.addItem(5,"125%");
     menu.addSeparator();
+    menu.addItem(30,"Help / Show Tutorial");
     menu.addItem(6,"About Skell Silence");
     juce::Component::SafePointer<HeaderBar> safe(this);
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presets)
@@ -115,6 +117,7 @@ private:
       [safe](int result) {
         if(safe==nullptr)return;
         if(result==1)safe->processor.requestClearMap();
+        if(result==30 && safe->onShowTutorial)safe->onShowTutorial();
         if(result>=2 && result<=5 && safe->onScaleChange){
           constexpr float scales[]{0.76f,0.90f,1.0f,1.25f};
           safe->onScaleChange(scales[result-2]);
