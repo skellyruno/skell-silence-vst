@@ -9,6 +9,7 @@
 #include "ui/LengthRulesMatrix.h"
 #include "ui/TensionKnob.h"
 #include "ui/SimpleView.h"
+#include <SkellCore/GuidedTour.h>
 
 class SkellSilenceAudioProcessorEditor final : public juce::AudioProcessorEditor {
 public:
@@ -18,6 +19,11 @@ public:
  void resized() override;
  void setAdvancedMode(bool advanced);
  bool isAdvancedMode() const noexcept {return advancedMode;}
+ void dismissGuidedTourForScreenshot(){ guidedTour.dismiss(); }
+ bool replayGuidedTourForScreenshot(){
+    showGuidedTour(false);
+    return guidedTour.isShowing();
+ }
 private:
  SkellSilenceAudioProcessor& processor;
  skell::ui::SilenceLookAndFeel look;
@@ -29,6 +35,8 @@ private:
  skell::ui::TensionKnob macros;
  skell::ui::SimpleView quick;
  bool advancedMode=false;
+ skellcore::ui::GuidedTourController guidedTour{*this,"skell-silence-vst",1};
+ void showGuidedTour(bool firstRun);
  juce::ComponentBoundsConstrainer constrainer;
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SkellSilenceAudioProcessorEditor)
 };
