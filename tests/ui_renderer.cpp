@@ -399,6 +399,30 @@ int main(int argc, char** argv) {
   int failures = 0;
   {
     SkellSilenceAudioProcessorEditor editor(p);
+    // First-launch tour must be legible without changing the audio engine
+    // and must fit all three tested window sizes of the CURRENT Neon editor.
+    for (const auto& sz : std::array<Size,3>{{ sizes[0],sizes[2],Size{"maximum",1800,1140} }}) {
+      editor.dismissGuidedTourForScreenshot();
+      editor.setAdvancedMode(false);
+      editor.setSize(sz.width,sz.height);
+      const auto plain=skellcore::ui::headless::capture(editor,sz.width,sz.height);
+      if(!editor.replayGuidedTourForScreenshot()) {
+        std::fprintf(stderr,"GuidedTour failed to open: %s\\n",sz.name);
+        ++failures;
+      } else {
+        const auto pictured=skellcore::ui::headless::capture(editor,sz.width,sz.height);
+        if(!pictured.image.isValid() || pictured.fingerprint==plain.fingerprint) {
+          std::fprintf(stderr,"GuidedTour missing from screenshot: %s\\n",sz.name);
+          ++failures;
+        } else if(output.createDirectory().failed() ||
+                  !skellcore::ui::headless::writePng(
+                      pictured.image,output.getChildFile(juce::String(sz.name)+"-guided-tour.png"))) {
+          std::fprintf(stderr,"Could not write GuidedTour PNG: %s\\n",sz.name);
+          ++failures;
+        }
+      }
+    }
+    editor.dismissGuidedTourForScreenshot();
     Options options;
     options.project = "Skell Silence actual JUCE PluginEditor (SkellCore pinned)";
     for (const auto& s : sizes) {
