@@ -241,3 +241,13 @@ The brand glyph and rolling signal display are rendered directly by JUCE vectors
 
 - The REVERSE SWELL and STUTTER TAIL reverb sends now follow their instrument
   level; 0% genuinely means silent (validated at 90% SPACE in regression tests).
+
+
+## SkellCore Neon UI (v2.0)
+
+The black/neon-green interface uses the official SkellCore `SkullSkin::Neon`
+palette and `drawSkullKeyMark`, pinned to commit
+`d02d50849123f28bbc2e32cded0e78aced15afb3` in CMake.
+Only **Windows VST3** is released. The Linux real-editor renderer is a
+separate development-only regression executable, never shipped with the plugin.
+Existing parameter IDs, presets and DSP processing remain unchanged.

@@ -30,8 +30,8 @@ void SkellSilenceAudioProcessorEditor::setAdvancedMode(bool advanced){
 }
 void SkellSilenceAudioProcessorEditor::paint(juce::Graphics& g){
   const auto r=getLocalBounds().toFloat();
-  g.setGradientFill(juce::ColourGradient(skell::ui::Theme::ink.brighter(0.14f),
-    r.getCentreX(),0,skell::ui::Theme::ink.darker(0.24f),r.getCentreX(),r.getBottom(),false));
+  g.setGradientFill(juce::ColourGradient(skell::ui::Theme::panel.darker(0.30f),
+    r.getCentreX(),0,skell::ui::Theme::ink,r.getCentreX(),r.getBottom(),false));
   g.fillAll();
   const float scale=float(getWidth())/1200.0f;
   g.setColour(skell::ui::Theme::green.withAlpha(0.34f));

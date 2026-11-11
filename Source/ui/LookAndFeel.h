@@ -27,7 +27,7 @@ public:
   void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour&,bool hover,bool down) override {
     auto r=b.getLocalBounds().toFloat().reduced(0.7f);
     const bool active=b.getToggleState();
-    g.setGradientFill(juce::ColourGradient(active?Theme::green.withAlpha(0.24f):
+    g.setGradientFill(juce::ColourGradient(active?Theme::green.withAlpha(0.13f):
       down?Theme::raised.brighter(0.38f):hover?Theme::raised.brighter(0.27f):Theme::raised.brighter(0.11f),
       r.getX(),r.getY(),active?Theme::green.withAlpha(0.08f):Theme::inset,
       r.getRight(),r.getBottom(),false));
@@ -37,7 +37,7 @@ public:
     g.setColour(active?Theme::green.withAlpha(0.62f):(hover?Theme::muted.withAlpha(0.65f):Theme::border));
     g.drawRoundedRectangle(r,7.0f,1.0f);
     if (b.hasKeyboardFocus(true)) {
-      g.setColour(Theme::cyan.withAlpha(0.85f));
+      g.setColour(Theme::green.withAlpha(0.85f));
       g.drawRoundedRectangle(r.reduced(1.5f),5.5f,1.2f);
     }
   }
@@ -45,8 +45,7 @@ public:
     const juce::Rectangle<float> r{float(x),float(y),float(width),float(height)};
     const float radius=std::max(8.0f,std::min(r.getWidth(),r.getHeight())*0.34f);
     const auto center=r.getCentre();
-    const auto accent=slider.getComponentID()=="tension"?Theme::amber:
-                        slider.getComponentID()=="space"?Theme::violet:Theme::green;
+    const auto accent=Theme::green;
     // Quiet hardware bezel: graded metal centre, precise ticks and a readable
     // illuminated sweep without high-cost drop shadows or bitmap assets.
     g.setColour(Theme::inset);g.fillEllipse(center.x-radius-5,center.y-radius-5,2*radius+10,2*radius+10);
@@ -55,13 +54,13 @@ public:
     g.setGradientFill(juce::ColourGradient(Theme::raised.brighter(0.13f),center.x,center.y-radius,
                                            Theme::inset,center.x,center.y+radius,false));
     g.fillEllipse(center.x-radius,center.y-radius,2*radius,2*radius);
-    g.setColour(Theme::raised.brighter(0.45f));
+    g.setColour(Theme::raised.brighter(0.26f));
     g.drawEllipse(center.x-radius+2,center.y-radius+2,2*radius-4,2*radius-4,1.0f);
     const float a=start+std::clamp(pos,0.0f,1.0f)*(end-start);
     for(int i=0;i<=10;++i){
       const float angle=start+float(i)/10.0f*(end-start);
       const float inner=radius+8.0f,outer=inner+(i%5==0?4.0f:2.0f);
-      g.setColour(Theme::muted.withAlpha(i%5==0?0.55f:0.28f));
+      g.setColour(Theme::muted.withAlpha(i%5==0?0.40f:0.20f));
       g.drawLine(center.x+std::sin(angle)*inner,center.y-std::cos(angle)*inner,
                  center.x+std::sin(angle)*outer,center.y-std::cos(angle)*outer,1.0f);
     }
@@ -70,8 +69,8 @@ public:
     arc.addCentredArc(center.x,center.y,radius+5,radius+5,0,start,a,true);
     g.setColour(Theme::border.brighter(0.15f));
     g.strokePath(track,juce::PathStrokeType(3.0f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-    g.setColour(accent.withAlpha(0.18f));
-    g.strokePath(arc,juce::PathStrokeType(5.4f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    g.setColour(accent.withAlpha(0.10f));
+    g.strokePath(arc,juce::PathStrokeType(4.0f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
     g.setColour(accent);
     g.strokePath(arc,juce::PathStrokeType(2.8f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
     const float tip=radius*0.72f;
@@ -83,7 +82,7 @@ public:
     if(style!=juce::Slider::LinearHorizontal){juce::LookAndFeel_V4::drawLinearSlider(g,x,y,width,height,sliderPos,sliderPos,sliderPos,style,s);return;}
     const float cy=float(y+height/2);
     g.setColour(Theme::border);g.fillRoundedRectangle(float(x+7),cy-2,float(width-14),4,2);
-    const auto c=s.getComponentID()=="mix"?Theme::cyan:s.findColour(juce::Slider::trackColourId);
+    const auto c=Theme::green;
     g.setColour(c.withAlpha(0.18f));
     g.fillRoundedRectangle(float(x+7),cy-3,std::max(0.0f,sliderPos-float(x+7)),6,3);
     g.setColour(c);
@@ -112,7 +111,7 @@ public:
         g.fillRoundedRectangle(tile.getCentreX()-3,tile.getCentreY()-0.8f,6,1.6f,0.8f);
       }
       if(b.hasKeyboardFocus(true)){
-        g.setColour(Theme::cyan.withAlpha(0.8f));
+        g.setColour(Theme::green.withAlpha(0.8f));
         g.drawRoundedRectangle(tile.reduced(1.0f),3.0f,1.0f);
       }
       return;
