@@ -10,6 +10,7 @@ SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceA
   std::array<juce::Component*,7> children{{&header,&timeline,&detection,&rack,&matrix,&macros,&quick}};
   for (auto* c : children) addAndMakeVisible(c);
   header.onModeChange=[this](bool advanced){setAdvancedMode(advanced);};
+  header.onShowTutorial=[this]{showGuidedTour(false);};
   quick.setEditCallback([this]{setAdvancedMode(true);});
   constrainer.setSizeLimits(760,481,1800,1140);
   constrainer.setFixedAspectRatio(1200.0/760.0);
@@ -17,8 +18,34 @@ SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceA
   header.onScaleChange=[this](float s){setSize(juce::roundToInt(1200*s),juce::roundToInt(760*s));};
   setAdvancedMode(false);
   setSize(juce::jlimit(760,1800,p.windowW.load()),juce::jlimit(481,1140,p.windowH.load()));
+  showGuidedTour(true);
 }
 SkellSilenceAudioProcessorEditor::~SkellSilenceAudioProcessorEditor(){setLookAndFeel(nullptr);}
+void SkellSilenceAudioProcessorEditor::showGuidedTour(bool firstRun){
+  std::vector<skellcore::ui::GuidedTourStep> steps;
+  steps.emplace_back(&timeline,"HEAR THE GAPS",
+      "Play your song. The timeline shows the quiet gaps the detector finds.",
+      [this]{setAdvancedMode(false);});
+  steps.emplace_back(&quick,"START SIMPLE",
+      "Shape the quiet moments using the few main controls.");
+  steps.emplace_back(&header,"EXPLORE ADVANCED",
+      "Use ADVANCED to reveal detailed detection, effects and timing settings.");
+  steps.emplace_back(&detection,"GAP DETECTION",
+      "Choose when a gap is detected and refine its response.",
+      [this]{setAdvancedMode(true);});
+  steps.emplace_back(&rack,"THE EFFECT RACK",
+      "Choose which movement effects act on detected quiet moments.");
+  steps.emplace_back(&matrix,"LENGTH RULES",
+      "Different gap lengths can use different treatment rules.");
+  steps.emplace_back(&macros,"ENERGY AND MOVEMENT",
+      "Adjust global movement and intensity, then use SIMPLE VIEW to return.");
+  guidedTour.setPalette({skell::ui::Theme::green,skell::ui::Theme::ink,
+      skell::ui::Theme::text,skell::ui::Theme::muted,juce::Colour(0xd9000000)});
+  guidedTour.setSteps(std::move(steps));
+  if(firstRun)guidedTour.startIfFirstRun();
+  else guidedTour.replay();
+}
+
 void SkellSilenceAudioProcessorEditor::setAdvancedMode(bool advanced){
   advancedMode=advanced;
   header.setAdvancedMode(advanced);
