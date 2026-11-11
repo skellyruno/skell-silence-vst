@@ -399,6 +399,25 @@ int main(int argc, char** argv) {
   int failures = 0;
   {
     SkellSilenceAudioProcessorEditor editor(p);
+    editor.dismissGuidedTourForScreenshot();
+    editor.setAdvancedMode(false);
+    const auto noTour=skellcore::ui::headless::capture(editor,760,481);
+    if(!editor.replayGuidedTourForScreenshot()) {
+      std::fprintf(stderr,"Shared first-run tutorial failed to open in real editor\\n");
+      ++failures;
+    } else {
+      const auto withTour=skellcore::ui::headless::capture(editor,760,481);
+      if(!withTour.image.isValid() || withTour.fingerprint==noTour.fingerprint) {
+        std::fprintf(stderr,"GuidedTour screenshot missing or identical to normal editor\\n");
+        ++failures;
+      } else if(output.createDirectory().failed() ||
+                !skellcore::ui::headless::writePng(
+                   withTour.image,output.getChildFile("minimum-guided-tour.png"))) {
+        std::fprintf(stderr,"Could not save real tutorial screenshot\\n");
+        ++failures;
+      }
+    }
+    editor.dismissGuidedTourForScreenshot();
     Options options;
     options.project = "Skell Silence actual JUCE PluginEditor (SkellCore pinned)";
     for (const auto& s : sizes) {
