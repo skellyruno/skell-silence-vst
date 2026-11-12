@@ -1,5 +1,6 @@
 #pragma once
 #include "Theme.h"
+#include <SkellCore/SkellHardwareUI.h>
 #include "../PluginProcessor.h"
 #include <functional>
 #include <memory>
@@ -51,7 +52,7 @@ public:
     g.setColour(Theme::text);g.drawText("SKELL",94,11,100,36,juce::Justification::centredLeft);
     g.setColour(Theme::green);g.drawText("SILENCE",187,11,153,36,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(13));
-    g.drawText("GAP DESIGNER  /  SKELLCORE NEON",95,47,360,20,juce::Justification::centredLeft);
+    g.drawText("GAP DESIGNER  /  SKELLCORE",95,47,360,20,juce::Justification::centredLeft);
     const bool playing=processor.isPlaying.load(std::memory_order_relaxed);
     const bool locked=processor.parameters.getRawParameterValue("lockToMap")->load()>0.5f;
     const bool learning=processor.parameters.getRawParameterValue("learnArmed")->load()>0.5f;
@@ -76,9 +77,8 @@ private:
     g.setColour(Theme::raised.darker(0.18f));g.fillRoundedRectangle(tile,11.0f);
     g.setColour(Theme::green.withAlpha(0.67f));
     g.drawRoundedRectangle(tile.reduced(0.65f),10.5f,1.35f);
-    juce::Graphics::ScopedSaveState save(g);
-    g.addTransform(juce::AffineTransform::scale(0.61f).translated(27.4f,31.0f));
-    skellcore::ui::drawSkullKeyMark(g,0,0,Theme::green,Theme::inset);
+    skellcore::ui::drawShushingSkullMark(g,26.0f,16.0f,47.0f,
+                                         Theme::text,Theme::inset,Theme::green);
   }
   void timerCallback() override {repaint(465,14,485,54);}
   void showWorkspaceMenu() {
