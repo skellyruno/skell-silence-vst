@@ -50,19 +50,23 @@ public:
     g.setColour(Theme::muted);g.setFont(Theme::font(14.5f));
     g.drawFittedText("Play your track to find gaps. Raise MIX to hear the effects.",42,88,454,25,
                      juce::Justification::centredLeft,1);
-    constexpr std::array<const char*,3> steps{{"01  DETECT", "02  SHAPE", "03  BLEND"}};
+    // The three-stage legend is information, not three fake clickable buttons.
+    g.setColour(Theme::border.withAlpha(0.89f));
+    g.drawHorizontalLine(165,45.0f,489.0f);
+    constexpr std::array<const char*,3> steps{{"01   DETECT", "02   SHAPE", "03   BLEND"}};
     for(int i=0;i<3;++i){
-      const float x=43.0f+float(i)*153.0f;
-      g.setColour(Theme::raised);g.fillRoundedRectangle(x,144.0f,138.0f,34.0f,6.0f);
-      g.setColour(Theme::border);g.drawRoundedRectangle(x+0.5f,144.5f,137.0f,33.0f,6.0f,1.0f);
-      g.setColour(i==0?Theme::green:Theme::muted);g.setFont(Theme::font(12.0f,true));
-      g.drawText(steps[size_t(i)],int(x),146,138,30,juce::Justification::centred);
+      const float x=46.0f+float(i)*153.0f;
+      g.setColour(i==0?Theme::green:Theme::muted);
+      g.fillEllipse(x,160.0f,6.0f,6.0f);
+      g.setColour(Theme::text.withAlpha(i==0?0.95f:0.76f));
+      g.setFont(Theme::font(12.0f,true));
+      g.drawText(steps[size_t(i)],int(x+12.0f),139,126,23,juce::Justification::centredLeft);
     }
     g.setColour(Theme::border);g.drawVerticalLine(514,24,getHeight()-24);
     // Machined inset plates separate the knob material from the panel surface.
     for(int i=0;i<3;++i){
       const float x=538.0f+float(i)*154.0f;
-      const juce::Rectangle<float> plate{x+8.0f,47.0f,118.0f,135.0f};
+      const juce::Rectangle<float> plate{x+8.0f,47.0f,118.0f,140.0f};
       g.setColour(juce::Colours::black.withAlpha(0.29f));
       g.fillRoundedRectangle(plate.translated(0.0f,2.0f),11.0f);
       g.setGradientFill(juce::ColourGradient(Theme::inset,plate.getX(),plate.getY(),
