@@ -82,6 +82,62 @@ bool testDryLatency() {
   return true;
 }
 
+// Fresh insertion and preset roundtrip: the factory state is a true dry
+// pass-through at the host's declared PDC offset, including >0 dBFS float
+// samples, anti-phase stereo, impulses and several device sample rates.
+bool testNeutralInsertAndPreset() {
+  SkellSilenceAudioProcessor p;
+  const auto zeroed=[](SkellSilenceAudioProcessor& processor) {
+    for(const char* name : {"mix", "tension", "space", "duckAfter"}) {
+      const auto* value=processor.parameters.getRawParameterValue(name);
+      if(value==nullptr || value->load()!=0.0f)return false;
+    }
+    return true;
+  };
+  if(!zeroed(p)) return false;
+  for(const double rate : {44100.0,48000.0,96000.0}) {
+    p.prepareToPlay(rate,128);
+    const int latency=p.latencyRequested.load();
+    if(latency!=int(rate*0.250))return false;
+    const int total=latency+1280;
+    std::vector<float> referenceL(size_t(total+128),0.0f);
+    std::vector<float> referenceR(size_t(total+128),0.0f);
+    juce::AudioBuffer<float> audio(2,128);
+    juce::MidiBuffer midi;
+    for(int start=0;start<total;start+=128) {
+      for(int sample=0;sample<128;++sample) {
+        const int at=start+sample;
+        const float left=at==17?1.24f:(at<1024?0.43f*std::sin(float(at)*0.103f):0.0f);
+        const float right=at==17?-1.24f:(at<1024?-left:0.0f);
+        referenceL[size_t(at)]=left;
+        referenceR[size_t(at)]=right;
+        audio.setSample(0,sample,left);
+        audio.setSample(1,sample,right);
+      }
+      midi.clear();
+      p.processBlock(audio,midi);
+      for(int sample=0;sample<128;++sample) {
+        const int at=start+sample,source=at-latency;
+        const float expectedL=source>=0?referenceL[size_t(source)]:0.0f;
+        const float expectedR=source>=0?referenceR[size_t(source)]:0.0f;
+        if(audio.getSample(0,sample)!=expectedL || audio.getSample(1,sample)!=expectedR)
+          return false;
+      }
+    }
+    p.releaseResources();
+  }
+  juce::MemoryBlock state;
+  p.getStateInformation(state);
+  SkellSilenceAudioProcessor restored;
+  setParameter(restored,"mix",0.9f);
+  restored.setStateInformation(state.getData(),int(state.getSize()));
+  if(!zeroed(restored))return false;
+  restored.prepareToPlay(48000.0,128);
+  const bool latencyAligned=restored.latencyRequested.load()==12000;
+  restored.releaseResources();
+  return latencyAligned;
+}
+
 // Verify the modern MidiBufferIterator keeps exact note sample offsets.
 bool testMidiGapPositions() {
   SkellSilenceAudioProcessor p;
@@ -373,6 +429,10 @@ int main(int argc, char** argv) {
   const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
+  if (!testNeutralInsertAndPreset()) {
+    std::fprintf(stderr, "Factory dry playback / preset roundtrip regression failed\\n");
+    return 1;
+  }
   if (!testDryLatency()) {
     std::fprintf(stderr, "Dry impulse / PDC alignment test failed\n");
     return 1;
