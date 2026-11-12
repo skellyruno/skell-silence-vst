@@ -94,7 +94,7 @@ bool testDryLatency() {
 // delay ring. Exact delayed samples reveal any resulting click/dropout.
 class SyntheticPlayHead final : public juce::AudioPlayHead {
 public:
-  std::optional<PositionInfo> getPosition() const override { return position; }
+  juce::Optional<PositionInfo> getPosition() const override { return position; }
   void set(double ppq,double bpm,bool playing) {
     PositionInfo p;
     p.setPpqPosition(ppq);
@@ -660,8 +660,7 @@ int main(int argc, char** argv) {
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
   if (!testPowerAndHostBypassTransport()) {
-    std::fprintf(stderr,"Bypass transport clock, waveform, and dry PDC continuity failed
-");
+    std::fprintf(stderr,"Bypass transport clock, waveform, and dry PDC continuity failed\n");
     return 1;
   }
   if (!testInternalPowerBypass()) {
