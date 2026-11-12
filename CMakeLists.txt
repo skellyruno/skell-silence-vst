@@ -8,10 +8,10 @@ else()
   FetchContent_MakeAvailable(JUCE)
 endif()
 
-# All builds use one tested SkellCore Neon skin and master SkullKey mark.
+# Use the explicit SkellCore revision supplying shared matte hardware knobs and the shushing-skull gesture; CI must validate before merge.
 # The headless renderer remains a separate, development-only executable.
 option(SKELL_SILENCE_BUILD_UI_RENDERER "Build actual JUCE editor screenshot tests" OFF)
-set(SKELL_SILENCE_SKELLCORE_COMMIT "d02d50849123f28bbc2e32cded0e78aced15afb3")
+set(SKELL_SILENCE_SKELLCORE_COMMIT "4b3aead7d341e0494f6c57ed1e04e17b2937f18a")
 FetchContent_Declare(SkellCorePinned
   GIT_REPOSITORY https://github.com/skellyruno/skellcore-vst-template.git
   GIT_TAG ${SKELL_SILENCE_SKELLCORE_COMMIT}
