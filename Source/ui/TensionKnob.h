@@ -10,12 +10,12 @@ class TensionKnob final : public juce::Component,private juce::Timer {
 public:
  explicit TensionKnob(SkellSilenceAudioProcessor& p):processor(p){
     constexpr std::array<const char*,4> names{{"mix","tension","space","duckAfter"}};
-    constexpr std::array<const char*,4> labels{{"MIX","ENERGY","SPACE","AFTER"}};
+    constexpr std::array<const char*,4> labels{{"MIX","ENERGY","SPACE","EXIT LIFT"}};
     constexpr std::array<const char*,4> tooltips{{
       "How much gap effect to blend into your song.",
       "Strength of risers and swells.",
       "Reverb on gap effects.",
-      "A short level boost after a gap ends."
+      "Optional brief volume lift after a gap. Set to 0% to preserve unity gain."
     }};
     for(size_t i=0;i<sliders.size();++i){
       auto& s=sliders[i];s.setSliderStyle(juce::Slider::LinearHorizontal);
