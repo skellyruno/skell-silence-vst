@@ -50,7 +50,7 @@ public:
     // The name is set as one tight lockup. No large arbitrary gap before SILENCE.
     g.setFont(Theme::font(29,true));
     g.setColour(Theme::text);g.drawText("SKELL",94,11,100,36,juce::Justification::centredLeft);
-    g.setColour(Theme::green);g.drawText("SILENCE",187,11,153,36,juce::Justification::centredLeft);
+    g.setColour(Theme::green);g.drawText("SILENCE",176,11,153,36,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(13));
     g.drawText("GAP DESIGNER  /  SKELLCORE",95,47,360,20,juce::Justification::centredLeft);
     const bool playing=processor.isPlaying.load(std::memory_order_relaxed);
