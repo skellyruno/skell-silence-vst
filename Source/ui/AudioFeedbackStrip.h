@@ -38,7 +38,7 @@ public:
     }
     const auto seq=processor.waveformSequence.load(std::memory_order_acquire);
     constexpr int points=72;
-    juce::Path line;
+    juce::Path upper,lower;
     for(int i=0;i<points;++i){
       const int64_t age=int64_t(points-i);
       const int64_t absolute=int64_t(seq)-age;
@@ -48,17 +48,24 @@ public:
       const float amplitude=std::clamp(observed,0.0f,1.0f);
       const float position=start+float(i)*length/float(points-1);
       const float motion=amplitude*std::max(0.0f,center-3.2f);
-      const float direction=(i%2==0?1.0f:-1.0f);
-      const auto point=vertical?juce::Point<float>(center+direction*motion,position)
-                               :juce::Point<float>(position,center+direction*motion);
-      if(i==0)line.startNewSubPath(point);
-      else line.lineTo(point);
+      const auto top=vertical?juce::Point<float>(center-motion,position)
+                             :juce::Point<float>(position,center-motion);
+      const auto bottom=vertical?juce::Point<float>(center+motion,position)
+                                :juce::Point<float>(position,center+motion);
+      if(i==0){upper.startNewSubPath(top);lower.startNewSubPath(bottom);}
+      else {upper.lineTo(top);lower.lineTo(bottom);}
     }
-    g.setColour(juce::Colours::white.withAlpha(0.12f));
-    g.strokePath(line,juce::PathStrokeType(3.0f,
+    // Two smooth opposing envelopes, not a fabricated alternating sawtooth.
+    // When no audio arrives they converge into one restrained white hairline.
+    g.setColour(juce::Colours::white.withAlpha(0.10f));
+    g.strokePath(upper,juce::PathStrokeType(3.0f,
       juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-    g.setColour(Theme::text.withAlpha(0.94f));
-    g.strokePath(line,juce::PathStrokeType(1.2f,
+    g.strokePath(lower,juce::PathStrokeType(3.0f,
+      juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    g.setColour(Theme::text.withAlpha(0.88f));
+    g.strokePath(upper,juce::PathStrokeType(1.05f,
+      juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    g.strokePath(lower,juce::PathStrokeType(1.05f,
       juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
   }
 private:
