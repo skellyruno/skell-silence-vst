@@ -36,9 +36,9 @@ SkellSilenceAudioProcessor::SkellSilenceAudioProcessor()
 }
 APVTS::ParameterLayout SkellSilenceAudioProcessor::createLayout() {
   APVTS::ParameterLayout l;
-  addFloat(l,"mix",0,1,0.65f);
-  addFloat(l,"tension",0,1,0.5f);addFloat(l,"space",0,1,0.28f);
-  addFloat(l,"duckAfter",0,1,0.18f);
+  addFloat(l,"mix",0,1,0.0f);
+  addFloat(l,"tension",0,1,0.0f);addFloat(l,"space",0,1,0.0f);
+  addFloat(l,"duckAfter",0,1,0.0f);
   addChoice(l,"lookahead",{"OFF","250 ms","500 ms","1 beat","1 bar"},1);
   addChoice(l,"triggerSource",{"AUTO","SIDECHAIN","GRID","MIDI"},0);
   addChoice(l,"gridDivision",{"1/4","1/8","1/16","1/32"},1);
