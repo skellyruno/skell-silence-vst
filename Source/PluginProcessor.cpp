@@ -72,17 +72,19 @@ APVTS::ParameterLayout SkellSilenceAudioProcessor::createLayout() {
   addChoice(l,"stutterDiv",{"1/4","1/8","1/16","1/32","1/64"},2);
   addFloat(l,"stutterDecay",0,0.95f,0.2f);addFloat(l,"stutterCount",1,32,6,1);
   addBool(l,"learnArmed",false);addBool(l,"lockToMap",false);
+  // Added after every existing APVTS ID: old project automation stays stable.
+  addBool(l,"pluginEnabled",true);
   return l;
 }
 namespace {
-  constexpr std::array<const char*,38> namedIds={
+  constexpr std::array<const char*,39> namedIds={
      "mix","tension","space","duckAfter","lookahead","triggerSource","gridDivision","gridOffset",
      "threshold","minGap","maxGap","hold","tailSensitivity","armTime",
      "classShortMax","classMediumMax","classLongMax",
      "stopSpeedCurve","stopTime","stopLowpass","airColor","airShape",
      "swellLength","swellReverb","noiseType","noiseFadeIn","noiseFadeOut",
      "impactPitch","impactDecay","impactClick","riserStart","riserCurve","riserNoiseMix",
-     "stutterDiv","stutterDecay","stutterCount","learnArmed","lockToMap"
+     "stutterDiv","stutterDecay","stutterCount","learnArmed","lockToMap","pluginEnabled"
   };
 }
 void SkellSilenceAudioProcessor::cacheParameters() {
@@ -220,6 +222,11 @@ void SkellSilenceAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& 
 }
 void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals guard;
+  // The front-panel power reuses the PDC-preserving host bypass pathway.
+  if(param("pluginEnabled")<0.5f) {
+    processBlockBypassed(buffer,midi);
+    return;
+  }
   bypassActive=false;
   auto main=getBusBuffer(buffer,false,0);
   if(main.getNumChannels()==0) return;
