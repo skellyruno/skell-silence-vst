@@ -1,13 +1,13 @@
 #include "PluginEditor.h"
 #include "ui/LayoutGeometry.h"
 SkellSilenceAudioProcessorEditor::SkellSilenceAudioProcessorEditor(SkellSilenceAudioProcessor& p)
-  : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p),quick(p) {
+  : AudioProcessorEditor(&p),processor(p),header(p),timeline(p),detection(p),rack(p),matrix(p),macros(p),quick(p),feedback(p) {
   setLookAndFeel(&look);
   header.setComponentID("header"); timeline.setComponentID("timeline");
   detection.setComponentID("detection"); rack.setComponentID("instruments");
   matrix.setComponentID("rules"); macros.setComponentID("dynamics");
   quick.setComponentID("simple-controls");
-  std::array<juce::Component*,7> children{{&header,&timeline,&detection,&rack,&matrix,&macros,&quick}};
+  std::array<juce::Component*,8> children{{&header,&timeline,&detection,&rack,&matrix,&macros,&quick,&feedback}};
   for (auto* c : children) addAndMakeVisible(c);
   header.onModeChange=[this](bool advanced){setAdvancedMode(advanced);};
   quick.setEditCallback([this]{setAdvancedMode(true);});
@@ -25,6 +25,7 @@ void SkellSilenceAudioProcessorEditor::setAdvancedMode(bool advanced){
   detection.setVisible(advanced);rack.setVisible(advanced);
   matrix.setVisible(advanced);macros.setVisible(advanced);
   quick.setVisible(!advanced);
+  feedback.setVertical(advanced);
   resized();
   repaint();
 }
@@ -52,11 +53,13 @@ void SkellSilenceAudioProcessorEditor::resized(){
     place(rack,846,86,330,461);
     place(matrix,24,563,805,190);
     place(macros,846,563,330,190);
+    place(feedback,830,86,15,461);
   } else {
     const auto timelineBounds=skell::ui::Layout::simplePanels[1];
     const auto quickBounds=skell::ui::Layout::simplePanels[2];
     place(timeline,timelineBounds.x,timelineBounds.y,timelineBounds.w,timelineBounds.h);
     place(quick,quickBounds.x,quickBounds.y,quickBounds.w,quickBounds.h);
+    place(feedback,24,495,1152,18);
   }
   processor.windowW.store(getWidth());processor.windowH.store(getHeight());
 }
