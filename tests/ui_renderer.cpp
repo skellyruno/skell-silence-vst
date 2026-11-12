@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <chrono>
 #include <vector>
 
 namespace {
@@ -305,6 +306,69 @@ bool testHostBypassPdc() {
 }
 
 // Verify the modern MidiBufferIterator keeps exact note sample offsets.
+// Real processor with all seven instruments at maximum levels. The portable
+// mixer test alone cannot catch clipping and NaNs introduced by the complete
+// wet/dry path, host buffering, transitions or final output protection.
+bool testFullWetProcessorStress() {
+  SkellSilenceAudioProcessor p;
+  setParameter(p,"lookahead",0.0f);
+  setParameter(p,"triggerSource",3.0f);
+  setParameter(p,"mix",1.0f);
+  setParameter(p,"tension",1.0f);
+  setParameter(p,"space",1.0f);
+  setParameter(p,"duckAfter",1.0f);
+  for(const auto* name : skell::dsp::instrumentIds) {
+    const juce::String stem(name);
+    setParameter(p,stem+"On",1.0f);
+    setParameter(p,stem+"Level",1.0f);
+    for(int cl=0;cl<4;++cl)
+      setParameter(p,"rule_"+stem+"_"+juce::String(cl),1.0f);
+  }
+  constexpr int rate=48000,blockSize=256,total=98304;
+  p.prepareToPlay(double(rate),blockSize);
+  if(p.getLatencySamples()!=0)return false;
+  juce::AudioBuffer<float> audio(2,blockSize);
+  juce::MidiBuffer midi;
+  int renderedWetSamples=0,activeBlocks=0;
+  float peak=0.0f;
+  const auto started=std::chrono::steady_clock::now();
+  for(int start=0;start<total;start+=blockSize) {
+    midi.clear();
+    if(start==0)midi.addEvent(juce::MidiMessage::noteOn(1,60,juce::uint8(118)),0);
+    if(start==49152)midi.addEvent(juce::MidiMessage::noteOff(1,60),0);
+    for(int i=0;i<blockSize;++i){
+      const int n=start+i;
+      const float dry=0.62f*std::sin(float(n)*0.091f)
+                    +0.15f*std::sin(float(n)*0.291f);
+      audio.setSample(0,i,dry);
+      audio.setSample(1,i,-dry*0.83f);
+    }
+    p.processBlock(audio,midi);
+    if(p.activeMask.load()!=0)++activeBlocks;
+    for(int i=0;i<blockSize;++i) {
+      const float l=audio.getSample(0,i),r=audio.getSample(1,i);
+      if(!std::isfinite(l) || !std::isfinite(r) ||
+         std::fpclassify(l)==FP_SUBNORMAL || std::fpclassify(r)==FP_SUBNORMAL ||
+         std::abs(l)>1.0001f || std::abs(r)>1.0001f)
+        return false;
+      peak=std::max(peak,std::max(std::abs(l),std::abs(r)));
+      const int n=start+i;
+      const float dry=0.62f*std::sin(float(n)*0.091f)
+                    +0.15f*std::sin(float(n)*0.291f);
+      if(std::abs(l-dry)>0.002f)++renderedWetSamples;
+    }
+  }
+  const auto elapsed=std::chrono::duration<double>(
+      std::chrono::steady_clock::now()-started).count();
+  std::printf("Full wet JUCE processor: peak=%.5f, changedSamples=%d, activeBlocks=%d, "
+              "renderCPU=%.4f x real-time (runner only)\n",
+              double(peak),renderedWetSamples,activeBlocks,elapsed/(double(total)/rate));
+  const bool passed=renderedWetSamples>1000 && activeBlocks>1
+                    && peak>0.10f && p.getRecentCount()>=1;
+  p.releaseResources();
+  return passed;
+}
+
 bool testMidiGapPositions() {
   SkellSilenceAudioProcessor p;
   setParameter(p, "triggerSource", 3.f);
@@ -610,6 +674,10 @@ int main(int argc, char** argv) {
   }
   if (!testNeutralInsertAndPreset()) {
     std::fprintf(stderr, "Factory dry playback / preset roundtrip regression failed\n");
+    return 1;
+  }
+  if (!testFullWetProcessorStress()) {
+    std::fprintf(stderr,"Real full-wet processor produced invalid/clipped audio or did not render FX\n");
     return 1;
   }
   if (!testDryLatency()) {
