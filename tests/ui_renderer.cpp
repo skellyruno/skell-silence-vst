@@ -24,7 +24,7 @@ constexpr std::array<Size, 4> sizes {{
 // Modes are real controls/states of the same editor, never a mock GUI.
 enum Mode { idle, playing, dryMix, grid, sidechain, midi, selected,
             editRanges, instrument0, instrument1, instrument2, instrument3,
-            instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet,
+            instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet, capturing, replaying,
             simpleIdle, simplePlaying, simpleDry, simplePresets, simplePowerOff };
 
 void setParameter(SkellSilenceAudioProcessor& p, const juce::String& id, float value) {
@@ -650,6 +650,8 @@ int main(int argc, char** argv) {
       addScene(options, juce::String(s.name) + "-selected", s.width, s.height, selected);
       addScene(options, juce::String(s.name) + "-rule-override", s.width, s.height, ruleOverride);
       addScene(options, juce::String(s.name) + "-all-disabled", s.width, s.height, disabledWet);
+      addScene(options, juce::String(s.name) + "-capturing", s.width, s.height, capturing);
+      addScene(options, juce::String(s.name) + "-replaying", s.width, s.height, replaying);
     }
     // The first-run screen is a separate genuine editor mode. Capture it at
     // every supported size, plus its status / dry / preset states.
@@ -682,6 +684,9 @@ int main(int argc, char** argv) {
       {"compact-idle", "compact-instrument-0"},
       {"compact-idle", "compact-instrument-6"},
       {"compact-idle", "compact-menu"},
+      {"compact-idle", "compact-capturing"},
+      {"compact-idle", "compact-replaying"},
+      {"compact-capturing", "compact-replaying"},
       {"compact-idle", "compact-rule-override"},
       {"compact-idle", "compact-all-disabled"}
     };
@@ -698,6 +703,8 @@ int main(int argc, char** argv) {
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
       setParameter(p, "mix", (mode == idle || simplified) ? 0.0f : 0.65f);
       setParameter(p, "pluginEnabled", mode == simplePowerOff ? 0.0f : 1.0f);
+      setParameter(p, "learnArmed", mode == capturing ? 1.0f : 0.0f);
+      setParameter(p, "lockToMap", mode == replaying ? 1.0f : 0.0f);
       setParameter(p, "rule_tape_0", 1.f);
       setParameter(p, "rule_swell_2", 1.f);
       if(mode==ruleOverride){
@@ -766,6 +773,14 @@ int main(int argc, char** argv) {
       } else issues.add("Missing SkellCore power button");
       if (!findById(editor,"settings"))
         issues.add("Missing SkellCore settings button");
+      if (auto* capture=dynamic_cast<juce::Button*>(findById(editor,"learn"))) {
+        if(capture->getToggleState()!=(currentScene==capturing))
+          issues.add("Capture Gaps toggle did not follow its automation parameter");
+      } else issues.add("Missing Capture Gaps button");
+      if (auto* replay=dynamic_cast<juce::Button*>(findById(editor,"lock"))) {
+        if(replay->getToggleState()!=(currentScene==replaying))
+          issues.add("Replay Map toggle did not follow its automation parameter");
+      } else issues.add("Missing Replay Map button");
       if (editor.isAdvancedMode() != (currentScene < simpleIdle))
         issues.add("Simple/Advanced editor mode did not update");
       for (int i = 0; i < 7; ++i) {
@@ -797,6 +812,18 @@ int main(int argc, char** argv) {
       if(toggle->onClick) toggle->onClick();
       if(editor.isAdvancedMode()) {std::fprintf(stderr,"Simple button failed\n");++failures;}
     } else {std::fprintf(stderr,"Missing Simple/Advanced toggle\n");++failures;}
+    // Verify the two hardware-style capture/replay buttons really modify APVTS.
+    for(const auto& binding : std::array<std::pair<const char*,const char*>,2>{{
+          {"learn","learnArmed"},{"lock","lockToMap"}}}) {
+      if(auto* button=dynamic_cast<juce::Button*>(findById(editor,binding.first))) {
+        button->setToggleState(true,juce::sendNotificationSync);
+        if(p.parameters.getRawParameterValue(binding.second)->load()<0.5f)
+          {std::fprintf(stderr,"Header toggle did not reach the attached parameter\n");++failures;}
+        button->setToggleState(false,juce::sendNotificationSync);
+        if(p.parameters.getRawParameterValue(binding.second)->load()>0.5f)
+          {std::fprintf(stderr,"Header toggle failed to reset the attached parameter\n");++failures;}
+      } else {std::fprintf(stderr,"Missing capture/replay header toggle\n");++failures;}
+    }
     // Exercise actual front-panel button notifications and its APVTS wiring.
     if(auto* power=dynamic_cast<juce::Button*>(findById(editor,"plugin-power"))) {
       power->setToggleState(false,juce::sendNotificationSync);
