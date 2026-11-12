@@ -26,6 +26,7 @@ public:
       if(auto* parameter=processor.parameters.getParameter(ids[i]))
         slider.setDoubleClickReturnValue(true, parameter->convertFrom0to1(parameter->getDefaultValue()));
       attachments[i]=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(processor.parameters,ids[i],slider);
+      slider.setMouseDragSensitivity(240);
       addAndMakeVisible(slider);
     }
     more.setButtonText("FX DETAIL");
@@ -58,6 +59,20 @@ public:
       g.drawText(steps[size_t(i)],int(x),146,138,30,juce::Justification::centred);
     }
     g.setColour(Theme::border);g.drawVerticalLine(514,24,getHeight()-24);
+    // Machined inset plates separate the knob material from the panel surface.
+    for(int i=0;i<3;++i){
+      const float x=538.0f+float(i)*154.0f;
+      const juce::Rectangle<float> plate{x+8.0f,47.0f,118.0f,135.0f};
+      g.setColour(juce::Colours::black.withAlpha(0.29f));
+      g.fillRoundedRectangle(plate.translated(0.0f,2.0f),11.0f);
+      g.setGradientFill(juce::ColourGradient(Theme::inset,plate.getX(),plate.getY(),
+                                           Theme::raised,plate.getRight(),plate.getBottom(),false));
+      g.fillRoundedRectangle(plate,11.0f);
+      g.setColour(Theme::border.withAlpha(0.82f));
+      g.drawRoundedRectangle(plate.reduced(0.5f),10.5f,1.0f);
+      g.setColour(juce::Colours::white.withAlpha(0.05f));
+      g.drawHorizontalLine(int(plate.getY()+1),plate.getX()+12.0f,plate.getRight()-12.0f);
+    }
     constexpr std::array<const char*,3> titles{{"MIX", "ENERGY", "SPACE"}};
     constexpr std::array<const char*,3> captions{{"EFFECT LEVEL", "RISE & SWELL", "REVERB TAIL"}};
     for(int i=0;i<3;++i){
