@@ -81,7 +81,7 @@ private:
   double openGapPpq=0;
   std::array<std::atomic<float>*,7> onParams{},levelParams{};
   std::array<std::array<std::atomic<float>*,4>,7> ruleParams{};
-  static constexpr int namedCount=38;
+  static constexpr int namedCount=39;
   std::array<std::atomic<float>*,namedCount> namedParams{};
   skell::dsp::GapDetector detector;
   skell::dsp::MidiNoteGate midiGate;

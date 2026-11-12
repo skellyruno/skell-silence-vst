@@ -22,6 +22,9 @@ public:
     setColour(juce::ToggleButton::textColourId,Theme::text);
     setColour(juce::PopupMenu::backgroundColourId,Theme::panel);
     setColour(juce::PopupMenu::textColourId,Theme::text);
+    setColour(juce::PopupMenu::highlightedBackgroundColourId,Theme::green.withAlpha(0.28f));
+    setColour(juce::PopupMenu::highlightedTextColourId,Theme::text);
+    setColour(juce::Slider::textBoxHighlightColourId,Theme::green.withAlpha(0.32f));
     setColour(juce::TooltipWindow::backgroundColourId,Theme::raised);
     setColour(juce::TooltipWindow::textColourId,Theme::text);
   }
