@@ -185,6 +185,29 @@ SkellSilenceAudioProcessor::RecentGap SkellSilenceAudioProcessor::getRecentGap(i
 void SkellSilenceAudioProcessor::requestMapEdit(int index,double deltaPpq,bool remove) noexcept {
   editDelta.store(deltaPpq);editRemove.store(remove);editIndex.store(index);
 }
+// Run requests exclusively on the audio thread, even while global power or
+// the host bypass is active. A cleared map must not reappear in a saved preset.
+void SkellSilenceAudioProcessor::applyMapRequests() noexcept {
+  if(clearMapRequested.exchange(false)) gapMap.clear();
+  if(const int idx=editIndex.exchange(-1);idx>=0){
+    if(editRemove.exchange(false))gapMap.erase(idx);
+    else {
+      const auto g=gapMap.get(idx);
+      const double d=editDelta.load();
+      gapMap.replace(idx,{std::max(0.0,g.from+d),std::max(0.001,g.to+d)});
+    }
+  }
+}
+// Keep the eight-second input history live on both the active and dry paths.
+// Neither skipped effects nor a host bypass should freeze waveform feedback.
+void SkellSilenceAudioProcessor::collectWaveform(float inL,float inR) noexcept {
+  peak=std::max(peak,std::max(std::abs(inL),std::abs(inR)));
+  if(++peakSamples>=size_t(sr/72)){
+    const auto index=waveformSequence.fetch_add(1)%waveformSize;
+    waveform[size_t(index)].store(std::min(1.0f,peak),std::memory_order_release);
+    peakSamples=0;peak=0;
+  }
+}
 // Host bypass uses the SAME delay ring and declared PDC as active processing.
 // Never reset the dry delay when toggling bypass: that would create a dropout.
 void SkellSilenceAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
@@ -192,6 +215,25 @@ void SkellSilenceAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& 
   juce::ScopedNoDenormals noDenormals;
   auto main=getBusBuffer(buffer,false,0);
   if(main.getNumChannels()==0)return;
+  applyMapRequests();
+  const auto* playhead=getPlayHead();
+  const auto pos=playhead?playhead->getPosition():
+      std::optional<juce::AudioPlayHead::PositionInfo>{};
+  const bool transportPlaying=pos?pos->getIsPlaying():true;
+  const double bpm=pos?std::clamp(pos->getBpm().orFallback(120.0),20.0,300.0):120.0;
+  const double blockPpq=pos?pos->getPpqPosition().orFallback(lastExpectedPpq):lastExpectedPpq;
+  // Match active processing's latency policy: adopt changed tempo/lookahead
+  // only on transport start or while stopped, never in the middle of playback.
+  if(!transportPlaying || !lastTransport){
+    const int requested=latencyFor(bpm);
+    if(requested!=activeLatency) {
+      activeLatency=requested;
+      if(latencyRequested.exchange(requested)!=requested)triggerAsyncUpdate();
+    }
+  }
+  lastTransport=transportPlaying;lastBpm=bpm;
+  bpmAtomic.store(bpm,std::memory_order_relaxed);
+  isPlaying.store(transportPlaying,std::memory_order_release);
   const int channels=main.getNumChannels();
   auto* left=main.getWritePointer(0);
   auto* right=channels>1?main.getWritePointer(1):nullptr;
@@ -202,7 +244,8 @@ void SkellSilenceAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& 
     gridInGap=false;wasFxActive=false;
     lastTriggerSource=-1;lastLockToMap=false;
     previewRemaining=0;wetTailRemaining=0;
-    lastTransport=false;
+    fastMeter.store(0.0f);slowMeter.store(0.0f);thresholdMeter.store(0.0f);
+    detectorState.store(0,std::memory_order_release);
     for(auto& instrument:instruments)instrument.reset();
     activeMask.store(0,std::memory_order_release);
     activeLengthClass.store(-1,std::memory_order_release);
@@ -213,11 +256,15 @@ void SkellSilenceAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& 
     delay.push(0,inL);delay.push(1,inR);
     histories[0].push(inL);histories[1].push(inR);
     instruments[0].observeInput(inL);instruments[1].observeInput(inR);
+    collectWaveform(inL,inR);
     left[i]=delay.delayed(0,activeLatency);
     if(right)right[i]=delay.delayed(1,activeLatency);
     delay.next();
     ++samples;
   }
+  const double step=bpm/(60.0*sr);
+  lastExpectedPpq=blockPpq+double(main.getNumSamples())*step;
+  currentPpqAtomic.store(lastExpectedPpq,std::memory_order_release);
   totalSamples.store(samples,std::memory_order_release);
 }
 void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi) {
@@ -238,11 +285,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
   const auto* sideL=side.getNumChannels()>0?side.getReadPointer(0):nullptr;
   const auto* sideR=side.getNumChannels()>1?side.getReadPointer(1):nullptr;
 
-  if(clearMapRequested.exchange(false)) gapMap.clear();
-  if(const int idx=editIndex.exchange(-1);idx>=0) {
-    if(editRemove.exchange(false)) gapMap.erase(idx);
-    else {auto g=gapMap.get(idx);const double d=editDelta.load();gapMap.replace(idx,{std::max(0.0,g.from+d),std::max(0.001,g.to+d)});}
-  }
+  applyMapRequests();
   auto* playhead=getPlayHead();
   const auto pos=playhead?playhead->getPosition():std::optional<juce::AudioPlayHead::PositionInfo>{};
   const bool transportPlaying=pos?pos->getIsPlaying():true;
@@ -346,12 +389,7 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
       if(end){closeEvent(eventEnd);if(learn && ppq>openGapPpq)gapMap.append(openGapPpq,ppq);}
       if(begin){ addEvent(eventStart,bpm);openGapPpq=ppq-double(clock-eventStart)*ppqPerSample; }
     }
-    peak=std::max(peak,std::max(std::abs(inL),std::abs(inR)));
-    if(++peakSamples>=size_t(sr/72)){
-      const auto index=waveformSequence.fetch_add(1)%waveformSize;
-      waveform[size_t(index)].store(std::min(1.0f,peak),std::memory_order_release);
-      peakSamples=0;peak=0;
-    }
+    collectWaveform(inL,inR);
     const auto dryL=delay.delayed(0,latency),dryR=delay.delayed(1,latency);
     const auto delayedClock=clock-latency;
     const double delayedPpq=ppq-latency*ppqPerSample;

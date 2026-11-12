@@ -57,6 +57,8 @@ private:
   void handleAsyncUpdate() override;
   void snapshotSettings(skell::dsp::InstrumentSettings&) const noexcept;
   void cacheParameters();
+  void applyMapRequests() noexcept;
+  void collectWaveform(float left,float right) noexcept;
   float param(const char*) const noexcept;
   int latencyFor(double bpm) const noexcept;
   int activeLatency=0;

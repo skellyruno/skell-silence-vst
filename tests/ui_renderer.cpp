@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <chrono>
 #include <vector>
 
 namespace {
@@ -24,7 +25,7 @@ constexpr std::array<Size, 4> sizes {{
 // Modes are real controls/states of the same editor, never a mock GUI.
 enum Mode { idle, playing, dryMix, grid, sidechain, midi, selected,
             editRanges, instrument0, instrument1, instrument2, instrument3,
-            instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet,
+            instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet, capturing, replaying,
             simpleIdle, simplePlaying, simpleDry, simplePresets, simplePowerOff };
 
 void setParameter(SkellSilenceAudioProcessor& p, const juce::String& id, float value) {
@@ -87,6 +88,85 @@ bool testDryLatency() {
 // samples, anti-phase stereo, impulses and several device sample rates.
 // Front-panel power shares host PDC and leaves the original signal untouched,
 // even with MIX raised during the bypass interval. A host never sees a latency jump.
+// Exercise a real JUCE host playhead while bypass is engaged. The previous
+// implementation froze PPQ and input waveform telemetry, so re-enabling after
+// a long bypass incorrectly looked like a transport seek and zeroed the dry
+// delay ring. Exact delayed samples reveal any resulting click/dropout.
+class SyntheticPlayHead final : public juce::AudioPlayHead {
+public:
+  juce::Optional<PositionInfo> getPosition() const override { return position; }
+  void set(double ppq,double bpm,bool playing) {
+    PositionInfo p;
+    p.setPpqPosition(ppq);
+    p.setBpm(bpm);
+    p.setIsPlaying(playing);
+    position=p;
+  }
+private:
+  PositionInfo position;
+};
+
+bool testPowerAndHostBypassTransport() {
+  SkellSilenceAudioProcessor p;
+  SyntheticPlayHead host;
+  p.setPlayHead(&host);
+  p.prepareToPlay(48000.0,128);
+  const int latency=p.getLatencySamples();
+  if(latency!=12000)return false;
+  juce::AudioBuffer<float> audio(2,128);
+  juce::MidiBuffer midi;
+  constexpr int total=48000*2;
+  std::vector<float> referenceL(size_t(total),0.0f),referenceR(size_t(total),0.0f);
+  constexpr double ppqStep=120.0/(60.0*48000.0);
+  std::uint64_t seqBeforeBypass=0;
+  for(int start=0;start<total;start+=128){
+    host.set(double(start)*ppqStep,120.0,true);
+    // Three audio paths in one continuous running transport:
+    // active -> power bypass -> active -> DAW true bypass -> active.
+    if(start==4096) {
+      setParameter(p,"pluginEnabled",0.0f);
+      seqBeforeBypass=p.waveformSequence.load();
+    }
+    if(start==16384)setParameter(p,"pluginEnabled",1.0f);
+    if(start==32768) {
+      if(!p.gapMap.append(4.0,4.5))return false;
+      p.requestClearMap();
+    }
+    for(int i=0;i<128;++i){
+      const int n=start+i;
+      const float a=n==7?1.19f:0.38f*std::sin(float(n)*0.078f);
+      const float b=-a*0.8f;
+      referenceL[size_t(n)]=a;referenceR[size_t(n)]=b;
+      audio.setSample(0,i,a);audio.setSample(1,i,b);
+    }
+    midi.clear();
+    if(start>=28672 && start<40960)
+      p.processBlockBypassed(audio,midi);
+    else
+      p.processBlock(audio,midi);
+    if(p.getLatencySamples()!=latency || p.latencyRequested.load()!=latency)
+      return false;
+    if(!p.isPlaying.load())return false;
+    const double expectedPpq=double(start+128)*ppqStep;
+    if(std::abs(p.currentPpqAtomic.load()-expectedPpq)>1.0e-8)
+      return false;
+    for(int i=0;i<128;++i){
+      const int from=start+i-latency;
+      const float expectedL=from>=0?referenceL[size_t(from)]:0.0f;
+      const float expectedR=from>=0?referenceR[size_t(from)]:0.0f;
+      if(!std::isfinite(audio.getSample(0,i)) || !std::isfinite(audio.getSample(1,i))
+         || audio.getSample(0,i)!=expectedL || audio.getSample(1,i)!=expectedR)
+        return false;
+    }
+    if(start==8192 && p.waveformSequence.load()<=seqBeforeBypass)
+      return false;
+    if(start==32768 && p.gapMap.size()!=0)
+      return false;
+  }
+  p.releaseResources();
+  return true;
+}
+
 bool testInternalPowerBypass() {
   SkellSilenceAudioProcessor p;
   if(p.parameters.getRawParameterValue("pluginEnabled")->load()<0.5f)return false;
@@ -226,6 +306,69 @@ bool testHostBypassPdc() {
 }
 
 // Verify the modern MidiBufferIterator keeps exact note sample offsets.
+// Real processor with all seven instruments at maximum levels. The portable
+// mixer test alone cannot catch clipping and NaNs introduced by the complete
+// wet/dry path, host buffering, transitions or final output protection.
+bool testFullWetProcessorStress() {
+  SkellSilenceAudioProcessor p;
+  setParameter(p,"lookahead",0.0f);
+  setParameter(p,"triggerSource",3.0f);
+  setParameter(p,"mix",1.0f);
+  setParameter(p,"tension",1.0f);
+  setParameter(p,"space",1.0f);
+  setParameter(p,"duckAfter",1.0f);
+  for(const auto* name : skell::dsp::instrumentIds) {
+    const juce::String stem(name);
+    setParameter(p,stem+"On",1.0f);
+    setParameter(p,stem+"Level",1.0f);
+    for(int cl=0;cl<4;++cl)
+      setParameter(p,"rule_"+stem+"_"+juce::String(cl),1.0f);
+  }
+  constexpr int rate=48000,blockSize=256,total=98304;
+  p.prepareToPlay(double(rate),blockSize);
+  if(p.getLatencySamples()!=0)return false;
+  juce::AudioBuffer<float> audio(2,blockSize);
+  juce::MidiBuffer midi;
+  int renderedWetSamples=0,activeBlocks=0;
+  float peak=0.0f;
+  const auto started=std::chrono::steady_clock::now();
+  for(int start=0;start<total;start+=blockSize) {
+    midi.clear();
+    if(start==0)midi.addEvent(juce::MidiMessage::noteOn(1,60,juce::uint8(118)),0);
+    if(start==49152)midi.addEvent(juce::MidiMessage::noteOff(1,60),0);
+    for(int i=0;i<blockSize;++i){
+      const int n=start+i;
+      const float dry=0.62f*std::sin(float(n)*0.091f)
+                    +0.15f*std::sin(float(n)*0.291f);
+      audio.setSample(0,i,dry);
+      audio.setSample(1,i,-dry*0.83f);
+    }
+    p.processBlock(audio,midi);
+    if(p.activeMask.load()!=0)++activeBlocks;
+    for(int i=0;i<blockSize;++i) {
+      const float l=audio.getSample(0,i),r=audio.getSample(1,i);
+      if(!std::isfinite(l) || !std::isfinite(r) ||
+         std::fpclassify(l)==FP_SUBNORMAL || std::fpclassify(r)==FP_SUBNORMAL ||
+         std::abs(l)>1.0001f || std::abs(r)>1.0001f)
+        return false;
+      peak=std::max(peak,std::max(std::abs(l),std::abs(r)));
+      const int n=start+i;
+      const float dry=0.62f*std::sin(float(n)*0.091f)
+                    +0.15f*std::sin(float(n)*0.291f);
+      if(std::abs(l-dry)>0.002f)++renderedWetSamples;
+    }
+  }
+  const auto elapsed=std::chrono::duration<double>(
+      std::chrono::steady_clock::now()-started).count();
+  std::printf("Full wet JUCE processor: peak=%.5f, changedSamples=%d, activeBlocks=%d, "
+              "renderCPU=%.4f x real-time (runner only)\n",
+              double(peak),renderedWetSamples,activeBlocks,elapsed/(double(total)/rate));
+  const bool passed=renderedWetSamples>1000 && activeBlocks>1
+                    && peak>0.10f && p.getRecentCount()>=1;
+  p.releaseResources();
+  return passed;
+}
+
 bool testMidiGapPositions() {
   SkellSilenceAudioProcessor p;
   setParameter(p, "triggerSource", 3.f);
@@ -516,6 +659,10 @@ int main(int argc, char** argv) {
   const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
+  if (!testPowerAndHostBypassTransport()) {
+    std::fprintf(stderr,"Bypass transport clock, waveform, and dry PDC continuity failed\n");
+    return 1;
+  }
   if (!testInternalPowerBypass()) {
     std::fprintf(stderr,"Global power bypass continuity / PDC test failed\n");
     return 1;
@@ -526,6 +673,10 @@ int main(int argc, char** argv) {
   }
   if (!testNeutralInsertAndPreset()) {
     std::fprintf(stderr, "Factory dry playback / preset roundtrip regression failed\n");
+    return 1;
+  }
+  if (!testFullWetProcessorStress()) {
+    std::fprintf(stderr,"Real full-wet processor produced invalid/clipped audio or did not render FX\n");
     return 1;
   }
   if (!testDryLatency()) {
@@ -566,6 +717,8 @@ int main(int argc, char** argv) {
       addScene(options, juce::String(s.name) + "-selected", s.width, s.height, selected);
       addScene(options, juce::String(s.name) + "-rule-override", s.width, s.height, ruleOverride);
       addScene(options, juce::String(s.name) + "-all-disabled", s.width, s.height, disabledWet);
+      addScene(options, juce::String(s.name) + "-capturing", s.width, s.height, capturing);
+      addScene(options, juce::String(s.name) + "-replaying", s.width, s.height, replaying);
     }
     // The first-run screen is a separate genuine editor mode. Capture it at
     // every supported size, plus its status / dry / preset states.
@@ -598,6 +751,9 @@ int main(int argc, char** argv) {
       {"compact-idle", "compact-instrument-0"},
       {"compact-idle", "compact-instrument-6"},
       {"compact-idle", "compact-menu"},
+      {"compact-idle", "compact-capturing"},
+      {"compact-idle", "compact-replaying"},
+      {"compact-capturing", "compact-replaying"},
       {"compact-idle", "compact-rule-override"},
       {"compact-idle", "compact-all-disabled"}
     };
@@ -614,6 +770,8 @@ int main(int argc, char** argv) {
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
       setParameter(p, "mix", (mode == idle || simplified) ? 0.0f : 0.65f);
       setParameter(p, "pluginEnabled", mode == simplePowerOff ? 0.0f : 1.0f);
+      setParameter(p, "learnArmed", mode == capturing ? 1.0f : 0.0f);
+      setParameter(p, "lockToMap", mode == replaying ? 1.0f : 0.0f);
       setParameter(p, "rule_tape_0", 1.f);
       setParameter(p, "rule_swell_2", 1.f);
       if(mode==ruleOverride){
@@ -682,6 +840,14 @@ int main(int argc, char** argv) {
       } else issues.add("Missing SkellCore power button");
       if (!findById(editor,"settings"))
         issues.add("Missing SkellCore settings button");
+      if (auto* capture=dynamic_cast<juce::Button*>(findById(editor,"learn"))) {
+        if(capture->getToggleState()!=(currentScene==capturing))
+          issues.add("Capture Gaps toggle did not follow its automation parameter");
+      } else issues.add("Missing Capture Gaps button");
+      if (auto* replay=dynamic_cast<juce::Button*>(findById(editor,"lock"))) {
+        if(replay->getToggleState()!=(currentScene==replaying))
+          issues.add("Replay Map toggle did not follow its automation parameter");
+      } else issues.add("Missing Replay Map button");
       if (editor.isAdvancedMode() != (currentScene < simpleIdle))
         issues.add("Simple/Advanced editor mode did not update");
       for (int i = 0; i < 7; ++i) {
@@ -713,6 +879,18 @@ int main(int argc, char** argv) {
       if(toggle->onClick) toggle->onClick();
       if(editor.isAdvancedMode()) {std::fprintf(stderr,"Simple button failed\n");++failures;}
     } else {std::fprintf(stderr,"Missing Simple/Advanced toggle\n");++failures;}
+    // Verify the two hardware-style capture/replay buttons really modify APVTS.
+    for(const auto& binding : std::array<std::pair<const char*,const char*>,2>{{
+          {"learn","learnArmed"},{"lock","lockToMap"}}}) {
+      if(auto* button=dynamic_cast<juce::Button*>(findById(editor,binding.first))) {
+        button->setToggleState(true,juce::sendNotificationSync);
+        if(p.parameters.getRawParameterValue(binding.second)->load()<0.5f)
+          {std::fprintf(stderr,"Header toggle did not reach the attached parameter\n");++failures;}
+        button->setToggleState(false,juce::sendNotificationSync);
+        if(p.parameters.getRawParameterValue(binding.second)->load()>0.5f)
+          {std::fprintf(stderr,"Header toggle failed to reset the attached parameter\n");++failures;}
+      } else {std::fprintf(stderr,"Missing capture/replay header toggle\n");++failures;}
+    }
     // Exercise actual front-panel button notifications and its APVTS wiring.
     if(auto* power=dynamic_cast<juce::Button*>(findById(editor,"plugin-power"))) {
       power->setToggleState(false,juce::sendNotificationSync);

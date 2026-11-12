@@ -16,6 +16,10 @@ public:
       powerAttachment(p.parameters,"pluginEnabled",power) {
     learn.setButtonText("CAPTURE GAPS");
     lock.setButtonText("REPLAY MAP");
+    // Share the SkellCore-style pressed/active hardware button treatment
+    // instead of mixing tiny checkboxes into the otherwise machined header.
+    learn.setClickingTogglesState(true);
+    lock.setClickingTogglesState(true);
     learn.setComponentID("learn");lock.setComponentID("lock");
     learn.setTooltip("Advanced: remember where gaps occur on the song timeline. Activate while the song plays.");
     lock.setTooltip("Advanced: play the remembered gaps at the same song positions. Requires a captured map.");
@@ -49,7 +53,12 @@ public:
     const auto r=getLocalBounds().toFloat();
     g.setGradientFill(juce::ColourGradient(Theme::panel.darker(0.28f),0,0,Theme::ink,0,r.getBottom(),false));
     g.fillRect(r);
-    g.setColour(Theme::border.withAlpha(0.75f));g.drawHorizontalLine(76,0.0f,1200.0f);
+    g.setColour(juce::Colours::white.withAlpha(0.045f));
+    g.drawHorizontalLine(1,24.0f,1177.0f);
+    g.setColour(Theme::border.withAlpha(0.78f));
+    g.drawHorizontalLine(76,0.0f,1200.0f);
+    g.setColour(Theme::green.withAlpha(0.55f));
+    g.fillRect(24.0f,76.0f,92.0f,2.0f);
     drawSkull(g);
     // The name is set as one tight lockup. No large arbitrary gap before SILENCE.
     g.setFont(Theme::font(29,true));
@@ -69,10 +78,13 @@ public:
     g.setColour(color);g.fillEllipse(float(px+13),36.0f,7.0f,7.0f);
     g.setFont(Theme::font(13,true));g.setColour(Theme::text);
     g.drawFittedText(status,px+27,24,198,31,juce::Justification::centredLeft,1);
+    // Recess between workspace navigation and the fixed global controls.
+    g.setColour(Theme::border.withAlpha(0.65f));
+    g.drawVerticalLine(1075,18.0f,60.0f);
   }
   void resized() override {
-    learn.setBounds(724,22,120,34);
-    lock.setBounds(849,22,112,34);
+    learn.setBounds(720,22,126,34);
+    lock.setBounds(851,22,112,34);
     toggleMode.setBounds(968,22,102,34);
     settings.setBounds(1080,18,44,44);
     power.setBounds(1132,18,47,44);
@@ -80,7 +92,11 @@ public:
 private:
   void drawSkull(juce::Graphics& g) const {
     const juce::Rectangle<float> tile{22.0f,13.0f,56.0f,53.0f};
-    g.setColour(Theme::raised.darker(0.18f));g.fillRoundedRectangle(tile,11.0f);
+    g.setColour(juce::Colours::black.withAlpha(0.40f));
+    g.fillRoundedRectangle(tile.translated(0.0f,1.8f),11.0f);
+    g.setGradientFill(juce::ColourGradient(Theme::raised.brighter(0.12f),
+      tile.getX(),tile.getY(),Theme::inset,tile.getRight(),tile.getBottom(),false));
+    g.fillRoundedRectangle(tile,11.0f);
     g.setColour(Theme::green.withAlpha(0.67f));
     g.drawRoundedRectangle(tile.reduced(0.65f),10.5f,1.35f);
     skellcore::ui::drawShushingSkullMark(g,26.0f,16.0f,47.0f,
@@ -135,7 +151,7 @@ private:
   }
   SkellSilenceAudioProcessor& processor;
   bool advancedMode=false;
-  juce::ToggleButton learn,lock;
+  juce::TextButton learn,lock;
   juce::TextButton toggleMode;
   skellcore::ui::HardwareIconButton settings{
     "Settings",skellcore::ui::HardwareGlyph::Settings,Theme::green,Theme::raised,Theme::inset};

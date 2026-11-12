@@ -45,6 +45,22 @@ public:
       g.drawRoundedRectangle(r.reduced(1.5f),5.5f,1.2f);
     }
   }
+  // Match the native resize grip to the black/neon-green hardware finish.
+  // The host still owns the resize behaviour and the fixed aspect ratio.
+  void drawCornerResizer(juce::Graphics& g,int width,int height,
+                         bool mouseOver,bool mouseDragging) override {
+    if(width<9 || height<9)return;
+    const float x=float(width),y=float(height);
+    for(int i=0;i<3;++i){
+      const float offset=4.0f+float(i)*5.0f;
+      const float fromX=x-offset,fromY=y-3.0f;
+      const float toX=x-3.0f,toY=y-offset;
+      g.setColour(juce::Colours::black.withAlpha(0.60f));
+      g.drawLine(fromX+0.8f,fromY+0.8f,toX+0.8f,toY+0.8f,2.0f);
+      g.setColour(Theme::green.withAlpha(mouseDragging?0.98f:mouseOver?0.85f:0.51f));
+      g.drawLine(fromX,fromY,toX,toY,1.15f);
+    }
+  }
   void drawRotarySlider(juce::Graphics& g,int x,int y,int width,int height,
                         float pos,float start,float end,juce::Slider&) override {
     // One SkellCore hardware renderer shared by all current and future plugins.
