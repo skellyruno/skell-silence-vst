@@ -87,6 +87,85 @@ bool testDryLatency() {
 // samples, anti-phase stereo, impulses and several device sample rates.
 // Front-panel power shares host PDC and leaves the original signal untouched,
 // even with MIX raised during the bypass interval. A host never sees a latency jump.
+// Exercise a real JUCE host playhead while bypass is engaged. The previous
+// implementation froze PPQ and input waveform telemetry, so re-enabling after
+// a long bypass incorrectly looked like a transport seek and zeroed the dry
+// delay ring. Exact delayed samples reveal any resulting click/dropout.
+class SyntheticPlayHead final : public juce::AudioPlayHead {
+public:
+  std::optional<PositionInfo> getPosition() const override { return position; }
+  void set(double ppq,double bpm,bool playing) {
+    PositionInfo p;
+    p.setPpqPosition(ppq);
+    p.setBpm(bpm);
+    p.setIsPlaying(playing);
+    position=p;
+  }
+private:
+  PositionInfo position;
+};
+
+bool testPowerAndHostBypassTransport() {
+  SkellSilenceAudioProcessor p;
+  SyntheticPlayHead host;
+  p.setPlayHead(&host);
+  p.prepareToPlay(48000.0,128);
+  const int latency=p.getLatencySamples();
+  if(latency!=12000)return false;
+  juce::AudioBuffer<float> audio(2,128);
+  juce::MidiBuffer midi;
+  constexpr int total=48000*2;
+  std::vector<float> referenceL(size_t(total),0.0f),referenceR(size_t(total),0.0f);
+  constexpr double ppqStep=120.0/(60.0*48000.0);
+  std::uint64_t seqBeforeBypass=0;
+  for(int start=0;start<total;start+=128){
+    host.set(double(start)*ppqStep,120.0,true);
+    // Three audio paths in one continuous running transport:
+    // active -> power bypass -> active -> DAW true bypass -> active.
+    if(start==4096) {
+      setParameter(p,"pluginEnabled",0.0f);
+      seqBeforeBypass=p.waveformSequence.load();
+    }
+    if(start==16384)setParameter(p,"pluginEnabled",1.0f);
+    if(start==32768) {
+      if(!p.gapMap.append(4.0,4.5))return false;
+      p.requestClearMap();
+    }
+    for(int i=0;i<128;++i){
+      const int n=start+i;
+      const float a=n==7?1.19f:0.38f*std::sin(float(n)*0.078f);
+      const float b=-a*0.8f;
+      referenceL[size_t(n)]=a;referenceR[size_t(n)]=b;
+      audio.setSample(0,i,a);audio.setSample(1,i,b);
+    }
+    midi.clear();
+    if(start>=28672 && start<40960)
+      p.processBlockBypassed(audio,midi);
+    else
+      p.processBlock(audio,midi);
+    if(p.getLatencySamples()!=latency || p.latencyRequested.load()!=latency)
+      return false;
+    if(!p.isPlaying.load())return false;
+    const double expectedPpq=double(start+128)*ppqStep;
+    if(std::abs(p.currentPpqAtomic.load()-expectedPpq)>1.0e-8)
+      return false;
+    for(int i=0;i<128;++i){
+      const int from=start+i-latency;
+      const float expectedL=from>=0?referenceL[size_t(from)]:0.0f;
+      const float expectedR=from>=0?referenceR[size_t(from)]:0.0f;
+      if(!std::isfinite(audio.getSample(0,i)) || !std::isfinite(audio.getSample(1,i))
+         || audio.getSample(0,i)!=expectedL || audio.getSample(1,i)!=expectedR)
+        return false;
+    }
+    if(start==8192 && p.waveformSequence.load()<=seqBeforeBypass)
+      return false;
+    if(start==32768 && p.gapMap.size()!=0)
+      return false;
+  }
+  p.releaseResources();
+  return true;
+}
+
 bool testInternalPowerBypass() {
   SkellSilenceAudioProcessor p;
   if(p.parameters.getRawParameterValue("pluginEnabled")->load()<0.5f)return false;
@@ -516,6 +595,11 @@ int main(int argc, char** argv) {
   const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
+  if (!testPowerAndHostBypassTransport()) {
+    std::fprintf(stderr,"Bypass transport clock, waveform, and dry PDC continuity failed
+");
+    return 1;
+  }
   if (!testInternalPowerBypass()) {
     std::fprintf(stderr,"Global power bypass continuity / PDC test failed\n");
     return 1;
