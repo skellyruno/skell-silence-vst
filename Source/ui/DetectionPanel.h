@@ -11,16 +11,25 @@ public:
   :processor(p) {
    constexpr std::array<const char*,6> ids{"threshold","minGap","maxGap","hold","tailSensitivity","armTime"};
    constexpr std::array<const char*,6> names{"THRESHOLD","MIN GAP","MAX GAP","HOLD","TAIL SENSE","ARM TIME"};
+   constexpr std::array<const char*,6> explanations{{
+     "How far below the recent audio level counts as silence (dB).",
+     "Ignore gaps shorter than this time (milliseconds).",
+     "Close a gap when this maximum duration is reached.",
+     "Wait this long before closing a detected gap.",
+     "How strongly the detector follows quiet decaying tails.",
+     "How long to learn the normal song level before acting."
+   }};
    for(int i=0;i<6;++i){
       auto& s=knobs[size_t(i)];
-      if(i==4)s.setReadout(100.0,"%");
+      if(i==0)s.setReadout(1.0," dB");
+      else if(i==4)s.setReadout(100.0,"%");
       else if(i==5)s.setReadout(1000.0," ms");
       else if(i>0)s.setReadout(1.0," ms");
       s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
       s.setTextBoxStyle(juce::Slider::TextBoxBelow,false,74,19);
       const auto* pval=p.parameters.getParameter(ids[size_t(i)]);
       if(pval!=nullptr)s.setDoubleClickReturnValue(true,pval->convertFrom0to1(pval->getDefaultValue()));
-      s.setTooltip(juce::String(names[size_t(i)])+". Drag to adjust; Shift-drag for precision.");
+      s.setTooltip(explanations[size_t(i)]);
       attachments[size_t(i)]=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.parameters,ids[size_t(i)],s);
       auto& l=knobLabels[size_t(i)];l.setText(names[size_t(i)],juce::dontSendNotification);
       l.setJustificationType(juce::Justification::centred);

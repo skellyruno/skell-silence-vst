@@ -1,5 +1,6 @@
 #pragma once
 #include "Theme.h"
+#include <SkellCore/SkellHardwareUI.h>
 #include <cmath>
 namespace skell::ui {
 class SilenceLookAndFeel final : public juce::LookAndFeel_V4 {
@@ -41,42 +42,12 @@ public:
       g.drawRoundedRectangle(r.reduced(1.5f),5.5f,1.2f);
     }
   }
-  void drawRotarySlider(juce::Graphics& g,int x,int y,int width,int height,float pos,float start,float end,juce::Slider& slider) override {
-    const juce::Rectangle<float> r{float(x),float(y),float(width),float(height)};
-    const float radius=std::max(8.0f,std::min(r.getWidth(),r.getHeight())*0.34f);
-    const auto center=r.getCentre();
-    const auto accent=Theme::green;
-    // Quiet hardware bezel: graded metal centre, precise ticks and a readable
-    // illuminated sweep without high-cost drop shadows or bitmap assets.
-    g.setColour(Theme::inset);g.fillEllipse(center.x-radius-5,center.y-radius-5,2*radius+10,2*radius+10);
-    g.setColour(Theme::border.brighter(0.22f));
-    g.drawEllipse(center.x-radius-4,center.y-radius-4,2*radius+8,2*radius+8,1.5f);
-    g.setGradientFill(juce::ColourGradient(Theme::raised.brighter(0.13f),center.x,center.y-radius,
-                                           Theme::inset,center.x,center.y+radius,false));
-    g.fillEllipse(center.x-radius,center.y-radius,2*radius,2*radius);
-    g.setColour(Theme::raised.brighter(0.26f));
-    g.drawEllipse(center.x-radius+2,center.y-radius+2,2*radius-4,2*radius-4,1.0f);
-    const float a=start+std::clamp(pos,0.0f,1.0f)*(end-start);
-    for(int i=0;i<=10;++i){
-      const float angle=start+float(i)/10.0f*(end-start);
-      const float inner=radius+8.0f,outer=inner+(i%5==0?4.0f:2.0f);
-      g.setColour(Theme::muted.withAlpha(i%5==0?0.40f:0.20f));
-      g.drawLine(center.x+std::sin(angle)*inner,center.y-std::cos(angle)*inner,
-                 center.x+std::sin(angle)*outer,center.y-std::cos(angle)*outer,1.0f);
-    }
-    juce::Path track,arc;
-    track.addCentredArc(center.x,center.y,radius+5,radius+5,0,start,end,true);
-    arc.addCentredArc(center.x,center.y,radius+5,radius+5,0,start,a,true);
-    g.setColour(Theme::border.brighter(0.15f));
-    g.strokePath(track,juce::PathStrokeType(3.0f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-    g.setColour(accent.withAlpha(0.10f));
-    g.strokePath(arc,juce::PathStrokeType(4.0f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-    g.setColour(accent);
-    g.strokePath(arc,juce::PathStrokeType(2.8f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-    const float tip=radius*0.72f;
-    g.setColour(Theme::text);g.drawLine(center.x,center.y,
-                                       center.x+std::sin(a)*tip,center.y-std::cos(a)*tip,2.2f);
-    g.setColour(accent.withAlpha(0.85f));g.fillEllipse(center.x-2,center.y-2,4,4);
+  void drawRotarySlider(juce::Graphics& g,int x,int y,int width,int height,
+                        float pos,float start,float end,juce::Slider&) override {
+    // One SkellCore hardware renderer shared by all current and future plugins.
+    skellcore::ui::drawHardwareKnob(g,
+      {float(x),float(y),float(width),float(height)},pos,start,end,
+      Theme::green,Theme::raised,Theme::border,Theme::text);
   }
   void drawLinearSlider(juce::Graphics& g,int x,int y,int width,int height,float sliderPos,float,float,juce::Slider::SliderStyle style,juce::Slider& s) override {
     if(style!=juce::Slider::LinearHorizontal){juce::LookAndFeel_V4::drawLinearSlider(g,x,y,width,height,sliderPos,sliderPos,sliderPos,style,s);return;}

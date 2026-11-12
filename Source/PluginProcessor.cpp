@@ -36,9 +36,9 @@ SkellSilenceAudioProcessor::SkellSilenceAudioProcessor()
 }
 APVTS::ParameterLayout SkellSilenceAudioProcessor::createLayout() {
   APVTS::ParameterLayout l;
-  addFloat(l,"mix",0,1,0.65f);
-  addFloat(l,"tension",0,1,0.5f);addFloat(l,"space",0,1,0.28f);
-  addFloat(l,"duckAfter",0,1,0.18f);
+  addFloat(l,"mix",0,1,0.0f);
+  addFloat(l,"tension",0,1,0.0f);addFloat(l,"space",0,1,0.0f);
+  addFloat(l,"duckAfter",0,1,0.0f);
   addChoice(l,"lookahead",{"OFF","250 ms","500 ms","1 beat","1 bar"},1);
   addChoice(l,"triggerSource",{"AUTO","SIDECHAIN","GRID","MIDI"},0);
   addChoice(l,"gridDivision",{"1/4","1/8","1/16","1/32"},1);
@@ -128,7 +128,13 @@ void SkellSilenceAudioProcessor::prepareToPlay(double rate,int /*blockSize*/) {
   smoothMix.reset(sr,0.012);smoothTension.reset(sr,0.020);smoothSpace.reset(sr,0.020);
   smoothMix.setCurrentAndTargetValue(param("mix"));smoothTension.setCurrentAndTargetValue(param("tension"));smoothSpace.setCurrentAndTargetValue(param("space"));
   clearRuntime();
-  activeLatency=latencyFor(lastBpm);latencyRequested.store(activeLatency);triggerAsyncUpdate();
+  bypassActive=false;lastTransport=false;
+  activeLatency=latencyFor(lastBpm);
+  latencyRequested.store(activeLatency);
+  // prepareToPlay is not the realtime callback: report the starting delay
+  // synchronously so the host can compensate the very first audio block.
+  setLatencySamples(activeLatency);
+  triggerAsyncUpdate();
 }
 void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
   detector.reset();delay.reset();
@@ -177,8 +183,44 @@ SkellSilenceAudioProcessor::RecentGap SkellSilenceAudioProcessor::getRecentGap(i
 void SkellSilenceAudioProcessor::requestMapEdit(int index,double deltaPpq,bool remove) noexcept {
   editDelta.store(deltaPpq);editRemove.store(remove);editIndex.store(index);
 }
+// Host bypass uses the SAME delay ring and declared PDC as active processing.
+// Never reset the dry delay when toggling bypass: that would create a dropout.
+void SkellSilenceAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
+                                                     juce::MidiBuffer&) {
+  juce::ScopedNoDenormals noDenormals;
+  auto main=getBusBuffer(buffer,false,0);
+  if(main.getNumChannels()==0)return;
+  const int channels=main.getNumChannels();
+  auto* left=main.getWritePointer(0);
+  auto* right=channels>1?main.getWritePointer(1):nullptr;
+  if(!bypassActive){
+    bypassActive=true;
+    detector.reset();midiGate.reset();gapClassLatch.reset();wetTransition.reset();
+    readEvents=writtenEvents=0;
+    gridInGap=false;wasFxActive=false;
+    lastTriggerSource=-1;lastLockToMap=false;
+    previewRemaining=0;wetTailRemaining=0;
+    lastTransport=false;
+    for(auto& instrument:instruments)instrument.reset();
+    activeMask.store(0,std::memory_order_release);
+    activeLengthClass.store(-1,std::memory_order_release);
+  }
+  inputChannels.store(channels,std::memory_order_relaxed);
+  for(int i=0;i<main.getNumSamples();++i){
+    const float inL=left[i],inR=right?right[i]:inL;
+    delay.push(0,inL);delay.push(1,inR);
+    histories[0].push(inL);histories[1].push(inR);
+    instruments[0].observeInput(inL);instruments[1].observeInput(inR);
+    left[i]=delay.delayed(0,activeLatency);
+    if(right)right[i]=delay.delayed(1,activeLatency);
+    delay.next();
+    ++samples;
+  }
+  totalSamples.store(samples,std::memory_order_release);
+}
 void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals guard;
+  bypassActive=false;
   auto main=getBusBuffer(buffer,false,0);
   if(main.getNumChannels()==0) return;
   const auto side=getBusBuffer(buffer,true,1);

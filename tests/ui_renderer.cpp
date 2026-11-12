@@ -82,6 +82,101 @@ bool testDryLatency() {
   return true;
 }
 
+// Fresh insertion and preset roundtrip: the factory state is a true dry
+// pass-through at the host's declared PDC offset, including >0 dBFS float
+// samples, anti-phase stereo, impulses and several device sample rates.
+bool testNeutralInsertAndPreset() {
+  SkellSilenceAudioProcessor p;
+  const auto zeroed=[](SkellSilenceAudioProcessor& processor) {
+    for(const char* name : {"mix", "tension", "space", "duckAfter"}) {
+      const auto* value=processor.parameters.getRawParameterValue(name);
+      if(value==nullptr || value->load()!=0.0f)return false;
+    }
+    return true;
+  };
+  if(!zeroed(p)) return false;
+  for(const double rate : {44100.0,48000.0,96000.0}) {
+    p.prepareToPlay(rate,128);
+    const int latency=p.latencyRequested.load();
+    if(latency!=int(rate*0.250) || p.getLatencySamples()!=latency)return false;
+    const int total=latency+1280;
+    std::vector<float> referenceL(size_t(total+128),0.0f);
+    std::vector<float> referenceR(size_t(total+128),0.0f);
+    juce::AudioBuffer<float> audio(2,128);
+    juce::MidiBuffer midi;
+    for(int start=0;start<total;start+=128) {
+      for(int sample=0;sample<128;++sample) {
+        const int at=start+sample;
+        const float left=at==17?1.24f:(at<1024?0.43f*std::sin(float(at)*0.103f):0.0f);
+        const float right=at==17?-1.24f:(at<1024?-left:0.0f);
+        referenceL[size_t(at)]=left;
+        referenceR[size_t(at)]=right;
+        audio.setSample(0,sample,left);
+        audio.setSample(1,sample,right);
+      }
+      midi.clear();
+      p.processBlock(audio,midi);
+      for(int sample=0;sample<128;++sample) {
+        const int at=start+sample,source=at-latency;
+        const float expectedL=source>=0?referenceL[size_t(source)]:0.0f;
+        const float expectedR=source>=0?referenceR[size_t(source)]:0.0f;
+        if(audio.getSample(0,sample)!=expectedL || audio.getSample(1,sample)!=expectedR)
+          return false;
+      }
+    }
+    p.releaseResources();
+  }
+  juce::MemoryBlock state;
+  p.getStateInformation(state);
+  SkellSilenceAudioProcessor restored;
+  setParameter(restored,"mix",0.9f);
+  restored.setStateInformation(state.getData(),int(state.getSize()));
+  if(!zeroed(restored))return false;
+  restored.prepareToPlay(48000.0,128);
+  const bool latencyAligned=restored.latencyRequested.load()==12000;
+  restored.releaseResources();
+  return latencyAligned;
+}
+
+// Toggling a host's true bypass path must not discard the lookahead ring.
+// Test a live bypass -> active -> bypass sequence without any PDC jump.
+bool testHostBypassPdc() {
+  SkellSilenceAudioProcessor p;
+  p.prepareToPlay(48000.0,128);
+  const int latency=p.latencyRequested.load();
+  if(latency!=12000)return false;
+  juce::AudioBuffer<float> audio(2,128);
+  juce::MidiBuffer midi;
+  const int total=18432;
+  std::vector<float> sourceL(size_t(total),0.0f);
+  std::vector<float> sourceR(size_t(total),0.0f);
+  setParameter(p,"mix",1.0f);
+  for(int start=0;start<total;start+=128){
+    if(start==3072)setParameter(p,"mix",0.0f);
+    for(int i=0;i<128;++i){
+      const int at=start+i;
+      const float a=at==34?1.16f:0.33f*std::sin(float(at)*0.071f);
+      const float b=-a*0.7f;
+      sourceL[size_t(at)]=a;sourceR[size_t(at)]=b;
+      audio.setSample(0,i,a);audio.setSample(1,i,b);
+    }
+    midi.clear();
+    if(start<3072 || start>=9216)
+      p.processBlockBypassed(audio,midi);
+    else
+      p.processBlock(audio,midi);
+    for(int i=0;i<128;++i){
+      const int from=start+i-latency;
+      const float expectedL=from<0?0.0f:sourceL[size_t(from)];
+      const float expectedR=from<0?0.0f:sourceR[size_t(from)];
+      if(audio.getSample(0,i)!=expectedL || audio.getSample(1,i)!=expectedR)
+        return false;
+    }
+  }
+  p.releaseResources();
+  return true;
+}
+
 // Verify the modern MidiBufferIterator keeps exact note sample offsets.
 bool testMidiGapPositions() {
   SkellSilenceAudioProcessor p;
@@ -373,6 +468,14 @@ int main(int argc, char** argv) {
   const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
+  if (!testHostBypassPdc()) {
+    std::fprintf(stderr,"Host bypass continuity / PDC test failed\\n");
+    return 1;
+  }
+  if (!testNeutralInsertAndPreset()) {
+    std::fprintf(stderr, "Factory dry playback / preset roundtrip regression failed\n");
+    return 1;
+  }
   if (!testDryLatency()) {
     std::fprintf(stderr, "Dry impulse / PDC alignment test failed\n");
     return 1;
@@ -455,7 +558,7 @@ int main(int argc, char** argv) {
       editor.setAdvancedMode(!simplified);
       for (int i = 0; i < 7; ++i)
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
-      setParameter(p, "mix", 0.65f);
+      setParameter(p, "mix", (mode == idle || simplified) ? 0.0f : 0.65f);
       setParameter(p, "rule_tape_0", 1.f);
       setParameter(p, "rule_swell_2", 1.f);
       if(mode==ruleOverride){
@@ -512,7 +615,7 @@ int main(int argc, char** argv) {
                      + juce::String(expected));
       } else issues.add("Missing trigger dropdown");
       if (auto* mix = dynamic_cast<juce::Slider*>(findById(editor, "mix"))) {
-        const double expected = (currentScene == dryMix || currentScene == simpleDry) ? 0.0 : 0.65;
+        const double expected = (currentScene == idle || currentScene >= simpleIdle || currentScene == dryMix) ? 0.0 : 0.65;
         if (std::abs(mix->getValue() - expected) > 0.002)
           issues.add("MIX knob/parameter attachment did not update");
         if(mix->getTextFromValue(0.65)!="65%")
