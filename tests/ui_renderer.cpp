@@ -98,7 +98,7 @@ bool testNeutralInsertAndPreset() {
   for(const double rate : {44100.0,48000.0,96000.0}) {
     p.prepareToPlay(rate,128);
     const int latency=p.latencyRequested.load();
-    if(latency!=int(rate*0.250))return false;
+    if(latency!=int(rate*0.250) || p.getLatencySamples()!=latency)return false;
     const int total=latency+1280;
     std::vector<float> referenceL(size_t(total+128),0.0f);
     std::vector<float> referenceR(size_t(total+128),0.0f);
