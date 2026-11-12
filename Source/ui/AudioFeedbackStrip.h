@@ -26,8 +26,6 @@ public:
     const float center=secondary*0.5f;
     const float start=vertical ? r.getY()+5.0f : r.getX()+5.0f;
     const float length=std::max(1.0f,primary-10.0f);
-    const auto axis=vertical ? juce::Point<float>(center,0.0f)
-                             : juce::Point<float>(0.0f,center);
     g.setColour(Theme::border.withAlpha(0.82f));
     if(vertical){
       g.fillRoundedRectangle(center-1.5f,0.0f,3.0f,primary,1.5f);
