@@ -138,6 +138,45 @@ bool testNeutralInsertAndPreset() {
   return latencyAligned;
 }
 
+// Toggling a host's true bypass path must not discard the lookahead ring.
+// Test a live bypass -> active -> bypass sequence without any PDC jump.
+bool testHostBypassPdc() {
+  SkellSilenceAudioProcessor p;
+  p.prepareToPlay(48000.0,128);
+  const int latency=p.latencyRequested.load();
+  if(latency!=12000)return false;
+  juce::AudioBuffer<float> audio(2,128);
+  juce::MidiBuffer midi;
+  const int total=18432;
+  std::vector<float> sourceL(size_t(total),0.0f);
+  std::vector<float> sourceR(size_t(total),0.0f);
+  setParameter(p,"mix",1.0f);
+  for(int start=0;start<total;start+=128){
+    if(start==3072)setParameter(p,"mix",0.0f);
+    for(int i=0;i<128;++i){
+      const int at=start+i;
+      const float a=at==34?1.16f:0.33f*std::sin(float(at)*0.071f);
+      const float b=-a*0.7f;
+      sourceL[size_t(at)]=a;sourceR[size_t(at)]=b;
+      audio.setSample(0,i,a);audio.setSample(1,i,b);
+    }
+    midi.clear();
+    if(start<3072 || start>=9216)
+      p.processBlockBypassed(audio,midi);
+    else
+      p.processBlock(audio,midi);
+    for(int i=0;i<128;++i){
+      const int from=start+i-latency;
+      const float expectedL=from<0?0.0f:sourceL[size_t(from)];
+      const float expectedR=from<0?0.0f:sourceR[size_t(from)];
+      if(audio.getSample(0,i)!=expectedL || audio.getSample(1,i)!=expectedR)
+        return false;
+    }
+  }
+  p.releaseResources();
+  return true;
+}
+
 // Verify the modern MidiBufferIterator keeps exact note sample offsets.
 bool testMidiGapPositions() {
   SkellSilenceAudioProcessor p;
@@ -429,6 +468,10 @@ int main(int argc, char** argv) {
   const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
+  if (!testHostBypassPdc()) {
+    std::fprintf(stderr,"Host bypass continuity / PDC test failed\\n");
+    return 1;
+  }
   if (!testNeutralInsertAndPreset()) {
     std::fprintf(stderr, "Factory dry playback / preset roundtrip regression failed\n");
     return 1;
