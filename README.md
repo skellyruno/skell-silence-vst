@@ -1,8 +1,8 @@
 # SKELL SILENCE (`skell-silence-vst`)
 
-An original JUCE 8 / CMake **VST3 + Standalone** audio effect based on the build organization, JUCE pin and CI conventions of [skellyruno/skell-vst-template](https://github.com/skellyruno/skell-vst-template). The plugin detects gaps and inserts tempo-aware sound design. Product: **Skell Silence**, vendor: **Skell Audio**, unique VST3 code: `Sl01`.
+An original JUCE 8 / CMake **Windows VST3-only** audio effect based on the build organization, JUCE pin and CI conventions of [skellyruno/skell-vst-template](https://github.com/skellyruno/skell-vst-template). The plugin detects gaps and inserts tempo-aware sound design. Product: **Skell Silence**, vendor: **Skell Audio**, unique VST3 code: `Sl01`.
 
-## First-time workflow (v1.9)
+## First-time workflow (v2.1 matte / neutral insert)
 
 Skell Silence opens in **Simple View**. The screen has one live waveform and three controls:
 
@@ -10,9 +10,9 @@ Skell Silence opens in **Simple View**. The screen has one live waveform and thr
 - **ENERGY 0–100%:** intensity of risers and reverse swells (existing `tension` parameter).
 - **SPACE 0–100%:** reverb bloom on processed gaps (existing `space` parameter).
 
-**Getting started:** add the plugin to a track, press Play and look for the highlighted quiet sections. Try MIX 30–60% and then raise ENERGY or SPACE if desired. **EDIT EFFECTS** or the header **ADVANCED** button exposes the detector, seven instruments, gap-length rules and other settings. **SIMPLE VIEW** returns to the clean screen. The header **PRESETS** menu contains file Open/Save and window-size options; it does not claim to ship with factory presets.
+**Getting started:** add the plugin to a track, press Play and look for the highlighted quiet sections. Try MIX 30–60% and then raise ENERGY or SPACE if desired. **FX DETAIL** or the header **ADVANCED** button exposes the detector, seven instruments, gap-length rules and other settings. **SIMPLE VIEW** returns to the clean screen. The header **PRESETS** menu contains file Open/Save and window-size options; it does not claim to ship with factory presets.
 
-Advanced's **CAPTURE GAPS** is the former LEARN: record gap positions on the song timeline. **REPLAY MAP** is the former LOCK: replay that recorded map on subsequent passes. Neither is required for ordinary automatic gap processing. The audio engine, APVTS IDs (`mix`, `tension`, `space`, `learnArmed`, `lockToMap`), automation and preset serialization are unchanged. New readouts display whole percentages or whole time units while preserving their underlying parameter precision.
+Advanced's **CAPTURE GAPS** is the former LEARN: record gap positions on the song timeline. **REPLAY MAP** is the former LOCK: replay that recorded map on subsequent passes. Neither is required for ordinary automatic gap processing. Existing APVTS IDs (`mix`, `tension`, `space`, `learnArmed`, `lockToMap`) and preset serialization remain compatible. Fresh insertion now initializes MIX, ENERGY, SPACE and EXIT LIFT to zero. New readouts display whole percentages or whole time units while preserving their underlying parameter precision.
 
 Automated visual regression covers both Simple and Advanced at the minimum, compact, standard and large UI sizes, plus overlays and preset-menu state. The renderer uses the actual JUCE editor; it does not ship in the plugin.
 
@@ -21,41 +21,36 @@ Automated visual regression covers both Simple and Advanced at the minimum, comp
 - Mono/stereo audio effect with optional mono/stereo sidechain bus and MIDI input.
 - Dual-speed RMS gap detector with threshold, min/max duration, arm time, recovery hold and decay-aware tail sensitivity.
 - AUTO, SIDECHAIN, GRID (subdivision and phase-offset parameters) and MIDI event gates. SIDECHAIN defaults to disabled at the host bus level.
-- Input-driven lookahead: Off, 250 ms, 500 ms, one beat, one bar; dry signal delayed to match detector decisions. Host latency is reported using `setLatencySamples`, updated on the message thread. **LOCK retains the selected lookahead latency** rather than toggling plug-in delay compensation while audio is playing; it triggers from the saved PPQ map.
+- Input-driven lookahead: Off, 250 ms, 500 ms, one beat, one bar; dry signal delayed to match detector decisions. Initial host latency is reported synchronously during `prepareToPlay`; runtime changes are reconciled through the message thread. **LOCK retains the selected lookahead latency** rather than toggling plug-in delay compensation while audio is playing; it triggers from the saved PPQ map.
 - Seven independently enabled and leveled effects: Tape Stop, Filtered Air, Reverse Swell, Noise Fade, Impact, Riser and Stutter Tail. Default 7×4 matrix follows the supplied spec. The EXTRA LONG impact is placed on the last beat.
 - Macro parameters: MIX, TENSION, SPACE and DUCK AFTER (brief transient lift). Gap audio receives a 5 ms edge ramp, a bounded 2-second reverb release and an output soft-peak protector. MIX=0 preserves the dry audio without an extra saturation stage.
-- LEARN records gap start/end PPQ positions while playing. LOCK replays saved PPQ gaps; the map is saved in plugin state. Click a mapped region in the 8-second timeline, drag or press Left/Right to nudge, Delete/Backspace to remove. Header **MENU → Reset learned gaps** clears all. When a region is selected, PREVIEW can audition stored history if the host continues calling `processBlock` while stopped.
+- LEARN records gap start/end PPQ positions while playing. LOCK replays saved PPQ gaps; the map is saved in plugin state. Click a mapped region in the 8-second timeline, drag or press Left/Right to nudge, Delete/Backspace to remove. Header **PRESETS → Clear captured gap map** clears all. When a region is selected, PREVIEW can audition stored history if the host continues calling `processBlock` while stopped.
 - Scale-consistent, fixed-ratio 1200×760 base interface with dark negative-space original wordmark, waveform/gap overlays, gap detector monitor, instrument rack, settings popups, editable class boundaries and gap/min count. Default opening size is 912×578 (24% smaller than the 1200×760 design canvas).
 - Host-automatable APVTS parameters and `.skellsilence` preset save/load, including the learned gap map and editor size.
 - No allocations are made by the custom DSP buffers during `processBlock`. Custom DSP state is preallocated in `prepareToPlay`.
 
-## Build
+## Build (Windows VST3 only)
 
-Use CMake 3.22+ and a C++17 compiler (MSVC on Windows, Clang/Xcode on macOS). JUCE 8.0.12 is fetched automatically from GitHub unless you specify an installed JUCE folder.
-
-**Windows, Visual Studio:**
+Use CMake 3.22+, Visual Studio with the C++ desktop toolchain, and JUCE
+8.0.12 (auto-fetched if JUCE_PATH is omitted). The plugin target produces
+**Windows VST3 only**. The screenshot executable is development-only and
+never included with the released bundle.
 
 ```powershell
 cmake -S . -B build -A x64 -DJUCE_PATH="C:/JUCE"
-cmake --build build --config Release --parallel 2
+cmake --build build --config Release --target SkellSilence_VST3 --parallel 2
 ```
 
-Omit `-DJUCE_PATH` for the pinned JUCE 8.0.12 auto-fetch. For GitHub builds, create a `skell-silence-vst` repo and upload the **contents** of this folder, and open **Actions → Build Skell Silence → Run workflow**. The workflow builds a Windows `.vst3` bundle and a standalone executable, then uploads both in one GitHub artifact (one ZIP download, no nested ZIP).
+Expected release output: `build/SkellSilence_artefacts/Release/VST3/Skell Silence.vst3`.
+On GitHub, successful **Build Skell Silence** runs publish the
+`SkellSilence-Windows` artifact. Unzip the VST3 bundle into the system's
+VST3 plugin directory, then rescan plugins in FL Studio. There is **no
+Standalone executable or macOS distribution** in this build.
 
-**macOS:**
+For headless actual-editor screenshot validation, configure
+`SKELL_SILENCE_BUILD_UI_RENDERER=ON` on a JUCE-compatible development
+machine and build `SkellSilenceUIRenderer` separately.
 
-```bash
-cmake -S . -B build -G Xcode
-cmake --build build --config Release --parallel 2
-```
-
-Expected JUCE build products:
-
-- `build/SkellSilence_artefacts/Release/VST3/Skell Silence.vst3`
-- `build/SkellSilence_artefacts/Release/Standalone/Skell Silence.exe` (Windows)
-- `build/SkellSilence_artefacts/Release/Standalone/Skell Silence.app` (macOS)
-
-Actual output directory may vary with generator and JUCE configuration. Copy the `.vst3` bundle to the system's VST3 plugin folder, or extract the GitHub artifact once.
 
 ## Workflow
 
@@ -67,9 +62,20 @@ Actual output directory may vary with generator and JUCE configuration. Copy the
 
 ## Performance / known limitations
 
-This is an **initial implementation**, not a verified commercial-ready release. The C++ DSP-only tests (`tests/run_cpp_tests.sh`) run without JUCE and cover basic gap opening/closing, map edits, fixed lookahead and seven-instrument rendering. **The full JUCE VST3 and Standalone targets have not yet been verified locally**, because JUCE is not installed here and external Git access is unavailable; run the included CI to confirm compilation and test the real DAW build.
+GitHub Actions runs the portable C++ DSP regressions, Windows VST3 build,
+and a separate real JUCE Editor screenshot/interaction suite (70 scenes).
+These checks are release gates, not proof of audible quality in every host;
+FL Studio listening tests and plugin validation in a commercial host remain
+necessary. Test material covers anti-phase stereo, impulses, sample rates up
+to 192 kHz in portable DSP, and exact dry/PDC and host-bypass continuity in
+the real AudioProcessor tests.
 
-The AirNoise spectrum-follow option currently uses a lightweight low-pass shaping model, not the proposed 24-band spectral matching. Tape stop and stutter use a circular sample history and basic interpolation rather than the full Hermite/pitch-coherent engine described in the design brief. The supplied FDN reverb is a compact 8-delay model. This revision uses cached RMS coefficients and a decay-sensitive threshold to lower detector overhead; these improvements remain subject to listening tests. LEARN is bounded to 2,048 PPQ gaps (no heap growth on the audio thread) and assumes a usable host PPQ timeline. Selected mapped-gap editing takes effect on the following audio block. `setLatencySamples` must be observed by the host: latency changes during live playback can produce audible transitions, so choose lookahead before recording/bouncing.
+The AirNoise FOLLOW profile is a lightweight spectral model, not a full
+24-band spectral matching engine. The reverb is an eight-delay feedback
+network. Effects use the retained input history; PREVIEW depends on host
+processing while stopped. Dynamic lookahead changes while playing require
+the host to reconcile latency; prefer choosing lookahead before recording
+or bouncing. Captured maps remain bounded to 2,048 PPQ gaps.
 
 **Host considerations:** Some DAWs do not continue processing effects when transport is stopped; PREVIEW cannot make sound in those hosts until the host processes audio again. MIDI and GRID triggers provide simple gates rather than full user-drawn grid hit maps. The preview reads the retained input history; input history is unavailable before the plugin has received audio.
 
