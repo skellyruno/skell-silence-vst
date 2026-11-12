@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include <algorithm>
+#include <cmath>
 namespace skell::dsp {
 struct MappedGap { double from=0,to=0; };
 // Single writer (audio thread), atomic consumers (UI + host state save).
@@ -12,7 +13,7 @@ public:
   void clear() noexcept { count.store(0,std::memory_order_release); }
   int size() const noexcept { return count.load(std::memory_order_acquire); }
   bool append(double from, double to) noexcept {
-    if (!(to>from) || from<0) return false;
+    if (!std::isfinite(from) || !std::isfinite(to) || !(to>from) || from<0) return false;
     const int n=count.load(std::memory_order_relaxed);
     if (n>=capacity) return false;
     begins[size_t(n)].store(from,std::memory_order_relaxed);
@@ -25,7 +26,8 @@ public:
     return {begins[size_t(index)].load(std::memory_order_relaxed),ends[size_t(index)].load(std::memory_order_relaxed)};
   }
   void replace(int index, MappedGap value) noexcept {
-    if(index>=0 && index<size() && value.to>value.from) {
+    if(index>=0 && index<size() && std::isfinite(value.from) && std::isfinite(value.to)
+       && value.from>=0.0 && value.to>value.from) {
       begins[size_t(index)].store(value.from,std::memory_order_release);
       ends[size_t(index)].store(value.to,std::memory_order_release);
     }
