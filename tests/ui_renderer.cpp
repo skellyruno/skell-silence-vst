@@ -25,7 +25,7 @@ constexpr std::array<Size, 4> sizes {{
 enum Mode { idle, playing, dryMix, grid, sidechain, midi, selected,
             editRanges, instrument0, instrument1, instrument2, instrument3,
             instrument4, instrument5, instrument6, workspaceMenu, ruleOverride, disabledWet,
-            simpleIdle, simplePlaying, simpleDry, simplePresets };
+            simpleIdle, simplePlaying, simpleDry, simplePresets, simplePowerOff };
 
 void setParameter(SkellSilenceAudioProcessor& p, const juce::String& id, float value) {
   if (auto* parameter = p.parameters.getParameter(id))
@@ -85,6 +85,54 @@ bool testDryLatency() {
 // Fresh insertion and preset roundtrip: the factory state is a true dry
 // pass-through at the host's declared PDC offset, including >0 dBFS float
 // samples, anti-phase stereo, impulses and several device sample rates.
+// Front-panel power shares host PDC and leaves the original signal untouched,
+// even with MIX raised during the bypass interval. A host never sees a latency jump.
+bool testInternalPowerBypass() {
+  SkellSilenceAudioProcessor p;
+  if(p.parameters.getRawParameterValue("pluginEnabled")->load()<0.5f)return false;
+  setParameter(p,"mix",0.0f);
+  p.prepareToPlay(48000.0,128);
+  constexpr int total=18432;
+  const int latency=p.getLatencySamples();
+  if(latency!=12000)return false;
+  std::vector<float> inputL(size_t(total),0.0f),inputR(size_t(total),0.0f);
+  juce::AudioBuffer<float> block(2,128);
+  juce::MidiBuffer midi;
+  for(int start=0;start<total;start+=128){
+    if(start==4096){
+      setParameter(p,"mix",1.0f);
+      setParameter(p,"pluginEnabled",0.0f);
+    }
+    if(start==14080){
+      setParameter(p,"pluginEnabled",1.0f);
+      setParameter(p,"mix",0.0f);
+    }
+    for(int i=0;i<128;++i){
+      const int at=start+i;
+      const float v=(at==17?1.25f:0.27f*std::sin(float(at)*0.081f));
+      inputL[size_t(at)]=v;
+      inputR[size_t(at)]=-v*0.73f;
+      block.setSample(0,i,v);
+      block.setSample(1,i,-v*0.73f);
+    }
+    midi.clear();
+    p.processBlock(block,midi);
+    if(p.getLatencySamples()!=latency || p.latencyRequested.load()!=latency)return false;
+    for(int i=0;i<128;++i){
+      const int from=start+i-latency;
+      const float expectedL=from>=0?inputL[size_t(from)]:0.0f;
+      const float expectedR=from>=0?inputR[size_t(from)]:0.0f;
+      if(block.getSample(0,i)!=expectedL || block.getSample(1,i)!=expectedR)return false;
+    }
+  }
+  juce::MemoryBlock state;
+  p.getStateInformation(state);
+  SkellSilenceAudioProcessor restored;
+  restored.setStateInformation(state.getData(),int(state.getSize()));
+  p.releaseResources();
+  return restored.parameters.getRawParameterValue("pluginEnabled")->load()>0.5f;
+}
+
 bool testNeutralInsertAndPreset() {
   SkellSilenceAudioProcessor p;
   const auto zeroed=[](SkellSilenceAudioProcessor& processor) {
@@ -320,7 +368,7 @@ bool makeContactSheet(const juce::File& folder) {
     {"compact-simple-playing", "SIMPLE / LISTENING"},
     {"compact-idle", "ADVANCED / CONTROLS"},
     {"compact-simple-dry", "SIMPLE / DRY MIX"},
-    {"compact-simple-presets", "PRESET MENU"},
+    {"compact-simple-presets", "SETTINGS MENU"},
     {"compact-midi", "MIDI TRIGGER"},
     {"compact-edit-ranges", "EDIT LENGTHS"},
     {"compact-instrument-0", "TAPE STOP SETTINGS"},
@@ -468,6 +516,10 @@ int main(int argc, char** argv) {
   const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
       ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
+  if (!testInternalPowerBypass()) {
+    std::fprintf(stderr,"Global power bypass continuity / PDC test failed\n");
+    return 1;
+  }
   if (!testHostBypassPdc()) {
     std::fprintf(stderr,"Host bypass continuity / PDC test failed\\n");
     return 1;
@@ -522,6 +574,7 @@ int main(int argc, char** argv) {
       addScene(options, juce::String(s.name)+"-simple-playing",s.width,s.height,simplePlaying);
       addScene(options, juce::String(s.name)+"-simple-dry",s.width,s.height,simpleDry);
       addScene(options, juce::String(s.name)+"-simple-presets",s.width,s.height,simplePresets);
+      addScene(options, juce::String(s.name)+"-simple-bypassed",s.width,s.height,simplePowerOff);
     }
     // Real control overlays at both the minimum and shipping window sizes.
     for (const auto& s : { sizes[0], sizes[1] }) {
@@ -536,6 +589,7 @@ int main(int argc, char** argv) {
       {"compact-simple", "compact-simple-playing"},
       {"compact-simple", "compact-simple-dry"},
       {"compact-simple", "compact-simple-presets"},
+      {"compact-simple", "compact-simple-bypassed"},
       {"compact-idle", "compact-playing"},
       {"compact-idle", "compact-dry-mix"},
       {"compact-idle", "compact-grid"},
@@ -559,6 +613,7 @@ int main(int argc, char** argv) {
       for (int i = 0; i < 7; ++i)
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
       setParameter(p, "mix", (mode == idle || simplified) ? 0.0f : 0.65f);
+      setParameter(p, "pluginEnabled", mode == simplePowerOff ? 0.0f : 1.0f);
       setParameter(p, "rule_tape_0", 1.f);
       setParameter(p, "rule_swell_2", 1.f);
       if(mode==ruleOverride){
@@ -586,7 +641,7 @@ int main(int argc, char** argv) {
       if (mode == editRanges || (mode >= instrument0 && mode <= instrument6)
           || mode == workspaceMenu || mode == simplePresets) {
         const juce::String id = mode == editRanges ? juce::String("edit-ranges")
-            : (mode == workspaceMenu || mode == simplePresets) ? juce::String("menu")
+            : (mode == workspaceMenu || mode == simplePresets) ? juce::String("settings")
             : juce::String("instrument-settings-") + juce::String(int(mode - instrument0));
         if (auto* button = dynamic_cast<juce::Button*>(findById(editor, id)))
           if (button->onClick) button->onClick();
@@ -621,6 +676,12 @@ int main(int argc, char** argv) {
         if(mix->getTextFromValue(0.65)!="65%")
           issues.add("MIX should use whole percentage readouts");
       } else issues.add("Missing MIX control");
+      if (auto* power=dynamic_cast<juce::Button*>(findById(editor,"plugin-power"))) {
+        if(power->getToggleState()!=(currentScene!=simplePowerOff))
+          issues.add("SkellCore power attachment did not follow the host parameter");
+      } else issues.add("Missing SkellCore power button");
+      if (!findById(editor,"settings"))
+        issues.add("Missing SkellCore settings button");
       if (editor.isAdvancedMode() != (currentScene < simpleIdle))
         issues.add("Simple/Advanced editor mode did not update");
       for (int i = 0; i < 7; ++i) {
@@ -652,6 +713,15 @@ int main(int argc, char** argv) {
       if(toggle->onClick) toggle->onClick();
       if(editor.isAdvancedMode()) {std::fprintf(stderr,"Simple button failed\n");++failures;}
     } else {std::fprintf(stderr,"Missing Simple/Advanced toggle\n");++failures;}
+    // Exercise actual front-panel button notifications and its APVTS wiring.
+    if(auto* power=dynamic_cast<juce::Button*>(findById(editor,"plugin-power"))) {
+      power->setToggleState(false,juce::sendNotificationSync);
+      if(p.parameters.getRawParameterValue("pluginEnabled")->load()>0.5f)
+        {std::fprintf(stderr,"Power off was not attached to DSP bypass\n");++failures;}
+      power->setToggleState(true,juce::sendNotificationSync);
+      if(p.parameters.getRawParameterValue("pluginEnabled")->load()<0.5f)
+        {std::fprintf(stderr,"Power on did not re-enable DSP\n");++failures;}
+    } else {std::fprintf(stderr,"Missing power button\n");++failures;}
     // The plugin's JUCE build disables nested/modal message dispatch loops.
     // Use the one genuine JUCE runDispatchLoop, scheduling each cleanup,
     // configuration and capture on separate message-loop turns. This is the
