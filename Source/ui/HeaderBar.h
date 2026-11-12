@@ -74,7 +74,7 @@ public:
     const juce::String status=!enabled?"BYPASS  /  DRY AUDIO":locked?"REPLAYING MAP":learning?"CAPTURING GAPS":
                               playing?"LISTENING FOR GAPS":"READY  /  PRESS PLAY";
     const auto color=!enabled?Theme::muted:locked?Theme::violet:playing?Theme::green:Theme::muted;
-    const int px=advancedMode?482:685;
+    const int px=advancedMode?482:728;
     Theme::pill(g,{float(px),22.0f,232.0f,35.0f},color,enabled&&(playing||locked));
     g.setColour(color);g.fillEllipse(float(px+13),36.0f,7.0f,7.0f);
     g.setFont(Theme::font(13,true));g.setColour(Theme::text);
@@ -103,7 +103,7 @@ private:
     skellcore::ui::drawShushingSkullMark(g,26.0f,16.0f,47.0f,
                                          Theme::text,Theme::inset,Theme::green);
   }
-  void timerCallback() override {repaint(465,14,485,54);}
+  void timerCallback() override {repaint(465,14,505,54);}
   void showSettingsMenu() {
     juce::PopupMenu menu;
     menu.addSectionHeader("SKELLSILENCE  /  SETTINGS");

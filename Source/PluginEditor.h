@@ -9,7 +9,6 @@
 #include "ui/LengthRulesMatrix.h"
 #include "ui/TensionKnob.h"
 #include "ui/SimpleView.h"
-#include "ui/AudioFeedbackStrip.h"
 
 class SkellSilenceAudioProcessorEditor final : public juce::AudioProcessorEditor {
 public:
@@ -29,7 +28,6 @@ private:
  skell::ui::LengthRulesMatrix matrix;
  skell::ui::TensionKnob macros;
  skell::ui::SimpleView quick;
- skell::ui::AudioFeedbackStrip feedback;
  bool advancedMode=false;
  juce::ComponentBoundsConstrainer constrainer;
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SkellSilenceAudioProcessorEditor)

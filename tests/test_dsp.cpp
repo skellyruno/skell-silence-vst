@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iostream>
 #include <chrono>
+#include <limits>
 int main(){
   using namespace skell::dsp;
   constexpr double sampleRate=48000;
@@ -25,6 +26,40 @@ int main(){
   assert(map.append(1.0,1.7));assert(map.size()==1);assert(map.get(0).to==1.7);
   map.replace(0,{2.0,3.0});assert(map.get(0).from==2.0);
   map.erase(0);assert(map.size()==0);
+  const auto nan=std::numeric_limits<double>::quiet_NaN();
+  const auto inf=std::numeric_limits<double>::infinity();
+  // Non-finite captured map coordinates must never poison playback or presets.
+  assert(!map.append(nan,2.0));
+  assert(!map.append(1.0,inf));
+  assert(!map.append(-1.0,2.0));
+  assert(map.append(1.0,2.0));
+  map.replace(0,{1.0,inf});
+  assert(map.get(0).to==2.0);
+  map.replace(0,{-2.0,3.0});
+  assert(map.get(0).from==1.0);
+  map.clear();
+  // An invalid sidechain sample may not poison the level envelope forever.
+  // The same detector must still identify the next real silence and recovery.
+  GapDetector resilient;
+  resilient.prepare(sampleRate);
+  DetectorSettings hostile;
+  hostile.thresholdDb=18;hostile.minGapMs=50;hostile.holdMs=25;
+  hostile.armTimeSeconds=0.15f;hostile.maxGapMs=1800;
+  int openedAfterInvalid=0,closedAfterInvalid=0;
+  for(int64_t n=0;n<int64_t(sampleRate*2.5);++n) {
+    const bool quiet=n>=int64_t(sampleRate*0.7) && n<int64_t(sampleRate*1.4);
+    const float clean=quiet?0.0f:
+      0.35f*std::sin(float(n)*float(2*3.14159265358979323846*330.0/sampleRate));
+    float left=clean,right=-clean;
+    if(n==int64_t(sampleRate*0.8))left=std::numeric_limits<float>::infinity();
+    if(n==int64_t(sampleRate*0.9))right=std::numeric_limits<float>::quiet_NaN();
+    if(n==int64_t(sampleRate*1.01))left=std::numeric_limits<float>::max();
+    const auto result=resilient.processStereo(left,right,n,hostile);
+    assert(std::isfinite(result.fast) && std::isfinite(result.slow) && std::isfinite(result.threshold));
+    if(result.began){++openedAfterInvalid;assert(result.start>=int64_t(sampleRate*0.7));}
+    if(result.ended){++closedAfterInvalid;assert(result.end>result.start);}
+  }
+  assert(openedAfterInvalid>=1 && closedAfterInvalid>=1);
   LookaheadBuffer delay;delay.prepare(sampleRate);
   for(int n=0;n<64;++n){delay.push(0,n==0?1.0f:0.0f);delay.push(1,0.0f);
     assert(std::abs(delay.delayed(0,7)-(n==7?1.0f:0.0f))<1e-5f);delay.next();}

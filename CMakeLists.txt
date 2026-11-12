@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(SkellSilence VERSION 2.3.0 LANGUAGES C CXX)
+project(SkellSilence VERSION 2.4.0 LANGUAGES C CXX)
 include(FetchContent)
 if(DEFINED JUCE_PATH AND EXISTS "${JUCE_PATH}/CMakeLists.txt")
   add_subdirectory("${JUCE_PATH}" JUCE)
@@ -11,7 +11,7 @@ endif()
 # Use the explicit SkellCore revision supplying shared matte hardware knobs and the shushing-skull gesture; CI must validate before merge.
 # The headless renderer remains a separate, development-only executable.
 option(SKELL_SILENCE_BUILD_UI_RENDERER "Build actual JUCE editor screenshot tests" OFF)
-set(SKELL_SILENCE_SKELLCORE_COMMIT "6a2077b3275819dcc1166f8c5a4a04a5f3558caf")
+set(SKELL_SILENCE_SKELLCORE_COMMIT "4159d346d8d87de7a844bc00968a48448771b463")
 FetchContent_Declare(SkellCorePinned
   GIT_REPOSITORY https://github.com/skellyruno/skellcore-vst-template.git
   GIT_TAG ${SKELL_SILENCE_SKELLCORE_COMMIT}

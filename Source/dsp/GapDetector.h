@@ -22,14 +22,21 @@ public:
   void reset() noexcept { fastPower=slowPower=previousFast=0; age=0; pending=0; recover=0; armedSamples=0; state=Sound; activeStart=0; }
   State getState() const noexcept { return state; }
   DetectionResult process(float input, int64_t sample, const DetectorSettings& p) noexcept {
-    return processPower(input*input, sample, p);
+    const float safe=safeInput(input);
+    return processPower(safe*safe,sample,p);
   }
   // Stereo-aware power detection: opposite-phase channels must not cancel.
   // Both inputs are squared before combining, avoiding sqrt() in the callback.
   DetectionResult processStereo(float left,float right,int64_t sample,const DetectorSettings& p) noexcept {
-    return processPower(0.5f*(left*left+right*right),sample,p);
+    // Sidechains can contain accidental NaN/Inf and hostile floating peaks.
+    // Bound the detector feed ONLY; the actual audio dry path is untouched.
+    const float l=safeInput(left),r=safeInput(right);
+    return processPower(0.5f*(l*l+r*r),sample,p);
   }
   DetectionResult processPower(float squared, int64_t sample, const DetectorSettings& p) noexcept {
+    // Treat non-finite power as silence rather than permanently poisoning
+    // both IIR states; clamps also avoid overflow in smoothing arithmetic.
+    squared=std::isfinite(squared)?std::clamp(squared,0.0f,1.0e6f):0.0f;
     fastPower=fastCoefficient*fastPower+(1.0f-fastCoefficient)*squared;
     slowPower=slowCoefficient*slowPower+(1.0f-slowCoefficient)*squared;
     const float fast=std::sqrt(fastPower+1.0e-15f), slow=std::sqrt(slowPower+1.0e-15f);
@@ -80,6 +87,9 @@ public:
     return r;
   }
 private:
+  static float safeInput(float sample) noexcept {
+    return std::isfinite(sample)?std::clamp(sample,-1000.0f,1000.0f):0.0f;
+  }
   double sr=44100.0;
   float fastPower=0, slowPower=0, previousFast=0;
   float fastCoefficient=0.998f, slowCoefficient=0.99999f;

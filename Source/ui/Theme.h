@@ -39,14 +39,16 @@ inline void panelBackground(juce::Graphics& g,juce::Rectangle<float> r,float rad
     g.setGradientFill(juce::ColourGradient(panel.brighter(0.075f),r.getX(),r.getY(),
                                           panel.darker(0.09f),r.getRight(),r.getBottom(),false));
     g.fillRoundedRectangle(r,radius);
-    g.setColour(juce::Colours::black.withAlpha(0.17f));
-    g.drawRoundedRectangle(r.reduced(1.7f),radius-0.5f,1.5f);
-    g.setColour(border.withAlpha(0.89f));
-    g.drawRoundedRectangle(r.reduced(0.6f),radius,1.0f);
-    g.setColour(juce::Colours::white.withAlpha(0.058f));
-    g.drawHorizontalLine(int(r.getY()+1),r.getX()+radius,r.getRight()-radius);
-    g.setColour(juce::Colours::black.withAlpha(0.23f));
-    g.drawHorizontalLine(int(r.getBottom()-2),r.getX()+radius,r.getRight()-radius);
+    // Thicker machined edges replace the thin hairlines used in v2.3.
+    // Every major panel uses this one shared outline and consistent radii.
+    g.setColour(juce::Colours::black.withAlpha(0.72f));
+    g.drawRoundedRectangle(r.reduced(0.65f),radius-0.5f,3.2f);
+    g.setColour(border.brighter(0.23f).withAlpha(0.98f));
+    g.drawRoundedRectangle(r.reduced(1.2f),radius-1.0f,2.15f);
+    g.setColour(juce::Colours::black.withAlpha(0.30f));
+    g.drawRoundedRectangle(r.reduced(2.6f),radius-2.0f,0.9f);
+    g.setColour(juce::Colours::white.withAlpha(0.042f));
+    g.drawHorizontalLine(int(r.getY()+2),r.getX()+radius,r.getRight()-radius);
 }
 inline void sectionRule(juce::Graphics& g,float x,float y,float width,juce::Colour accent=green) {
     g.setColour(border.withAlpha(0.65f));g.drawHorizontalLine(int(y),x,x+width);
