@@ -18,6 +18,7 @@ public:
   void releaseResources() override {}
   bool isBusesLayoutSupported(const BusesLayout&) const override;
   void processBlock(juce::AudioBuffer<float>&,juce::MidiBuffer&) override;
+  void processBlockBypassed(juce::AudioBuffer<float>&,juce::MidiBuffer&) override;
   juce::AudioProcessorEditor* createEditor() override;
   bool hasEditor() const override {return true;}
   const juce::String getName() const override {return "Skell Silence";}
@@ -72,6 +73,7 @@ private:
   int64_t samples=0;
   double sr=44100, lastPpq=0,lastExpectedPpq=0, lastBpm=120;
   bool lastTransport=false;
+  bool bypassActive=false;
   int pendingLearnEvent=-1;
   bool gridInGap=false,wasFxActive=false;
   int lastTriggerSource=-1;
