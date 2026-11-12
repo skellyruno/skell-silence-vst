@@ -1,0 +1,11 @@
+{
+  "schema": "skellworld-plugin/1",
+  "product_id": "skell.silence",
+  "display_name": "Skell Silence",
+  "connection": "explicit-opt-in-loopback",
+  "capabilities": [
+    "presence"
+  ],
+  "source_repository": "skellyruno/skell-silence-vst",
+  "note": "Settings > Join SkellWorld publishes informational presence only, while the editor is open. Off by default; no audio/parameters/metadata sent."
+}

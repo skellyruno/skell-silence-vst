@@ -257,3 +257,12 @@ palette and `drawSkullKeyMark`, pinned to commit
 Only **Windows VST3** is released. The Linux real-editor renderer is a
 separate development-only regression executable, never shipped with the plugin.
 Existing parameter IDs, presets and DSP processing remain unchanged.
+
+
+## SkellWorld opt-in presence (developer pilot)
+
+Open **Settings → Join SkellWorld (presence only)** to announce a Skell Silence editor instance to the optional local SkellWorld hub. **Settings → Leave SkellWorld** disconnects. This is **off by default**, scoped to the open plugin editor, and works only when the local hub is available. The menu reports when the hub is offline. This feature sends only the product ID and a per-instance session identity; it does not transmit audio, presets, files, detected silences, settings or parameters.
+
+The feature uses SkellCore's existing `WorldLink` worker-thread transport. There is no socket access in the audio callback, no new DAW automation parameter, no change to DSP latency, and no saved preset/state change. Closing the editor disconnects the instance. Existing users can ignore it completely.
+
+Source integration requires Windows VST3 CI and an actual FL Studio load/close test before host certification.
