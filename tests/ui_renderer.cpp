@@ -840,6 +840,8 @@ int main(int argc, char** argv) {
       } else issues.add("Missing SkellCore power button");
       if (!findById(editor,"settings"))
         issues.add("Missing SkellCore settings button");
+      if (findById(editor,"audio-feedback") != nullptr)
+        issues.add("Obsolete feedback divider must not be visible in any workspace");
       if (auto* capture=dynamic_cast<juce::Button*>(findById(editor,"learn"))) {
         if(capture->getToggleState()!=(currentScene==capturing))
           issues.add("Capture Gaps toggle did not follow its automation parameter");
