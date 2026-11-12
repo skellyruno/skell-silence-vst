@@ -192,7 +192,8 @@ void SkellSilenceAudioProcessor::applyMapRequests() noexcept {
   if(const int idx=editIndex.exchange(-1);idx>=0){
     if(editRemove.exchange(false))gapMap.erase(idx);
     else {
-      const auto g=gapMap.get(idx), d=editDelta.load();
+      const auto g=gapMap.get(idx);
+      const double d=editDelta.load();
       gapMap.replace(idx,{std::max(0.0,g.from+d),std::max(0.001,g.to+d)});
     }
   }
