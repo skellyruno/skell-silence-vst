@@ -11,7 +11,7 @@ endif()
 # Use the explicit SkellCore revision supplying shared matte hardware knobs and the shushing-skull gesture; CI must validate before merge.
 # The headless renderer remains a separate, development-only executable.
 option(SKELL_SILENCE_BUILD_UI_RENDERER "Build actual JUCE editor screenshot tests" OFF)
-set(SKELL_SILENCE_SKELLCORE_COMMIT "4b3aead7d341e0494f6c57ed1e04e17b2937f18a")
+set(SKELL_SILENCE_SKELLCORE_COMMIT "e56f23640af26c04ebd18cc5342bb1e349bbd2e5")
 FetchContent_Declare(SkellCorePinned
   GIT_REPOSITORY https://github.com/skellyruno/skellcore-vst-template.git
   GIT_TAG ${SKELL_SILENCE_SKELLCORE_COMMIT}
