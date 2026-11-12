@@ -129,7 +129,12 @@ void SkellSilenceAudioProcessor::prepareToPlay(double rate,int /*blockSize*/) {
   smoothMix.setCurrentAndTargetValue(param("mix"));smoothTension.setCurrentAndTargetValue(param("tension"));smoothSpace.setCurrentAndTargetValue(param("space"));
   clearRuntime();
   bypassActive=false;lastTransport=false;
-  activeLatency=latencyFor(lastBpm);latencyRequested.store(activeLatency);triggerAsyncUpdate();
+  activeLatency=latencyFor(lastBpm);
+  latencyRequested.store(activeLatency);
+  // prepareToPlay is not the realtime callback: report the starting delay
+  // synchronously so the host can compensate the very first audio block.
+  setLatencySamples(activeLatency);
+  triggerAsyncUpdate();
 }
 void SkellSilenceAudioProcessor::clearRuntime(bool preserveHistory) noexcept {
   detector.reset();delay.reset();
