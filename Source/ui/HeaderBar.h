@@ -12,21 +12,25 @@ class HeaderBar final : public juce::Component, private juce::Timer {
 public:
   explicit HeaderBar(SkellSilenceAudioProcessor& p)
     : processor(p),learnAttachment(p.parameters,"learnArmed",learn),
-      lockAttachment(p.parameters,"lockToMap",lock) {
+      lockAttachment(p.parameters,"lockToMap",lock),
+      powerAttachment(p.parameters,"pluginEnabled",power) {
     learn.setButtonText("CAPTURE GAPS");
     lock.setButtonText("REPLAY MAP");
     learn.setComponentID("learn");lock.setComponentID("lock");
     learn.setTooltip("Advanced: remember where gaps occur on the song timeline. Activate while the song plays.");
     lock.setTooltip("Advanced: play the remembered gaps at the same song positions. Requires a captured map.");
-    presets.setButtonText("PRESETS");
-    presets.setComponentID("menu");
-    presets.setTooltip("Open, save or manage sound presets and window size.");
+    settings.setComponentID("settings");
+    settings.setTooltip("SkellSilence settings: presets, map, window size and about.");
+    power.setComponentID("plugin-power");
+    power.setClickingTogglesState(true);
+    power.setTooltip("Power: bypass all gap effects with host-aligned dry audio.");
     toggleMode.setButtonText("ADVANCED");
     toggleMode.setComponentID("toggle-advanced");
     toggleMode.setTooltip("Show detailed effect, detector and timing controls.");
-    presets.onClick=[this]{showWorkspaceMenu();};
+    settings.onClick=[this]{showSettingsMenu();};
     toggleMode.onClick=[this]{if(onModeChange)onModeChange(!advancedMode);};
-    addAndMakeVisible(presets);addAndMakeVisible(toggleMode);
+    addAndMakeVisible(toggleMode);
+    addAndMakeVisible(settings);addAndMakeVisible(power);
     addAndMakeVisible(learn);addAndMakeVisible(lock);
     setAdvancedMode(false);
     startTimerHz(6);
@@ -53,14 +57,15 @@ public:
     g.setColour(Theme::green);g.drawText("SILENCE",176,11,153,36,juce::Justification::centredLeft);
     g.setColour(Theme::muted);g.setFont(Theme::font(13));
     g.drawText("GAP DESIGNER  /  SKELLCORE",95,47,360,20,juce::Justification::centredLeft);
+    const bool enabled=processor.parameters.getRawParameterValue("pluginEnabled")->load()>0.5f;
     const bool playing=processor.isPlaying.load(std::memory_order_relaxed);
     const bool locked=processor.parameters.getRawParameterValue("lockToMap")->load()>0.5f;
     const bool learning=processor.parameters.getRawParameterValue("learnArmed")->load()>0.5f;
-    const juce::String status=locked?"REPLAYING MAP":learning?"CAPTURING GAPS":
+    const juce::String status=!enabled?"BYPASS  /  DRY AUDIO":locked?"REPLAYING MAP":learning?"CAPTURING GAPS":
                               playing?"LISTENING FOR GAPS":"READY  /  PRESS PLAY";
-    const auto color=locked?Theme::violet:playing?Theme::green:Theme::muted;
+    const auto color=!enabled?Theme::muted:locked?Theme::violet:playing?Theme::green:Theme::muted;
     const int px=advancedMode?482:685;
-    Theme::pill(g,{float(px),22.0f,232.0f,35.0f},color,playing||locked);
+    Theme::pill(g,{float(px),22.0f,232.0f,35.0f},color,enabled&&(playing||locked));
     g.setColour(color);g.fillEllipse(float(px+13),36.0f,7.0f,7.0f);
     g.setFont(Theme::font(13,true));g.setColour(Theme::text);
     g.drawFittedText(status,px+27,24,198,31,juce::Justification::centredLeft,1);
@@ -68,8 +73,9 @@ public:
   void resized() override {
     learn.setBounds(724,22,120,34);
     lock.setBounds(849,22,112,34);
-    presets.setBounds(970,22,99,34);
-    toggleMode.setBounds(1077,22,103,34);
+    toggleMode.setBounds(968,22,102,34);
+    settings.setBounds(1080,18,44,44);
+    power.setBounds(1132,18,47,44);
   }
 private:
   void drawSkull(juce::Graphics& g) const {
@@ -81,9 +87,9 @@ private:
                                          Theme::text,Theme::inset,Theme::green);
   }
   void timerCallback() override {repaint(465,14,485,54);}
-  void showWorkspaceMenu() {
+  void showSettingsMenu() {
     juce::PopupMenu menu;
-    menu.addSectionHeader("SOUND PRESETS");
+    menu.addSectionHeader("SKELLSILENCE  /  SETTINGS");
     menu.addItem(20,"Open preset...");
     menu.addItem(21,"Save current sound...");
     menu.addSeparator();
@@ -96,7 +102,7 @@ private:
     menu.addSeparator();
     menu.addItem(6,"About Skell Silence");
     juce::Component::SafePointer<HeaderBar> safe(this);
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presets)
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings)
         .withParentComponent(findParentComponentOfClass<juce::AudioProcessorEditor>()),
       [safe](int result) {
         if(safe==nullptr)return;
@@ -130,8 +136,12 @@ private:
   SkellSilenceAudioProcessor& processor;
   bool advancedMode=false;
   juce::ToggleButton learn,lock;
-  juce::TextButton presets,toggleMode;
-  juce::AudioProcessorValueTreeState::ButtonAttachment learnAttachment,lockAttachment;
+  juce::TextButton toggleMode;
+  skellcore::ui::HardwareIconButton settings{
+    "Settings",skellcore::ui::HardwareGlyph::Settings,Theme::green,Theme::raised,Theme::inset};
+  skellcore::ui::HardwareIconButton power{
+    "Power",skellcore::ui::HardwareGlyph::Power,Theme::green,Theme::raised,Theme::inset};
+  juce::AudioProcessorValueTreeState::ButtonAttachment learnAttachment,lockAttachment,powerAttachment;
   std::unique_ptr<juce::FileChooser> chooser;
 };
 }
