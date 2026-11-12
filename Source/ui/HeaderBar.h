@@ -1,6 +1,7 @@
 #pragma once
 #include "Theme.h"
 #include <SkellCore/SkellHardwareUI.h>
+#include <SkellCore/WorldLink.h>
 #include "../PluginProcessor.h"
 #include <functional>
 #include <memory>
@@ -24,7 +25,7 @@ public:
     learn.setTooltip("Advanced: remember where gaps occur on the song timeline. Activate while the song plays.");
     lock.setTooltip("Advanced: play the remembered gaps at the same song positions. Requires a captured map.");
     settings.setComponentID("settings");
-    settings.setTooltip("SkellSilence settings: presets, map, window size and about.");
+    settings.setTooltip("Skell Silence settings: presets, window size, World presence and about.");
     power.setComponentID("plugin-power");
     power.setClickingTogglesState(true);
     power.setTooltip("Power: bypass all gap effects with host-aligned dry audio.");
@@ -116,6 +117,11 @@ private:
     menu.addItem(2,"Compact (76%)");menu.addItem(3,"90%");
     menu.addItem(4,"100%");menu.addItem(5,"125%");
     menu.addSeparator();
+    menu.addSectionHeader("SKELLWORLD / OPTIONAL PRESENCE");
+    menu.addItem(30,worldLink.requested() ?
+      (worldLink.hubOnline() ? "Leave SkellWorld (connected)" : "Leave SkellWorld (hub offline)") :
+      "Join SkellWorld (presence only)");
+    menu.addSeparator();
     menu.addItem(6,"About Skell Silence");
     juce::Component::SafePointer<HeaderBar> safe(this);
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings)
@@ -128,6 +134,10 @@ private:
           safe->onScaleChange(scales[result-2]);
         }
         if(result==20 || result==21)safe->openPreset(result==21);
+        if(result==30) {
+          if(safe->worldLink.requested()) safe->worldLink.leave();
+          else safe->worldLink.join(); // worker thread only; never processBlock
+        }
         if(result==6)juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
           "Skell Silence", "Play audio to detect quiet gaps. Use Mix, Energy and Space to shape them.\nAdvanced reveals capture, replay, timing and individual effects.");
       });
@@ -150,6 +160,9 @@ private:
     });
   }
   SkellSilenceAudioProcessor& processor;
+  // Explicit Settings menu opt-in. Editor lifetime owns the connection;
+  // no DSP processing or state/automation identity is altered.
+  skellcore::world::WorldLink worldLink{"skell.silence","Skell Silence"};
   bool advancedMode=false;
   juce::TextButton learn,lock;
   juce::TextButton toggleMode;
