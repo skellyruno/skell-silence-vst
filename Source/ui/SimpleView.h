@@ -13,7 +13,7 @@ public:
   explicit SimpleView(SkellSilenceAudioProcessor& processorIn) : processor(processorIn) {
     constexpr std::array<const char*,3> ids {{"mix", "tension", "space"}};
     constexpr std::array<const char*,3> tips {{
-      "How much gap effect to hear. 0% = only the original song.",
+      "0% is pure dry audio and the default. Turn MIX up to hear gap effects.",
       "Strength of the swell and riser effects.",
       "Amount of reverb added to the gap effects."
     }};
@@ -43,11 +43,11 @@ public:
     g.setColour(Theme::green.withAlpha(0.92f));
     g.fillRoundedRectangle(26.0f,23.0f,3.0f,35.0f,1.5f);
     g.setColour(Theme::muted);g.setFont(Theme::font(12.0f,true));
-    g.drawText("AUTO GAP FX  /  NO SETUP REQUIRED",42,18,452,24,juce::Justification::centredLeft);
+    g.drawText("GAP FX READY  /  DRY UNTIL YOU TURN UP MIX",42,18,452,24,juce::Justification::centredLeft);
     g.setColour(Theme::text);g.setFont(Theme::font(24.0f,true));
     g.drawFittedText("MAKE THE QUIET MOMENTS MOVE.",42,44,457,36,juce::Justification::centredLeft,1);
     g.setColour(Theme::muted);g.setFont(Theme::font(14.5f));
-    g.drawFittedText("Play your track. Skell Silence fills gaps between sounds.",42,88,454,25,
+    g.drawFittedText("Play your track to find gaps. Raise MIX to hear the effects.",42,88,454,25,
                      juce::Justification::centredLeft,1);
     constexpr std::array<const char*,3> steps{{"01  DETECT", "02  SHAPE", "03  BLEND"}};
     for(int i=0;i<3;++i){
