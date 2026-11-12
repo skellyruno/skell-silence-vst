@@ -558,7 +558,7 @@ int main(int argc, char** argv) {
       editor.setAdvancedMode(!simplified);
       for (int i = 0; i < 7; ++i)
         setParameter(p, juce::String(skell::dsp::instrumentIds[size_t(i)]) + "On", 1.f);
-      setParameter(p, "mix", simplified ? 0.0f : 0.65f);
+      setParameter(p, "mix", (mode == idle || simplified) ? 0.0f : 0.65f);
       setParameter(p, "rule_tape_0", 1.f);
       setParameter(p, "rule_swell_2", 1.f);
       if(mode==ruleOverride){
@@ -615,7 +615,7 @@ int main(int argc, char** argv) {
                      + juce::String(expected));
       } else issues.add("Missing trigger dropdown");
       if (auto* mix = dynamic_cast<juce::Slider*>(findById(editor, "mix"))) {
-        const double expected = (currentScene >= simpleIdle || currentScene == dryMix) ? 0.0 : 0.65;
+        const double expected = (currentScene == idle || currentScene >= simpleIdle || currentScene == dryMix) ? 0.0 : 0.65;
         if (std::abs(mix->getValue() - expected) > 0.002)
           issues.add("MIX knob/parameter attachment did not update");
         if(mix->getTextFromValue(0.65)!="65%")
