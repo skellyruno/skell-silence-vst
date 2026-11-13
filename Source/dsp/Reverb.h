@@ -17,11 +17,18 @@ public:
       auto& l=lines[i];l.data.assign(size_t(sampleRate*times[i])+1,0.0f);
       l.position=0;l.damped=0.0f;
     }
+    hasBeenExcited=false;
   }
   void reset() noexcept {
     for(auto& l:lines){std::fill(l.data.begin(),l.data.end(),0.0f);l.position=0;l.damped=0.0f;}
+    hasBeenExcited=false;
   }
   float process(float input,float space) noexcept {
+    // Most disabled/silent gap instruments never excite the FDN. Preserve
+    // exact zero and skip all eight delays until a real wet send arrives.
+    // Once excited, process the full tail without gating or truncation.
+    if(!hasBeenExcited && input==0.0f)return 0.0f;
+    hasBeenExcited=true;
     std::array<float,8> filtered{};
     float sum=0.0f,output=0.0f;
     const float baseDamping=0.35f+0.28f*std::clamp(space,0.0f,1.0f);
@@ -49,5 +56,6 @@ private:
   struct Line {std::vector<float> data;size_t position=0;float damped=0;};
   std::array<Line,8> lines;
   float dampingScale=1.0f;
+  bool hasBeenExcited=false;
 };
 }
