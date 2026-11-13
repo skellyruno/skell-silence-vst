@@ -20,14 +20,18 @@ public:
       if(!previousActive){attackSamples=0;releaseRemaining=0;}
       previousActive=true;
       attackSamples=std::min(attackSamples+1,fadeSamples);
-      const float gain=float(attackSamples)/float(fadeSamples);
+      const float position=float(attackSamples)/float(fadeSamples);
+      // C1-smooth cubic envelope: no abrupt gain derivative at either
+      // boundary (a linear ramp leaves sharp corners in the wet signal).
+      const float gain=position*position*(3.0f-2.0f*position);
       lastWet={left*gain,right*gain};
       return lastWet;
     }
     if(previousActive)releaseRemaining=fadeSamples;
     previousActive=false;
     if(releaseRemaining<=0)return {0.0f,0.0f};
-    const float gain=float(releaseRemaining--)/float(fadeSamples);
+    const float position=float(releaseRemaining--)/float(fadeSamples);
+    const float gain=position*position*(3.0f-2.0f*position);
     return {lastWet[0]*gain,lastWet[1]*gain};
   }
 private:
