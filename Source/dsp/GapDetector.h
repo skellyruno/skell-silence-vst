@@ -57,7 +57,13 @@ public:
       cachedMaxGapMs=p.maxGapMs;maxSamples=std::max<int64_t>(minSamples,int64_t(p.maxGapMs*sr/1000.0));
     }
     if (p.armTimeSeconds!=cachedArmTime) {cachedArmTime=p.armTimeSeconds;armSamples=std::max<int64_t>(0,int64_t(sr*p.armTimeSeconds));}
-    const bool below=fast<thresh && fast<0.15f;
+    // Schmitt threshold: opening a gap needs the stricter falling level,
+    // while closing an already open gap needs a clearly louder return.
+    // Suppresses flutter and false closes when a reverb tail hovers near
+    // the threshold; holdMs still defines the required return duration.
+    const bool inOpenGap=state==Gap || state==Recovering;
+    const float releaseThreshold=thresh*(inOpenGap?1.20f:1.0f);
+    const bool below=fast<releaseThreshold && fast<0.15f;
     const bool hasSignal=slow>0.00020f;
     if (hasSignal && !below) ++armedSamples;
     if (!hasSignal && state==Sound) armedSamples=0;

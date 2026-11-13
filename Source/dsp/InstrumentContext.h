@@ -11,7 +11,11 @@ struct GapContext {
   bool durationKnown=true; // false until real-time gap end is observed
 };
 inline float envelope(float x) noexcept {
-  return std::sin(3.14159265358979323846f*std::clamp(x,0.0f,1.0f));
+  // Bhaskara's symmetric sine approximation on [0, pi]: exact at both
+  // endpoints and midpoint; <0.002 absolute error. No per-sample sin().
+  const float phase=std::clamp(x,0.0f,1.0f);
+  const float parabola=phase*(1.0f-phase);
+  return 16.0f*parabola/(5.0f-4.0f*parabola);
 }
 inline uint32_t nextRandom(uint32_t& s) noexcept {s^=s<<13;s^=s>>17;s^=s<<5;return s;}
 inline float noise(uint32_t& s) noexcept {return float(nextRandom(s)&0xffff)/32768.0f-1.0f;}
