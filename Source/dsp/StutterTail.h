@@ -6,7 +6,10 @@ public:
  void reset() noexcept {lastIndex=-1;lastDecay=-1.0f;cachedGain=1.0f;}
  float process(const GapContext& c, int div,float decay,int count) noexcept {
    const double beats=60.0/std::max(20.0,c.bpm);
-   const double slice=std::max(30.0,beats*c.sampleRate/std::pow(2.0,double(div+1)));
+   // div is a small host choice (0..3); use an exact power-of-two shift.
+   // Avoid calling pow() for every generated stutter sample.
+   const auto subdivision=1u<<std::clamp(div+1,1,8);
+   const double slice=std::max(30.0,beats*c.sampleRate/double(subdivision));
    const auto index=int(c.time/slice);
    if(index>=count) return 0;
    // The gain changes once per grain rather than recomputing pow() for every sample.
