@@ -89,6 +89,68 @@ int main() {
   transition.reset();
   assert(transition.process(false,0.0f,0.0f)[0]==0.0f);
 
+  // Cubic 5 ms fade-in and fade-out have a gentle derivative at their ends.
+  transition.reset();
+  const float fadeFirst=transition.process(true,1.0f,-1.0f)[0];
+  const float fadeSecond=transition.process(true,1.0f,-1.0f)[0];
+  assert(fadeFirst>0.0f && fadeFirst<0.0001f);
+  assert(fadeSecond>fadeFirst && (fadeSecond-fadeFirst)<0.0003f);
+  float previous=fadeSecond;
+  for(int i=2;i<240;++i){
+    const float sample=transition.process(true,1.0f,-1.0f)[0];
+    assert(sample>=previous && sample<=1.0f);
+    previous=sample;
+  }
+  assert(std::abs(previous-1.0f)<1.0e-6f);
+  const float releaseFirst=transition.process(false,0.0f,0.0f)[0];
+  float releaseSecond=transition.process(false,0.0f,0.0f)[0];
+  assert(releaseFirst==1.0f && releaseSecond<releaseFirst);
+  assert(releaseFirst-releaseSecond<0.0003f);
+  for(int i=0;i<240;++i) {
+    const float sample=transition.process(false,0.0f,0.0f)[0];
+    assert(sample<=releaseSecond);
+    releaseSecond=sample;
+  }
+
+  // Threshold chatter regression: faint decay near the entry threshold
+  // must not repeatedly close/reopen a sustained silent passage.
+  {
+    constexpr double rate=8000.0;
+    GapDetector stable;stable.prepare(rate);
+    DetectorSettings settings;
+    settings.thresholdDb=20.0f;
+    settings.minGapMs=50.0f;settings.maxGapMs=3000.0f;
+    settings.holdMs=12.0f;settings.armTimeSeconds=0.1f;
+    settings.tailSensitivity=0.5f;
+    int beginnings=0,endings=0;
+    int64_t firstEnd=-1;
+    for(int64_t n=0;n<16000;++n){
+      const double t=double(n)/rate;
+      const float amplitude=t<1.0 || t>=1.55 ? 0.5f
+        : t<1.3 || t>=1.36 ? 0.0f : 0.036f;
+      const auto detected=stable.process(amplitude,n,settings);
+      assert(std::isfinite(detected.fast) && std::isfinite(detected.slow));
+      if(detected.began)++beginnings;
+      if(detected.ended){++endings;if(firstEnd<0)firstEnd=n;}
+    }
+    assert(beginnings==1 && endings==1);
+    assert(firstEnd>int64_t(1.55*rate) && firstEnd<int64_t(1.7*rate));
+  }
+
+  // No per-sample sine required for the shared effect envelope.
+  assert(envelope(-1.0f)==0.0f);
+  assert(envelope(0.0f)==0.0f);
+  assert(envelope(0.5f)==1.0f);
+  assert(envelope(1.0f)==0.0f);
+  assert(envelope(5.0f)==0.0f);
+  float maxShapeError=0.0f;
+  for(int i=0;i<=1000;++i) {
+    const float x=float(i)/1000.0f;
+    const float exact=std::sin(3.14159265358979323846f*x);
+    maxShapeError=std::max(maxShapeError,std::abs(envelope(x)-exact));
+  }
+  assert(maxShapeError<0.002f);
+
   // Exercise impact envelopes at different sample rates. Reset and replay
   // must reproduce exactly the same output (offline bounce determinism).
   for(double sr : {44100.0,48000.0,96000.0,192000.0}) {
