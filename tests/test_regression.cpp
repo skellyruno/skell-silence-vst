@@ -112,6 +112,25 @@ int main() {
     releaseSecond=sample;
   }
 
+  // Wet-to-reverb is a true crossfade; no summing with a held DC-like sample.
+  {
+    GapTransition x;x.prepare(48000.0);
+    for(int i=0;i<260;++i)x.process(true,0.8f,-0.4f);
+    const auto first=x.process(false,0.18f,-0.09f);
+    assert(std::abs(first[0]-0.8f)<1e-6f && std::abs(first[1]+0.4f)<1e-6f);
+    float priorLeft=first[0],priorRight=first[1];
+    for(int i=1;i<240;++i){
+      const auto result=x.process(false,0.18f,-0.09f);
+      assert(result[0]<=priorLeft && result[0]>=0.18f);
+      assert(result[1]>=priorRight && result[1]<=-0.09f);
+      priorLeft=result[0];priorRight=result[1];
+    }
+    const auto end=x.process(false,0.18f,-0.09f);
+    assert(std::abs(end[0]-0.18f)<1e-6f && std::abs(end[1]+0.09f)<1e-6f);
+    const auto resumed=x.process(true,0.7f,-0.7f);
+    assert(resumed[0]>0.0f && resumed[0]<0.001f);
+  }
+
   // Threshold chatter regression: faint decay near the entry threshold
   // must not repeatedly close/reopen a sustained silent passage.
   {
