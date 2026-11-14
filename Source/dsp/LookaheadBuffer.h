@@ -34,7 +34,8 @@ public:
   void reset(int64_t absolutePosition=0){
     std::fill(samples.begin(),samples.end(),0.0f);
     position=std::max<int64_t>(0,absolutePosition);
-    writeIndex=size_t(position)%samples.size();
+    // reset() may also be called before prepare() by a host wrapper.
+    writeIndex=samples.empty()?0:size_t(position)%samples.size();
   }
   void push(float sample) noexcept {
     samples[writeIndex]=sample;

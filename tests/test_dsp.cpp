@@ -62,6 +62,8 @@ int main(){
     if(result.ended){++closedAfterInvalid;assert(result.end>result.start);}
   }
   assert(openedAfterInvalid>=1 && closedAfterInvalid>=1);
+  // Reset before prepare must remain safe for default-constructed buffers.
+  { HistoryBuffer unprepared;unprepared.reset();unprepared.reset(128); }
   // Ring parity against the v2.5 modulo algorithm across wrap and seeks.
   {
     constexpr double rate=8000.0;
