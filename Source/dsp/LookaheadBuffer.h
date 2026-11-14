@@ -58,15 +58,24 @@ public:
        double(position)-sampleTime>=double(samples.size()-3)) return read(sampleTime);
     const int64_t p=int64_t(std::floor(sampleTime));
     const float t=float(sampleTime-double(p));
-    // Four consecutive interpolation taps need only one modulo.
-    auto index=size_t(p-1)%samples.size();
-    const float a=samples[index];
-    if(++index==samples.size())index=0;
-    const float b=samples[index];
-    if(++index==samples.size())index=0;
-    const float c=samples[index];
-    if(++index==samples.size())index=0;
-    const float d=samples[index];
+    // The normal case is four contiguous samples. One modulo and one branch
+    // avoid three more divides and all per-tap wrap checks on the hot path.
+    const auto length=samples.size();
+    const auto base=size_t(p-1)%length;
+    const float a=samples[base];
+    float b,c,d;
+    if(base+3<length){
+      b=samples[base+1];c=samples[base+2];d=samples[base+3];
+    }else{
+      // Slow path only for the three positions crossing the ring boundary.
+      auto index=base;
+      if(++index==length)index=0;
+      b=samples[index];
+      if(++index==length)index=0;
+      c=samples[index];
+      if(++index==length)index=0;
+      d=samples[index];
+    }
     const float slope=0.5f*(c-a);
     const float t2=t*t,t3=t2*t;
     return (2*t3-3*t2+1)*b+(t3-2*t2+t)*slope+

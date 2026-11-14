@@ -5,6 +5,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+# Cancel only outdated pull-request checks. Main, manual and release builds
+# use their unique run IDs and are never canceled by a newer commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   dsp-portable:
     runs-on: ubuntu-latest
