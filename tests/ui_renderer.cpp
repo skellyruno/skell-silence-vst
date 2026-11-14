@@ -504,7 +504,29 @@ void addScene(Options& options, const juce::String& name,
   options.scenes.push_back(scene);
 }
 
-bool makeContactSheet(const juce::File& folder) {
+bool makeContactSheet(const juce::File& folder, bool quick) {
+  if (quick) {
+    constexpr std::array<const char*,4> names{{
+      "compact-simple", "compact-simple-presets", "compact-playing", "compact-idle"}};
+    constexpr int w=492,h=344;
+    juce::Image sheet(juce::Image::RGB,w*2,h*2,true);
+    juce::Graphics g(sheet);
+    g.fillAll(juce::Colour(0xff070b11));
+    for(size_t i=0;i<names.size();++i) {
+      const auto shot=juce::ImageFileFormat::loadFrom(
+          folder.getChildFile(juce::String(names[i])+".png"));
+      if(!shot.isValid()) return false;
+      const int x=int(i%2)*w, y=int(i/2)*h;
+      g.drawImageWithin(shot,x+8,y+8,w-16,h-42,
+                        juce::RectanglePlacement::centred);
+      g.setColour(juce::Colour(0xffb5c6d3));
+      g.setFont(juce::Font(juce::FontOptions(14.f)));
+      g.drawText(juce::String(names[i]).replaceCharacter('-',' '),
+                 x+10,y+h-32,w-20,25,juce::Justification::centredLeft);
+    }
+    return skellcore::ui::headless::writePng(
+        sheet,folder.getChildFile("contact-sheet.png"));
+  }
   struct Tile { const char* file; const char* label; };
   constexpr std::array<Tile, 9> tiles {{
     {"compact-simple", "SIMPLE / DEFAULT"},
@@ -633,7 +655,7 @@ private:
     manifest.getDynamicObject()->setProperty("scenes", juce::var(rows));
     if (!output.getChildFile("manifest.json").replaceWithText(
             juce::JSON::toString(manifest, false))) ++errorCount;
-    if (!makeContactSheet(output)) {
+    if (!makeContactSheet(output, options.scenes.size()==4)) {
       std::fprintf(stderr, "Contact sheet render failed\n");
       ++errorCount;
     }
@@ -656,8 +678,14 @@ private:
 
 int main(int argc, char** argv) {
   juce::ScopedJuceInitialiser_GUI gui;
-  const juce::String target = argc >= 3 && juce::String(argv[1]) == "--output"
-      ? juce::String::fromUTF8(argv[2]) : "ui-screenshots";
+  juce::String target="ui-screenshots";
+  bool full=false;
+  for(int i=1;i<argc;++i) {
+    const juce::String arg(argv[i]);
+    if(arg=="--full")full=true;
+    else if(arg=="--output" && i+1<argc)target=argv[++i];
+    else {std::fprintf(stderr,"Unknown UI renderer argument: %s\\n",arg.toRawUTF8());return 2;}
+  }
   const auto output = juce::File::getCurrentWorkingDirectory().getChildFile(target);
   if (!testPowerAndHostBypassTransport()) {
     std::fprintf(stderr,"Bypass transport clock, waveform, and dry PDC continuity failed\n");
@@ -707,6 +735,17 @@ int main(int argc, char** argv) {
     SkellSilenceAudioProcessorEditor editor(p);
     Options options;
     options.project = "Skell Silence actual JUCE PluginEditor (SkellCore pinned)";
+    if(!full) {
+      addScene(options,"compact-simple",912,578,simpleIdle);
+      addScene(options,"compact-simple-presets",912,578,simplePresets);
+      addScene(options,"compact-playing",912,578,playing);
+      addScene(options,"compact-idle",912,578,idle);
+      options.mustDiffer = {
+        {"compact-simple","compact-simple-presets"},
+        {"compact-simple","compact-playing"},
+        {"compact-simple","compact-idle"}
+      };
+    } else {
     for (const auto& s : sizes) {
       addScene(options, juce::String(s.name) + "-idle", s.width, s.height, idle);
       addScene(options, juce::String(s.name) + "-playing", s.width, s.height, playing);
@@ -757,6 +796,7 @@ int main(int argc, char** argv) {
       {"compact-idle", "compact-rule-override"},
       {"compact-idle", "compact-all-disabled"}
     };
+    }
     Mode currentScene = idle;
     options.configure = [&](const Scene& scene) {
       editor.setSize(scene.width, scene.height);
