@@ -6,7 +6,7 @@
 namespace skell::dsp {
 // Sample-accurate wet attack/release, independent of when the detector can
 // confirm a gap. This avoids a sudden full-level wet onset with lookahead OFF.
-// For release, smoothly taper the most recent wet sample into the reverb tail.
+// For release, crossfade the last wet sample into the moving reverb tail.
 // Pure state: no locking, allocation, or transcendental functions on the RT path.
 class GapTransition {
 public:
@@ -29,10 +29,14 @@ public:
     }
     if(previousActive)releaseRemaining=fadeSamples;
     previousActive=false;
-    if(releaseRemaining<=0)return {0.0f,0.0f};
+    // Keep the tail moving; adding a frozen wet sample to reverb caused
+    // a short DC-like plateau and extra gain at the closing boundary.
+    if(releaseRemaining<=0)return {left,right};
     const float position=float(releaseRemaining--)/float(fadeSamples);
-    const float gain=position*position*(3.0f-2.0f*position);
-    return {lastWet[0]*gain,lastWet[1]*gain};
+    const float oldGain=position*position*(3.0f-2.0f*position);
+    const float tailGain=1.0f-oldGain;
+    return {lastWet[0]*oldGain+left*tailGain,
+            lastWet[1]*oldGain+right*tailGain};
   }
 private:
   std::array<float,2> lastWet{{0.0f,0.0f}};

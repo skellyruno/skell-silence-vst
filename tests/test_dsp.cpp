@@ -7,6 +7,8 @@
 #include <iostream>
 #include <chrono>
 #include <limits>
+#include <vector>
+#include <algorithm>
 int main(){
   using namespace skell::dsp;
   constexpr double sampleRate=48000;
@@ -60,6 +62,44 @@ int main(){
     if(result.ended){++closedAfterInvalid;assert(result.end>result.start);}
   }
   assert(openedAfterInvalid>=1 && closedAfterInvalid>=1);
+  // Ring parity against the v2.5 modulo algorithm across wrap and seeks.
+  {
+    constexpr double rate=8000.0;
+    constexpr int length=136000;
+    LookaheadBuffer ring;ring.prepare(rate);
+    for(int i=0;i<length+64;++i){
+      ring.push(0,float(i));ring.push(1,-float(i));
+      if(i<20 || i>length-20)for(int d : {0,1,7,512,8192}){
+        const float expect=i>=d?float(i-d):0.0f;
+        assert(ring.delayed(0,d)==expect);
+        assert(ring.delayed(1,d)==-expect);
+      }
+      ring.next();
+    }
+    HistoryBuffer historyRing;historyRing.prepare(rate);
+    std::vector<float> ref(size_t(length),0.0f);
+    for(int64_t i=0;i<int64_t(length)+64;++i){
+      const float v=0.3f*std::sin(float(i)*0.0271f);
+      ref[size_t(i)%ref.size()]=v;
+      historyRing.push(v);
+    }
+    for(double pos : {double(length)-1.5,double(length),
+                      double(length)+0.25,double(length)+17.875,
+                      double(length)+61.0}){
+      const int64_t p=int64_t(std::floor(pos));
+      const float t=float(pos-double(p)),t2=t*t,t3=t2*t;
+      const auto get=[&ref](int64_t i){return ref[size_t(i)%ref.size()];};
+      const float a=get(p-1),b=get(p),c=get(p+1),d=get(p+2);
+      const float expected=(2*t3-3*t2+1)*b+(t3-2*t2+t)*0.5f*(c-a)+
+                           (-2*t3+3*t2)*c+(t3-t2)*0.5f*(d-b);
+      assert(std::abs(historyRing.read(pos)-(b+(c-b)*t))<1e-7f);
+      assert(std::abs(historyRing.readCubic(pos)-expected)<1e-7f);
+    }
+    historyRing.reset(1000000);
+    for(int i=0;i<100;++i)historyRing.push(float(i)*0.001f);
+    assert(std::abs(historyRing.read(1000040.5)-0.0405f)<1e-6f);
+    assert(std::abs(historyRing.readCubic(1000040.5)-0.0405f)<1e-6f);
+  }
   LookaheadBuffer delay;delay.prepare(sampleRate);
   for(int n=0;n<64;++n){delay.push(0,n==0?1.0f:0.0f);delay.push(1,0.0f);
     assert(std::abs(delay.delayed(0,7)-(n==7?1.0f:0.0f))<1e-5f);delay.next();}

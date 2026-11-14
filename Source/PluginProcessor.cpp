@@ -468,11 +468,9 @@ void SkellSilenceAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,j
     // Ramp wet processing at the *rendered* boundary. Lookahead OFF can
     // confirm a gap after its actual onset, so the instrument's analytical
     // 5ms edge alone is not sufficient to avoid an abrupt entry.
-    const auto transitioned=wetTransition.process(active && gapLen>1.0,
-                                                   active?wetL:0.0f,
-                                                   active?wetR:0.0f);
-    if(active){wetL=transitioned[0];wetR=transitioned[1];}
-    else {wetL+=transitioned[0];wetR+=transitioned[1];}
+    // Transition owns the complete wet signal, including the live reverb tail.
+    const auto transitioned=wetTransition.process(active && gapLen>1.0,wetL,wetR);
+    wetL=transitioned[0];wetR=transitioned[1];
     // At MIX 0 preserve the original signal bit-for-bit (including high peaks).
     const double postGap=double(delayedClock-lastGapSample)/sr;
     const float lift=(!active && postGap>=0.0 && postGap<0.055)
