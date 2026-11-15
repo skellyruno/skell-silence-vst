@@ -12,7 +12,8 @@ public:
     if(type==3) n=pink*0.7f;
     const float enter=std::min(1.0f,c.progress/std::max(0.02f,fadeIn));
     const float exit=std::min(1.0f,(1.0f-c.progress)/std::max(0.02f,fadeOut));
-    return n*std::min(enter,exit)*0.18f;
+    // Fade noise variance in and out without discontinuous envelope slopes.
+    return n*smoothstepUnit(std::min(enter,exit))*0.18f;
   }
 private: float pink=0;uint32_t seed=0xc0ffee21u,initialSeed=0xc0ffee21u;
 };

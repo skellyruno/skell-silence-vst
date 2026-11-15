@@ -6,6 +6,10 @@ public:
   void reset() noexcept {filter=0;}
   float process(const GapContext& c,float speedCurve,float stopTime,float lp) noexcept {
     const double duration=std::max(0.01,double(stopTime))*c.sampleRate;
+    // The stop duration is an audible endpoint, not just a speed-freeze time.
+    // Previously long gaps could replay one frozen source sample as DC long
+    // after the stop, creating rumble. Also avoid history reads after stop.
+    if(c.time<0.0 || c.time>=duration) return 0.0f;
     const double progress=std::clamp(c.time/duration,0.0,1.0);
     // Closed-form integrals of linear, quadratic and cubic deceleration.
     // Unlike a per-sample pow(), this costs only multiplies and has a smooth
@@ -24,7 +28,10 @@ public:
     const float cutoff=40.0f+(17000.0f*lp)*(1.0-progress)*(1.0-progress);
     const float a=std::clamp(float(6.2831853*cutoff/c.sampleRate),0.0002f,1.0f);
     filter+=a*(x-filter);
-    return filter*float(1.0-0.8*progress)*envelope(std::min(1.0f, c.progress*3.0f));
+    const double releaseSamples=std::max(1.0,std::min(duration*0.22,c.sampleRate*0.08));
+    const float stopFade=smoothstepUnit(float((duration-c.time)/releaseSamples));
+    return filter*float(1.0-0.8*progress)
+                 *envelope(std::min(1.0f,c.progress*3.0f))*stopFade;
   }
 private: float filter=0;
 };

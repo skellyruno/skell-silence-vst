@@ -10,6 +10,12 @@ struct GapContext {
   float progress=0, tension=0.5f, space=0.25f;
   bool durationKnown=true; // false until real-time gap end is observed
 };
+// Smooth unit interval fade with zero slope at both endpoints. Shared by
+// short instrument grains and the known-gap boundary, with no trig/allocations.
+inline float smoothstepUnit(float x) noexcept {
+  const float t=std::clamp(x,0.0f,1.0f);
+  return t*t*(3.0f-2.0f*t);
+}
 inline float envelope(float x) noexcept {
   // Bhaskara's symmetric sine approximation on [0, pi]: exact at both
   // endpoints and midpoint; <0.002 absolute error. No per-sample sin().

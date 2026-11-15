@@ -10,6 +10,7 @@ public:
    // Avoid calling pow() for every generated stutter sample.
    const auto subdivision=1u<<std::clamp(div+1,1,8);
    const double slice=std::max(30.0,beats*c.sampleRate/double(subdivision));
+   if(c.time<0.0) return 0.0f;
    const auto index=int(c.time/slice);
    if(index>=count) return 0;
    // The gain changes once per grain rather than recomputing pow() for every sample.
@@ -19,7 +20,9 @@ public:
    }
    const double offset=c.time-double(index)*slice;
    const double phase=std::clamp(offset/slice,0.0,1.0);
-   const float taper=float(std::clamp(std::min(phase,1.0-phase)*18.0,0.0,1.0));
+   // Keep the same grain length and plateau while removing the linear
+   // envelope's sharp slope corners that cause repeated clicks.
+   const float taper=smoothstepUnit(float(std::min(phase,1.0-phase)*18.0));
    return c.history.readCubic(c.start-slice+offset)*cachedGain*taper;
  }
 private:
