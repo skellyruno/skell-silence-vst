@@ -31,7 +31,9 @@ struct InstrumentSettings {
 inline float gapBoundaryGain(const GapContext& c) noexcept {
   const double fromStart=std::max(0.0,c.time);
   const double remaining=c.durationKnown?std::max(0.0,c.length-c.time):fromStart;
-  return std::clamp(float(std::min(fromStart,remaining)/c.sampleRate*200.0),0.0f,1.0f);
+  // Smooth derivative at the first and last 5ms of a known gap. Keep the
+  // existing time/latency policy, including unknown-endpoint behavior.
+  return smoothstepUnit(float(std::min(fromStart,remaining)/c.sampleRate*200.0));
 }
 class InstrumentMixer {
 public:

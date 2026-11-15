@@ -26,14 +26,30 @@ public:
    if(age<0.0 || age>c.sampleRate*2.0) return 0.0f;
    // The sub pitch drop and exponential envelopes are recursive rather than
    // evaluated using three exp() calls for every sample. Restart after seeks.
-   if(lastAge<0.0 || age<lastAge || age-lastAge>1.5) {
-     phase=0.0f;glide=bodyEnvelope=clickEnvelope=1.0f;
-   }
-   lastAge=age;
    if(decay!=cachedDecay) {
      cachedDecay=decay;
      bodyRate=std::exp(float(-(2.0+double(decay)*10.0)/sr));
    }
+   if(lastAge<0.0 || age<lastAge || age-lastAge>1.5) {
+     // A detector with lookahead OFF can first call Impact tens of ms after
+     // the actual onset. Seek its pitch glide and decay to that sample, not
+     // full-strength at time zero (the old delayed attack sounded like a pop).
+     // Analytic sum of the discrete exponential glide is evaluated ONLY on
+     // first call / seek; ordinary consecutive samples retain cheap recurrences.
+     const double steps=std::floor(std::max(0.0,age));
+     const double glidePower=std::pow(double(glideRate),steps);
+     const double denominator=1.0-double(glideRate);
+     const double geometric=denominator>1.0e-10
+       ? (1.0-glidePower)/denominator : steps;
+     const double cycles=(35.0*steps+
+       150.0*double(std::clamp(pitch,0.0f,1.0f))*geometric)/sr;
+     phase=float(6.2831853071795864769*(cycles-std::floor(cycles)));
+     glide=float(glidePower);
+     bodyEnvelope=float(std::pow(double(bodyRate),steps));
+     clickEnvelope=float(std::pow(double(clickRate),steps));
+     seed=initialSeed;
+   }
+   lastAge=age;
    const float f=35.0f+std::clamp(pitch,0.0f,1.0f)*150.0f*glide;
    phase+=float(6.2831853071795864769*f/sr);
    if(phase>6.2831853071795864769f)phase-=6.2831853071795864769f;
