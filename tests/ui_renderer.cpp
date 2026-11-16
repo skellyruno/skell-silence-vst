@@ -733,6 +733,34 @@ int main(int argc, char** argv) {
   int failures = 0;
   {
     SkellSilenceAudioProcessorEditor editor(p);
+    // Snapshot the actual editor at three sizes. No mockup or photo.
+    // Dismiss the first-run overlay during normal Quick4 regression scenes.
+    for (const auto& size : std::array<Size,3>{{
+            sizes[0], sizes[2], {"maximum",1800,1140} }}) {
+      editor.dismissGuidedTourForScreenshot();
+      editor.setAdvancedMode(false);
+      editor.setSize(size.width,size.height);
+      const auto plain=skellcore::ui::headless::capture(editor,size.width,size.height);
+      if(!editor.replayGuidedTourForScreenshot()) {
+        std::fprintf(stderr,"GuidedTour did not open at %s\\n",size.name);
+        ++failures;
+      } else {
+        const auto withTour=skellcore::ui::headless::capture(editor,size.width,size.height);
+        if(!withTour.image.isValid() ||
+           withTour.fingerprint == plain.fingerprint) {
+          std::fprintf(stderr,"GuidedTour missing/identical at %s\\n",size.name);
+          ++failures;
+        } else if (output.createDirectory().failed() ||
+              !skellcore::ui::headless::writePng(
+                 withTour.image,output.getChildFile(
+                   juce::String(size.name)+"-guided-tour.png"))) {
+          std::fprintf(stderr,"Failed writing %s tour screenshot\\n",size.name);
+          ++failures;
+        }
+      }
+      editor.dismissGuidedTourForScreenshot();
+    }
+    editor.setAdvancedMode(false);
     Options options;
     options.project = "Skell Silence actual JUCE PluginEditor (SkellCore pinned)";
     if(!full) {
