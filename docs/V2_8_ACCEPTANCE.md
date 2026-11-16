@@ -11,7 +11,7 @@
 2. Synthetic per-effect performance: perf_v28.cpp, prints 350ms render time/ratio and peaks for OFF/MUTED/ALL7. Results describe the CI runner, NOT the user's DAW.
 3. Windows x64 actual JUCE processor: SkellSilenceHostRegression tests preset/map/UI size state, parameter IDs, two plugin instances, bit-exact mix=0, host-bypass delay at 48k.
 4. Windows VST3: one bundled module, AMD64 PE32+ check, strict System.Text.Json moduleinfo.json parse (reject trailing commas), product/class version match, protected VST3 identity checks (bundle ID `uno.skellyr.silence`, manufacturer code `SkAu`, plugin code `Sl01`, and the two baseline class IDs below), VST3-only CMake format, packaged SHA256 equality, pluginval strictness 5 against the staged package, provenance manifest and SHA256SUMS. Artifact retention is 7 days.
-5. Quick4: editor source unchanged; do not replace native Quick4 screenshots with generated mockups.
+5. SkellCore real-editor UI: Windows CI builds `SkellSilenceUIRenderer`, runs its full-size scene suite against the actual `PluginEditor`, checks layout/control assertions and uploads a separate `SkellSilence-UI-QA` artifact with PNGs, manifest and contact sheet. Manual visual review remains required. Quick4: current-source Quick4 capture/review is still a separate acceptance gate; do not replace native Quick4 screenshots with generated mockups.
 
 ## Package contents and release status
 A successful Windows workflow artifact contains exactly one `Skell Silence.vst3` bundle plus:

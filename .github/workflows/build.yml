@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Configure JUCE plugin
-        run: cmake -S . -B build -A x64 -DSKELL_SILENCE_BUILD_HOST_TESTS=ON
+        run: cmake -S . -B build -A x64 -DSKELL_SILENCE_BUILD_HOST_TESTS=ON -DSKELL_SILENCE_BUILD_UI_RENDERER=ON
       - name: Build Windows VST3
         run: cmake --build build --config Release --target SkellSilence_VST3 --parallel 2
       - name: Build JUCE host regression executable
@@ -35,6 +35,33 @@ jobs:
           if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Host regression missing: $exe" }
           & $exe
           if ($LASTEXITCODE -ne 0) { throw "JUCE processor host regression failed: $LASTEXITCODE" }
+      - name: Build actual SkellCore editor renderer
+        run: cmake --build build --config Release --target SkellSilenceUIRenderer --parallel 2
+      - name: Capture and validate actual editor UI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'build/Release/SkellSilenceUIRenderer.exe'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Actual editor renderer missing: $exe" }
+          & $exe --full --output ui-screenshots
+          if ($LASTEXITCODE -ne 0) { throw "SkellCore actual-editor UI capture failed: $LASTEXITCODE" }
+          $manifestPath = 'ui-screenshots/manifest.json'
+          if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'Actual-editor screenshot manifest missing' }
+          $uiManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json -ErrorAction Stop
+          if ($uiManifest.renderer -ne 'SkellCore real-editor JUCE v1') { throw "Unexpected UI renderer: $($uiManifest.renderer)" }
+          $sceneCount = @($uiManifest.scenes).Count
+          if ([int]$uiManifest.count -lt 4 -or $sceneCount -ne [int]$uiManifest.count) { throw "Incomplete screenshot manifest: count=$($uiManifest.count), scenes=$sceneCount" }
+          $pngs = @(Get-ChildItem -LiteralPath 'ui-screenshots' -File -Filter '*.png')
+          if ($pngs.Count -lt 4) { throw "Expected at least four real editor PNGs, found $($pngs.Count)" }
+          if (-not (Test-Path -LiteralPath 'ui-screenshots/contact-sheet.png' -PathType Leaf)) { throw 'Actual-editor contact sheet missing' }
+          Write-Host "SkellCore actual editor screenshots=$sceneCount; PNG files=$($pngs.Count)"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: SkellSilence-UI-QA
+          path: ui-screenshots/**
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Stage and verify Windows VST3 package
         shell: pwsh
         run: |
@@ -137,7 +164,7 @@ jobs:
 
           $releaseBlockers = @(
             'Real FL Studio host/session acceptance is pending.'
-            'Four current-source Quick4 screenshots and visual inspection are pending.'
+            'Manual visual review of current-source SkellCore screenshot artifact and Quick4 captures is pending.'
           ) + $metadataWarnings
           $manifest = [ordered]@{
             schemaVersion = 1
@@ -172,6 +199,12 @@ jobs:
               bundleId = 'uno.skellyr.silence'
               classIds = @($classes | ForEach-Object { $_.CID })
             }
+            uiEvidence = [ordered]@{
+              renderer = $uiManifest.renderer
+              sceneCount = $uiManifest.count
+              artifactName = 'SkellSilence-UI-QA'
+              manualReview = 'PENDING'
+            }
             automatedGates = [ordered]@{
               peMachine = 'AMD64'
               peOptionalHeader = 'PE32+'
@@ -182,6 +215,8 @@ jobs:
               pluginCodeMatchesBaseline = $true
               classIdsMatchInspectedV28Baseline = $true
               cmakeTargetIsVst3Only = $true
+              skellCoreRealEditorUiCapture = $true
+              manualUiReviewRequired = $true
               exactlyOneVst3Bundle = $true
               exactlyOneWindowsModule = $true
               packagedBinaryHashMatchesBuild = $true
