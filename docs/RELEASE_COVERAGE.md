@@ -80,3 +80,5 @@ No public release, merge, website deployment, DNS change, payment action or irre
 
 - Choir UI note: the separate RC2 UI artifact #14191421416 (branch feat/choir-theme-position-ui-20261115) was inspected at Easy, Pro, smallest, largest, neon-green and selected-preset views. No visible clipping/overlap; minimum-size labels are small but legible. This does not establish current release-branch interaction or host acceptance.
 - Choir artifact closure: artifact #14271190861 is a valid preview package and the Windows job/pluginval gates passed; native regression and 14 release-verifier tests remain pending.
+
+- Choir artifact checksum audit: independently recomputed all three SHA256SUMS entries (module, strict moduleinfo.json and build-info.json) against the downloaded artifact; all three matched. The current v0.9.0 build already emits strict JSON, so the manifest records normalization_applied=false; the safe normalizer remains in place for older JUCE outputs.
