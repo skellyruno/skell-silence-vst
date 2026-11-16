@@ -11,18 +11,21 @@ public:
   void prepare(double sampleRate) {
     // Damping time constants stay consistent when switching sample rate.
     const double rate=std::max(8000.0,sampleRate);
+    longestLine=0;zeroReadSamples=0;
     dampingScale=float(48000.0/rate);
     constexpr std::array<double,8> times{0.0311,0.0371,0.0411,0.0437,0.0531,0.0593,0.0617,0.0671};
     for(size_t i=0;i<lines.size();++i){
       auto& l=lines[i];l.data.assign(size_t(sampleRate*times[i])+1,0.0f);
       l.position=0;l.damped=0.0f;
+      longestLine=std::max(longestLine,l.data.size());
     }
     hasBeenExcited=false;
   }
   void reset() noexcept {
     for(auto& l:lines){std::fill(l.data.begin(),l.data.end(),0.0f);l.position=0;l.damped=0.0f;}
-    hasBeenExcited=false;
+    hasBeenExcited=false;zeroReadSamples=0;
   }
+  bool isIdle() const noexcept {return !hasBeenExcited;}
   float process(float input,float space) noexcept {
     // Most disabled/silent gap instruments never excite the FDN. Preserve
     // exact zero and skip all eight delays until a real wet send arrives.
@@ -31,6 +34,11 @@ public:
     hasBeenExcited=true;
     std::array<float,8> filtered{};
     float sum=0.0f,output=0.0f;
+    bool entirelySilent=input==0.0f;
+    // -180dBFS is far below an audible FDN return. Clamping numeric dust
+    // prevents denormals, and allows safe sleep only after every delay
+    // cell has demonstrably been overwritten with an exact zero.
+    constexpr float numericalFloor=1.0e-9f;
     const float baseDamping=0.35f+0.28f*std::clamp(space,0.0f,1.0f);
     // First-order normalized pole conversion; avoids pow() in the sample loop.
     // Exact at 48 kHz and smoothly adapts at other host rates.
@@ -38,6 +46,8 @@ public:
     for(size_t i=0;i<lines.size();++i){
       auto& line=lines[i];const float sample=line.data[line.position];
       line.damped=damping*line.damped+(1.0f-damping)*sample;
+      if(std::abs(line.damped)<numericalFloor)line.damped=0.0f;
+      if(sample!=0.0f || line.damped!=0.0f)entirelySilent=false;
       filtered[i]=line.damped;
       sum+=line.damped;
       output+=(i%2==0?1.0f:-1.0f)*sample;
@@ -47,9 +57,20 @@ public:
     const float feedback=0.45f+0.42f*std::clamp(space,0.0f,1.0f);
     for(size_t i=0;i<lines.size();++i){
       auto& line=lines[i];
-      line.data[line.position]=0.14f*input + feedback*(shared-filtered[i]);
+      float next=0.14f*input + feedback*(shared-filtered[i]);
+      if(std::abs(next)<numericalFloor)next=0.0f;
+      if(next!=0.0f)entirelySilent=false;
+      line.data[line.position]=next;
       if(++line.position>=line.data.size())line.position=0;
     }
+    if(entirelySilent) {
+      if(++zeroReadSamples>=longestLine){
+        // No hidden delayed energy remains: every ring was read for at
+        // least its full length and every feedback/damping state is zero.
+        // Do not clear the ring on the audio thread.
+        hasBeenExcited=false;
+      }
+    }else zeroReadSamples=0;
     return 0.125f*output;
   }
 private:
@@ -57,5 +78,6 @@ private:
   std::array<Line,8> lines;
   float dampingScale=1.0f;
   bool hasBeenExcited=false;
+  size_t zeroReadSamples=0,longestLine=1;
 };
 }

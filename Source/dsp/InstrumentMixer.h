@@ -38,6 +38,9 @@ inline float gapBoundaryGain(const GapContext& c) noexcept {
 class InstrumentMixer {
 public:
   void prepare(double sampleRate,int channel=0) {
+    // At full-scale automation, a gain toggle ramps in/out over 10ms.
+    // Computed only at prepare(), never with exp/pow inside process().
+    levelSlew=1.0f/float(std::max(8000.0,sampleRate)*0.010);
     air.setChannel(channel);fade.setChannel(channel);riser.setChannel(channel);impact.setChannel(channel);
     reverb.prepare(sampleRate);air.prepare(sampleRate);impact.prepare(sampleRate);reset();
   }
@@ -47,28 +50,44 @@ public:
     if(frozenProfile!=nullptr)air.setProfile(*frozenProfile);
     else air.captureProfile();
     air.resetPlayback();fade.reset();impact.reset();riser.reset();stutter.reset();
+    smoothedLevels.fill(0.0f);smoothedInitialized=false;
   }
   void observeInput(float sample) noexcept {air.observe(sample);}
   AirNoise::Spectrum snapshotSpectrum() const noexcept {return air.snapshotProfile();}
   float process(const GapContext& c, const InstrumentSettings& p,int lengthClass) noexcept {
-    const auto allowed=[&](int i){return p.enabled[size_t(i)] && p.rules[size_t(i)][size_t(lengthClass)];};
+    // Sample-accurate, bounded, realtime-safe slew for instrument-level
+    // automation and the enable/class-rule toggles. Muted instruments are
+    // skipped once their gain reaches zero; no expensive dormant generators.
+    std::array<float,7> gains{};
+    for(size_t i=0;i<gains.size();++i) {
+      const float target=(p.enabled[i] && p.rules[i][size_t(lengthClass)])
+        ?std::clamp(p.levels[i],0.0f,1.0f):0.0f;
+      auto& level=smoothedLevels[i];
+      // Preserve the original first-hit attack. Only changes *inside* a
+      // playing gap should be slew-limited; otherwise Impact and Tape Stop
+      // would be quietly softened even without any parameter automation.
+      if(!smoothedInitialized)level=target;
+      else level+=std::clamp(target-level,-levelSlew,levelSlew);
+      gains[i]=level;
+    }
+    smoothedInitialized=true;
     float v=0, wetFeed=0;
     const float t=0.55f+c.tension*0.9f;
-    if(allowed(0)) v+=p.levels[0]*stop.process(c,p.stopSpeedCurve,p.stopTime,p.stopLowpass);
-    if(allowed(1)) v+=p.levels[1]*air.process(c,p.airColor,p.airShape);
-    if(allowed(2)) {float s=swell.process(c,p.swellLength,p.swellReverb)*t;v+=p.levels[2]*s;wetFeed+=p.levels[2]*s;}
-    if(allowed(3)) v+=p.levels[3]*fade.process(c,p.noiseType,p.noiseFadeIn,p.noiseFadeOut);
-    if(allowed(4)) {
+    if(gains[0]>0.0f) v+=gains[0]*stop.process(c,p.stopSpeedCurve,p.stopTime,p.stopLowpass);
+    if(gains[1]>0.0f) v+=gains[1]*air.process(c,p.airColor,p.airShape);
+    if(gains[2]>0.0f) {float s=swell.process(c,p.swellLength,p.swellReverb)*t;v+=gains[2]*s;wetFeed+=gains[2]*s;}
+    if(gains[3]>0.0f) v+=gains[3]*fade.process(c,p.noiseType,p.noiseFadeIn,p.noiseFadeOut);
+    if(gains[4]>0.0f) {
       auto hit=c;
       if(lengthClass==3) { // Extra-long gaps: impact on the final beat.
         const double onset=std::max(0.0,c.length-c.sampleRate*60.0/std::max(20.0,c.bpm));
         hit.time=c.time-onset;
       }
       if(hit.time>=0 && hit.time<c.sampleRate*0.75)
-        v+=p.levels[4]*impact.process(hit,p.impactPitch,p.impactDecay,p.impactClick);
+        v+=gains[4]*impact.process(hit,p.impactPitch,p.impactDecay,p.impactClick);
     }
-    if(allowed(5)) v+=p.levels[5]*riser.process(c,p.riserStart,p.riserCurve,p.riserNoiseMix)*t;
-    if(allowed(6)) {float s=stutter.process(c,p.stutterDiv,p.stutterDecay,p.stutterCount);v+=p.levels[6]*s;wetFeed+=p.levels[6]*s;}
+    if(gains[5]>0.0f) v+=gains[5]*riser.process(c,p.riserStart,p.riserCurve,p.riserNoiseMix)*t;
+    if(gains[6]>0.0f) {float s=stutter.process(c,p.stutterDiv,p.stutterDecay,p.stutterCount);v+=gains[6]*s;wetFeed+=gains[6]*s;}
     const float bloom=reverb.process(wetFeed,c.space);
     v+=bloom*c.space*0.5f*(1.0f-c.progress*c.progress);
     const float edge=gapBoundaryGain(c); // 5 ms on known boundaries
@@ -76,6 +95,9 @@ public:
   }
   float tail(float space) noexcept { return reverb.process(0,space)*space*0.12f; }
 private:
+  std::array<float,7> smoothedLevels{};
+  float levelSlew=1.0f/480.0f;
+  bool smoothedInitialized=false;
   TapeStop stop;AirNoise air;ReverseSwell swell;NoiseFade fade;Impact impact;Riser riser;StutterTail stutter;Reverb reverb;
 };
 }
