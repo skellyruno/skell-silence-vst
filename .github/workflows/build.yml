@@ -22,19 +22,62 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Configure JUCE plugin
-        run: cmake -S . -B build -A x64
+        run: cmake -S . -B build -A x64 -DSKELL_SILENCE_BUILD_HOST_TESTS=ON
       - name: Build Windows VST3
         run: cmake --build build --config Release --target SkellSilence_VST3 --parallel 2
+      - name: Build JUCE host regression executable
+        run: cmake --build build --config Release --target SkellSilenceHostRegression --parallel 2
+      - name: Run JUCE processor host regression
+        shell: pwsh
+        run: |
+          $exe = 'build/Release/SkellSilenceHostRegression.exe'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Host regression missing: $exe" }
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw "JUCE processor host regression failed: $LASTEXITCODE" }
       - name: Package build products
         shell: pwsh
         run: |
-          $vst = Get-ChildItem -Path build -Directory -Recurse -Filter '*.vst3' | Select-Object -First 1
-          if (-not $vst) { throw 'VST3 bundle missing' }
+          $bundles = @(Get-ChildItem -Path 'build/SkellSilence_artefacts/Release/VST3' -Directory -Filter '*.vst3')
+          if ($bundles.Count -ne 1) { throw "Expected one VST3 bundle, found $($bundles.Count)" }
+          $vst = $bundles[0]
+          $modules = @(Get-ChildItem -LiteralPath (Join-Path $vst.FullName 'Contents/x86_64-win') -File -Filter '*.vst3' -ErrorAction Stop)
+          if ($modules.Count -ne 1) { throw "Expected one Windows x64 module, found $($modules.Count)" }
+          $bytes = [IO.File]::ReadAllBytes($modules[0].FullName)
+          if ($bytes.Length -lt 0x100 -or $bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw 'Module is not a Windows PE binary' }
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          if ($peOffset -lt 0x40 -or $peOffset + 6 -ge $bytes.Length) { throw 'Invalid Windows PE header offset' }
+          if ([BitConverter]::ToUInt32($bytes,$peOffset) -ne 0x4550) { throw 'Missing PE header signature' }
+          if ([BitConverter]::ToUInt16($bytes,$peOffset+4) -ne 0x8664) { throw 'Not an x64 Windows VST3 module' }
+          $metadataPath = Join-Path $vst.FullName 'Contents/Resources/moduleinfo.json'
+          if (Test-Path -LiteralPath $metadataPath -PathType Leaf) {
+            $raw = Get-Content -LiteralPath $metadataPath -Raw
+            # JUCE-generated metadata may contain trailing commas; validate the shipped copy.
+            $clean = $raw -replace ',(?=\\s*[}\\]])', ''
+            $null = $clean | ConvertFrom-Json -ErrorAction Stop
+            Set-Content -LiteralPath $metadataPath -Value $clean -Encoding utf8 -NoNewline
+          }
           New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Copy-Item -Path $vst.FullName -Destination dist -Recurse -Force
+          Copy-Item -LiteralPath $vst.FullName -Destination dist -Recurse -Force
+          $copy = Join-Path 'dist' $vst.Name
+          $copyModules = @(Get-ChildItem -LiteralPath (Join-Path $copy 'Contents/x86_64-win') -File -Filter '*.vst3')
+          if ($copyModules.Count -ne 1) { throw 'Packaged Windows module missing or duplicated' }
+          $sourceHash = (Get-FileHash -LiteralPath $modules[0].FullName -Algorithm SHA256).Hash
+          $copyHash = (Get-FileHash -LiteralPath $copyModules[0].FullName -Algorithm SHA256).Hash
+          if ($sourceHash -ne $copyHash) { throw 'Packaged VST3 binary hash mismatch' }
+          Write-Host "VST3 x64 SHA256=$copyHash"
+          if (Test-Path -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json')) {
+            $null = Get-Content -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json') -Raw | ConvertFrom-Json -ErrorAction Stop
+          }
+      - name: Validate VST3 with pluginval
+        uses: Tracktion/pluginval/validate@v2.0.0-beta3
+        with:
+          plugins: build/SkellSilence_artefacts/Release/VST3/Skell Silence.vst3
+          strictness-level: 5
+          pluginval-version: v2.0.0-beta3
       - uses: actions/upload-artifact@v6
         with:
           name: SkellSilence-Windows
           path: |
             dist/**
           if-no-files-found: error
+          retention-days: 7

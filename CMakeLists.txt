@@ -63,3 +63,17 @@ if(SKELL_SILENCE_BUILD_UI_RENDERER)
     JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_compile_features(SkellSilenceUIRenderer PRIVATE cxx_std_17)
 endif()
+
+# Native JUCE processor host regression is separate from the Quick4 editor.
+option(SKELL_SILENCE_BUILD_HOST_TESTS "Build native JUCE processor host regression" OFF)
+if(SKELL_SILENCE_BUILD_HOST_TESTS)
+  add_executable(SkellSilenceHostRegression tests/host_regression.cpp)
+  target_include_directories(SkellSilenceHostRegression PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/SkellSilence_artefacts/JuceLibraryCode")
+  target_link_libraries(SkellSilenceHostRegression PRIVATE
+    SkellSilence SkellCore::DSP SkellCore::UI
+    juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_extra)
+  target_compile_definitions(SkellSilenceHostRegression PRIVATE
+    JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
+  target_compile_features(SkellSilenceHostRegression PRIVATE cxx_std_17)
+endif()
