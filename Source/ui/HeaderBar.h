@@ -42,6 +42,7 @@ public:
   }
   std::function<void(float)> onScaleChange;
   std::function<void(bool)> onModeChange;
+  std::function<void()> onShowTutorial;
   void setAdvancedMode(bool advanced) {
     advancedMode=advanced;
     learn.setVisible(advanced);
@@ -122,12 +123,14 @@ private:
       (worldLink.hubOnline() ? "Leave SkellWorld (connected)" : "Leave SkellWorld (hub offline)") :
       "Join SkellWorld (presence only)");
     menu.addSeparator();
+    menu.addItem(40,"Help / Show Tutorial");
     menu.addItem(6,"About Skell Silence");
     juce::Component::SafePointer<HeaderBar> safe(this);
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings)
         .withParentComponent(findParentComponentOfClass<juce::AudioProcessorEditor>()),
       [safe](int result) {
         if(safe==nullptr)return;
+        if(result==40 && safe->onShowTutorial)safe->onShowTutorial();
         if(result==1)safe->processor.requestClearMap();
         if(result>=2 && result<=5 && safe->onScaleChange){
           constexpr float scales[]{0.76f,0.90f,1.0f,1.25f};
