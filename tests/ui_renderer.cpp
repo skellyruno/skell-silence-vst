@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <chrono>
 #include <vector>
+#include <set>
 
 namespace {
 using skellcore::ui::headless::Scene;
@@ -504,27 +505,56 @@ void addScene(Options& options, const juce::String& name,
   options.scenes.push_back(scene);
 }
 
+bool contactSheetHasVisualContent(const juce::Image& image) {
+  if (!image.isValid()) return false;
+  std::set<juce::uint32> sampledColours;
+  for (int y = 0; y < image.getHeight(); y += 5)
+    for (int x = 0; x < image.getWidth(); x += 5) {
+      sampledColours.insert(image.getPixelAt(x, y).getARGB());
+      if (sampledColours.size() >= 32) return true;
+    }
+  return false;
+}
+
+bool writeContactSheetAndVerify(juce::Image& sheet, const juce::File& file) {
+  // The Graphics context must be destroyed before PNG encoding. Re-open the
+  // encoded PNG and verify that the saved artifact still contains real pixels.
+  if (!contactSheetHasVisualContent(sheet)) {
+    std::fprintf(stderr, "Contact sheet is blank before PNG encoding\n");
+    return false;
+  }
+  if (!skellcore::ui::headless::writePng(sheet, file)) return false;
+  const auto reopened = juce::ImageFileFormat::loadFrom(file);
+  if (!contactSheetHasVisualContent(reopened)) {
+    std::fprintf(stderr, "Contact sheet PNG is blank after round-trip encoding\n");
+    return false;
+  }
+  return true;
+}
+
 bool makeContactSheet(const juce::File& folder, bool quick) {
   if (quick) {
     constexpr std::array<const char*,4> names{{
       "compact-simple", "compact-simple-presets", "compact-playing", "compact-idle"}};
     constexpr int w=492,h=344;
-    juce::Image sheet(juce::Image::RGB,w*2,h*2,true);
-    juce::Graphics g(sheet);
-    g.fillAll(juce::Colour(0xff070b11));
-    for(size_t i=0;i<names.size();++i) {
-      const auto shot=juce::ImageFileFormat::loadFrom(
-          folder.getChildFile(juce::String(names[i])+".png"));
-      if(!shot.isValid()) return false;
-      const int x=int(i%2)*w, y=int(i/2)*h;
-      g.drawImageWithin(shot,x+8,y+8,w-16,h-42,
-                        juce::RectanglePlacement::centred);
-      g.setColour(juce::Colour(0xffb5c6d3));
-      g.setFont(juce::Font(juce::FontOptions(14.f)));
-      g.drawText(juce::String(names[i]).replaceCharacter('-',' '),
-                 x+10,y+h-32,w-20,25,juce::Justification::centredLeft);
+    juce::Image sheet(juce::Image::ARGB,w*2,h*2,true);
+    {
+      juce::Graphics g(sheet);
+      g.fillAll(juce::Colour(0xff070b11));
+      for(size_t i=0;i<names.size();++i) {
+        const auto shot=juce::ImageFileFormat::loadFrom(
+            folder.getChildFile(juce::String(names[i])+".png"));
+        if(!shot.isValid()) return false;
+        const int x=int(i%2)*w, y=int(i/2)*h;
+        g.drawImageWithin(shot,x+8,y+8,w-16,h-42,
+                          juce::RectanglePlacement::centred);
+        g.setColour(juce::Colour(0xffb5c6d3));
+        g.setFont(juce::Font(juce::FontOptions(14.f)));
+        g.drawText(juce::String(names[i]).replaceCharacter('-',' '),
+                   x+10,y+h-32,w-20,25,juce::Justification::centredLeft);
+      }
     }
-    return skellcore::ui::headless::writePng(
+    return writeContactSheetAndVerify(
         sheet,folder.getChildFile("contact-sheet.png"));
   }
   struct Tile { const char* file; const char* label; };
@@ -540,25 +570,27 @@ bool makeContactSheet(const juce::File& folder, bool quick) {
     {"minimum-instrument-6", "MINIMUM / STUTTER"}
   }};
   constexpr int width = 492, imageHeight = 310, labelHeight = 30;
-  juce::Image sheet(juce::Image::RGB, width * 3,
+  juce::Image sheet(juce::Image::ARGB, width * 3,
                     (imageHeight + labelHeight) * 3, true);
-  juce::Graphics g(sheet);
-  g.fillAll(juce::Colour(0xff070b11));
-  for (size_t i = 0; i < tiles.size(); ++i) {
-    const auto path = folder.getChildFile(juce::String(tiles[i].file) + ".png");
-    const auto img = juce::ImageFileFormat::loadFrom(path);
-    if (!img.isValid()) return false;
-    const int x = int(i % 3) * width;
-    const int y = int(i / 3) * (imageHeight + labelHeight);
-    g.drawImageWithin(img, x + 8, y + 6, width - 16, imageHeight - 12,
-                      juce::RectanglePlacement::centred);
-    g.setColour(juce::Colour(0xffb5c6d3));
-    g.setFont(juce::Font(juce::FontOptions(14.0f)));
-    g.drawText(tiles[i].label, x + 12, y + imageHeight,
-               width - 20, labelHeight, juce::Justification::centredLeft);
+  {
+    juce::Graphics g(sheet);
+    g.fillAll(juce::Colour(0xff070b11));
+    for (size_t i = 0; i < tiles.size(); ++i) {
+      const auto path = folder.getChildFile(juce::String(tiles[i].file) + ".png");
+      const auto img = juce::ImageFileFormat::loadFrom(path);
+      if (!img.isValid()) return false;
+      const int x = int(i % 3) * width;
+      const int y = int(i / 3) * (imageHeight + labelHeight);
+      g.drawImageWithin(img, x + 8, y + 6, width - 16, imageHeight - 12,
+                        juce::RectanglePlacement::centred);
+      g.setColour(juce::Colour(0xffb5c6d3));
+      g.setFont(juce::Font(juce::FontOptions(14.0f)));
+      g.drawText(tiles[i].label, x + 12, y + imageHeight,
+                 width - 20, labelHeight, juce::Justification::centredLeft);
+    }
   }
-  return skellcore::ui::headless::writePng(sheet,
-                                          folder.getChildFile("contact-sheet.png"));
+  return writeContactSheetAndVerify(
+      sheet,folder.getChildFile("contact-sheet.png"));
 }
 // Compare real scene pixels at finer resolution than the lightweight SkellCore
 // blank-frame sampler. A ComboBox label can change inside a ~30x9 px region;
