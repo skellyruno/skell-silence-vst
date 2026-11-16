@@ -15,7 +15,7 @@
 
 ## Package contents and release status
 A successful Windows workflow artifact contains exactly one `Skell Silence.vst3` bundle plus:
-- `release-manifest.json`: source commit, Actions run ID/attempt, product version, VST3 identity, binary and metadata hashes, automated gate declarations, and outstanding release blockers.
+- `release-manifest.json`: source commit, Actions run ID/attempt, product version, VST3 identity, binary and metadata hashes, SkellCore UI renderer/scene-count evidence, automated gate declarations, and outstanding release blockers.
 - `SHA256SUMS.txt`: hashes for the Windows x64 module and `moduleinfo.json`.
 
 The manifest intentionally marks this package `PREVIEW_ONLY` and `commercialReleaseEligible: false`. Empty VST3 vendor URL/support-email fields are recorded as warnings, not silently invented or filled. The package is not a public commercial release.
@@ -30,6 +30,8 @@ The independently inspected v2.8.0 Windows artifact records these compatibility 
 - Component Controller Class CID: `ABCDEF011234ABCD536B4175536C3031`
 
 The release workflow now fails closed if CMake changes the bundle ID, manufacturer/plugin codes, or VST3-only target, or if the built module reports different class IDs, names, vendor or version. Any future identity migration must be explicit and separately reviewed; it must not be hidden inside a routine release build.
+
+The Windows workflow also builds `SkellSilenceUIRenderer` and runs its full scene suite against the actual `PluginEditor` through the pinned SkellCore headless renderer. It uploads a separate `SkellSilence-UI-QA` artifact containing real PNG captures, a scene manifest and contact sheet. The release manifest records the renderer and scene count. Automated captures and layout assertions do not replace manual Quick4 visual review.
 
 ## Outstanding FL Studio acceptance — real Windows host still required
 Use v2.8 in a COPY of an existing FL Studio project (keep v2.7 reference). Check:
