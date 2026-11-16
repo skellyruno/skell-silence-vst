@@ -63,7 +63,7 @@ Purpose: Windows-first VST3 / EXE / installer release readiness. This is a cover
 2. Skell Stop / StopDial — package-verifier correction and Windows rerun.
 3. SkellGlitch — Windows VST3-only release workflow and verifier.
 4. SkellFan — exact-head pluginval strictness-5 defect repair passed.
-5. Skell Choir — direct VST3 bundle staging, metadata verifier and pluginval; Windows job passed while native tests were pending at last check.
+5. Skell Choir — direct VST3 bundle staging, metadata verifier and pluginval; prior-head Windows job passed, stale native branding assertion fixed in commit `54ad70d02fbb092d2984d024355239d20b029658`, corrected-head run #43973500170 in progress.
 6. Skell Key — prior run's selection; strictness-5 gate was added, but exact-head run #43965038432 ended failed because the pluginval process returned 1 despite a SUCCESS report. Diagnose the exit-status mismatch and configure the optional Steinberg validator before reconsidering release acceptance.
 7. Next release run: choose Skell Delay, a different plugin from this Choir run. Its release PR #7 run #43908905273 has a proven blocker: failed its strict moduleinfo parser on JUCE JSON5 trailing commas; upstream DSP/state/UI fixes have their own successful stacked run #43904450258, but that does not validate the release gate. Inspect the current PR #7 head and branch ownership before editing. Skell Maw PR #2 also lacks checks, but is secondary to Delay's proven release-gate failure.
 8. Six distinct non-DeEsser plugins have now received substantive release-engineering work: Silence, StopDial, SkellGlitch, SkellFan, Choir and Key. Continue rotating and broaden beyond plugins to Skell Studio/DAW, Project Hub, SkellForge/SkellNative/SkellCore and installers.
