@@ -19,7 +19,7 @@ public:
     cachedThresholdDb=cachedMinGapMs=cachedMaxGapMs=cachedHoldMs=cachedArmTime=-1000.0f;
     reset();
   }
-  void reset() noexcept { fastPower=slowPower=previousFast=0; age=0; pending=0; recover=0; armedSamples=0; state=Sound; activeStart=0; }
+  void reset() noexcept { fastPower=slowPower=previousFast=0; age=0; pending=0; recover=0; armedSamples=0; state=Sound; activeStart=0; lastAudibleSample=-1; }
   State getState() const noexcept { return state; }
   DetectionResult process(float input, int64_t sample, const DetectorSettings& p) noexcept {
     const float safe=safeInput(input);
@@ -50,6 +50,12 @@ public:
     const float decay=std::clamp((previousFast-fast)/std::max(0.0001f,previousFast)*80.0f,0.0f,1.0f);
     const float thresh=std::max(0.000025f,slow*thresholdRatio*(1.0f+0.35f*p.tailSensitivity*decay));
     previousFast=fast;
+    // Preserve the most recent actual above-threshold input sample. The 10ms
+    // fast envelope needs time to decay after a real phrase ends, so declaring
+    // the gap at Pending's first frame trims away an audible part of silence.
+    // Use this only to bound the start timestamp after minGap has confirmed
+    // the event. The detector decision itself and its latency are unchanged.
+    if(squared>thresh*thresh)lastAudibleSample=sample;
     // Convert time parameters only when they change, not for every sample.
     if (p.minGapMs!=cachedMinGapMs) {cachedMinGapMs=p.minGapMs;minSamples=std::max<int64_t>(1,int64_t(p.minGapMs*sr/1000.0));}
     if (p.holdMs!=cachedHoldMs) {cachedHoldMs=p.holdMs;holdSamples=std::max<int64_t>(1,int64_t(p.holdMs*sr/1000.0));}
@@ -75,7 +81,19 @@ public:
         break;
       case Pending:
         if (!below) { state=Sound; pending=0; }
-        else if (++pending>=minSamples) { state=Gap; activeStart=sample-pending+1; age=pending; r.began=true; r.start=activeStart; }
+        else if (++pending>=minSamples) {
+          state=Gap;
+          const int64_t firstPending=sample-pending+1;
+          const int64_t maxCorrection=std::max<int64_t>(1,int64_t(sr*0.030));
+          // Never shift earlier than 30ms or later than the confirmed event.
+          // This keeps auto detection responsive without turning short notes
+          // or transient dips into additional gaps.
+          activeStart=lastAudibleSample<0 ? firstPending
+            : std::max(firstPending-maxCorrection,
+                       std::min(firstPending,lastAudibleSample+1));
+          age=sample-activeStart+1;
+          r.began=true;r.start=activeStart;
+        }
         break;
       case Gap:
         ++age;
@@ -102,7 +120,7 @@ private:
   float cachedThresholdDb=-1000.0f,thresholdRatio=0.15f;
   float cachedMinGapMs=-1000.0f,cachedMaxGapMs=-1000.0f,cachedHoldMs=-1000.0f,cachedArmTime=-1000.0f;
   int64_t minSamples=1,holdSamples=1,maxSamples=1,armSamples=0;
-  int64_t age=0,pending=0,recover=0,armedSamples=0,activeStart=0;
+  int64_t age=0,pending=0,recover=0,armedSamples=0,activeStart=0,lastAudibleSample=-1;
   State state=Sound;
 };
 }
