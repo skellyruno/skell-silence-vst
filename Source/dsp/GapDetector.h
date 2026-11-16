@@ -84,8 +84,8 @@ public:
         else if (++pending>=minSamples) {
           state=Gap;
           const int64_t firstPending=sample-pending+1;
-          const int64_t maxCorrection=std::max<int64_t>(1,int64_t(sr*0.030));
-          // Never shift earlier than 30ms or later than the confirmed event.
+          const int64_t maxCorrection=std::max<int64_t>(1,int64_t(sr*0.045));
+          // Never shift earlier than 45ms or later than the confirmed event.
           // This keeps auto detection responsive without turning short notes
           // or transient dips into additional gaps.
           activeStart=lastAudibleSample<0 ? firstPending

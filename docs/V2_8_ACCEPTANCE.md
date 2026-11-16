@@ -1,7 +1,7 @@
 # SkellSilence v2.8 — acceptance and release gate
 
 ## Scope and compatibility
-- Audio/DSP: confirmed silence-start timestamp refinement, sample-accurate level/on/rule automation, numerical dust-safe FDN idle.
+- Audio/DSP: confirmed silence-start timestamp refinement (max 45 ms), sample-accurate level/on/rule automation, numerical dust-safe FDN idle.
 - Preserves approved editor source, parameter identifiers and order, state serialization, factory defaults, VST3 identifier, and existing reported lookahead modes.
 - No private reference recordings are committed.
 

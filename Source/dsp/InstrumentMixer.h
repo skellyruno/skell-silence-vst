@@ -50,7 +50,7 @@ public:
     if(frozenProfile!=nullptr)air.setProfile(*frozenProfile);
     else air.captureProfile();
     air.resetPlayback();fade.reset();impact.reset();riser.reset();stutter.reset();
-    smoothedLevels.fill(0.0f);
+    smoothedLevels.fill(0.0f);smoothedInitialized=false;
   }
   void observeInput(float sample) noexcept {air.observe(sample);}
   AirNoise::Spectrum snapshotSpectrum() const noexcept {return air.snapshotProfile();}
@@ -63,9 +63,14 @@ public:
       const float target=(p.enabled[i] && p.rules[i][size_t(lengthClass)])
         ?std::clamp(p.levels[i],0.0f,1.0f):0.0f;
       auto& level=smoothedLevels[i];
-      level+=std::clamp(target-level,-levelSlew,levelSlew);
+      // Preserve the original first-hit attack. Only changes *inside* a
+      // playing gap should be slew-limited; otherwise Impact and Tape Stop
+      // would be quietly softened even without any parameter automation.
+      if(!smoothedInitialized)level=target;
+      else level+=std::clamp(target-level,-levelSlew,levelSlew);
       gains[i]=level;
     }
+    smoothedInitialized=true;
     float v=0, wetFeed=0;
     const float t=0.55f+c.tension*0.9f;
     if(gains[0]>0.0f) v+=gains[0]*stop.process(c,p.stopSpeedCurve,p.stopTime,p.stopLowpass);
@@ -92,6 +97,7 @@ public:
 private:
   std::array<float,7> smoothedLevels{};
   float levelSlew=1.0f/480.0f;
+  bool smoothedInitialized=false;
   TapeStop stop;AirNoise air;ReverseSwell swell;NoiseFade fade;Impact impact;Riser riser;StutterTail stutter;Reverb reverb;
 };
 }
