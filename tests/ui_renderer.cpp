@@ -760,6 +760,43 @@ int main(int argc, char** argv) {
       }
       editor.dismissGuidedTourForScreenshot();
     }
+    // Exercise real Back/Next/Escape and the hidden Advanced tab. The walkthrough
+    // is UI-only: neither APVTS parameters nor the wet DSP may be changed.
+    const auto stateBeforeTour=p.parameters.copyState();
+    if(!editor.replayGuidedTourForScreenshot()) {
+      std::fprintf(stderr,"Unable to replay GuidedTour for navigation check\\n");
+      ++failures;
+    } else if(auto* tour=dynamic_cast<skellcore::ui::GuidedTourOverlay*>(
+                findById(editor,"skellcore-guided-tour"))) {
+      tour->advance(); // simple controls
+      if(tour->stepIndex()!=1 || editor.isAdvancedMode())++failures;
+      tour->advance(); // header help
+      tour->advance(); // open Advanced detection panel on the GUI thread
+      if(tour->stepIndex()!=3 || !editor.isAdvancedMode()
+         || tour->spotlightBounds().isEmpty()) {
+        std::fprintf(stderr,"GuidedTour advanced-tab step did not activate\\n");
+        ++failures;
+      }
+      tour->previous(); // header remains valid
+      tour->previous(); // hidden simple control is skipped, simple tab restored
+      if(tour->stepIndex()!=0 || editor.isAdvancedMode()) {
+        std::fprintf(stderr,"GuidedTour Back navigation did not restore Simple view\\n");
+        ++failures;
+      }
+      if(!tour->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey))
+         || !tour->isClosing()) {
+        std::fprintf(stderr,"GuidedTour Escape/Skip did not dismiss overlay\\n");
+        ++failures;
+      }
+    } else {
+      std::fprintf(stderr,"GuidedTour overlay missing from production editor\\n");
+      ++failures;
+    }
+    editor.dismissGuidedTourForScreenshot();
+    if(!p.parameters.copyState().isEquivalentTo(stateBeforeTour)) {
+      std::fprintf(stderr,"GuidedTour illegally changed host parameter state\\n");
+      ++failures;
+    }
     editor.setAdvancedMode(false);
     Options options;
     options.project = "Skell Silence actual JUCE PluginEditor (SkellCore pinned)";
