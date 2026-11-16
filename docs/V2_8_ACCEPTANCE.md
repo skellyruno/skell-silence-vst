@@ -9,7 +9,7 @@
 1. Linux portable DSP tests: existing v2.6/v2.7 checks plus test_v28_quality.cpp: vocal pauses across 44.1–192k, short percussion rests, 10ms level/enable slew, FDN sleep/re-excitation.
 2. Synthetic per-effect performance: perf_v28.cpp, prints 350ms render time/ratio and peaks for OFF/MUTED/ALL7. Results describe the CI runner, NOT the user's DAW.
 3. Windows x64 actual JUCE processor: SkellSilenceHostRegression tests preset/map/UI size state, parameter IDs, two plugin instances, bit-exact mix=0, host-bypass delay at 48k.
-4. Windows VST3: one bundled module, PE64 machine check, optional moduleinfo.json parse, packaged SHA256 equality, pluginval strictness 5, artifact retention 7 days.
+4. Windows VST3: one bundled module, PE64 machine check, strict System.Text.Json moduleinfo.json parse (reject trailing commas), packaged SHA256 equality, pluginval strictness 5, artifact retention 7 days.
 5. Quick4: editor source unchanged; do not replace native Quick4 screenshots with generated mockups.
 
 ## Outstanding FL Studio acceptance — real Windows host still required

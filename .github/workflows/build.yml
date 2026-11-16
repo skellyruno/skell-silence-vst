@@ -52,7 +52,11 @@ jobs:
           if (Test-Path -LiteralPath $metadataPath -PathType Leaf) {
             $raw = Get-Content -LiteralPath $metadataPath -Raw
             # JUCE-generated metadata may contain trailing commas; validate the shipped copy.
-            $clean = $raw -replace ',(?=\\s*[}\\]])', ''
+            $clean = [regex]::Replace($raw, ',(?=\s*[}\]])', '')
+            # PowerShell ConvertFrom-Json tolerates trailing commas. JsonDocument
+            # is deliberately strict and rejects invalid moduleinfo.json.
+            $strictDocument = [System.Text.Json.JsonDocument]::Parse($clean)
+            $strictDocument.Dispose()
             $null = $clean | ConvertFrom-Json -ErrorAction Stop
             Set-Content -LiteralPath $metadataPath -Value $clean -Encoding utf8 -NoNewline
           }
@@ -66,7 +70,9 @@ jobs:
           if ($sourceHash -ne $copyHash) { throw 'Packaged VST3 binary hash mismatch' }
           Write-Host "VST3 x64 SHA256=$copyHash"
           if (Test-Path -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json')) {
-            $null = Get-Content -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json') -Raw | ConvertFrom-Json -ErrorAction Stop
+            $packagedJson = Get-Content -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json') -Raw
+            $strictPackaged = [System.Text.Json.JsonDocument]::Parse($packagedJson)
+            $strictPackaged.Dispose()
           }
       - name: Validate VST3 with pluginval
         uses: Tracktion/pluginval/validate@v2.0.0-beta3
