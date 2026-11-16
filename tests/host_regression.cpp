@@ -5,6 +5,16 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <cstdlib>
+// CMake builds the host-regression executable in Release. Standard assert()
+// is disabled by NDEBUG in that configuration; these checks must stay live.
+#ifdef assert
+#undef assert
+#endif
+#define assert(condition) do { \
+  if(!(condition)){ std::cerr<<"HOST REGRESSION FAILED: "<<#condition \
+                 <<" at line "<<__LINE__<<"\\n"; std::abort(); } \
+} while(false)
 
 namespace {
 void setNormalized(SkellSilenceAudioProcessor& p,const char* id,float value) {
