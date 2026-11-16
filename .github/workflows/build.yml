@@ -166,6 +166,12 @@ jobs:
             'Real FL Studio host/session acceptance is pending.'
             'Manual visual review of current-source SkellCore screenshot artifact and Quick4 captures is pending.'
           ) + $metadataWarnings
+          $uiManifestPath = 'ui-screenshots/manifest.json'
+          if (-not (Test-Path -LiteralPath $uiManifestPath -PathType Leaf)) { throw 'SkellCore UI screenshot manifest missing during package staging' }
+          $uiManifest = Get-Content -LiteralPath $uiManifestPath -Raw | ConvertFrom-Json -ErrorAction Stop
+          if ($uiManifest.renderer -ne 'SkellCore real-editor JUCE v1' -or [int]$uiManifest.count -lt 4) {
+            throw 'SkellCore actual-editor screenshot evidence is missing or incomplete'
+          }
           $manifest = [ordered]@{
             schemaVersion = 1
             product = 'Skell Silence'
@@ -194,9 +200,9 @@ jobs:
               vendor = $factory.Vendor
               vendorUrl = $factory.URL
               supportEmail = $factory.'E-Mail'
-              manufacturerCode = 'SkAu'
-              pluginCode = 'Sl01'
-              bundleId = 'uno.skellyr.silence'
+              manufacturerCode = $manufacturerCode
+              pluginCode = $pluginCode
+              bundleId = $bundleId
               classIds = @($classes | ForEach-Object { $_.CID })
             }
             uiEvidence = [ordered]@{
