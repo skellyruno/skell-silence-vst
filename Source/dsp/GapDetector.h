@@ -88,9 +88,13 @@ public:
           // Never shift earlier than 45ms or later than the confirmed event.
           // This keeps auto detection responsive without turning short notes
           // or transient dips into additional gaps.
+          // The final waveform zero crossing can fall just before the
+          // actual silence. A 3ms guard avoids timestamping part of that note
+          // as a gap while still recovering almost all the RMS attack lag.
+          const int64_t phaseGuard=std::max<int64_t>(1,int64_t(sr*0.003));
           activeStart=lastAudibleSample<0 ? firstPending
             : std::max(firstPending-maxCorrection,
-                       std::min(firstPending,lastAudibleSample+1));
+                       std::min(firstPending,lastAudibleSample+1+phaseGuard));
           age=sample-activeStart+1;
           r.began=true;r.start=activeStart;
         }
