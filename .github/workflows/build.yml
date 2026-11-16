@@ -55,9 +55,28 @@ jobs:
           if ([BitConverter]::ToUInt16($bytes, $peOffset + 4) -ne 0x8664) { throw 'Not an x64 Windows VST3 module' }
           if ([BitConverter]::ToUInt16($bytes, $peOffset + 24) -ne 0x20b) { throw 'Windows module is not PE32+' }
 
-          $versionMatch = [regex]::Match((Get-Content -LiteralPath 'CMakeLists.txt' -Raw), '(?m)^\s*project\s*\(\s*SkellSilence\s+VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)')
+          $cmakeText = Get-Content -LiteralPath 'CMakeLists.txt' -Raw
+          $versionMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*project\s*\(\s*SkellSilence\s+VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)')
           if (-not $versionMatch.Success) { throw 'Could not read SkellSilence project version from CMakeLists.txt' }
           $projectVersion = $versionMatch.Groups[1].Value
+
+          # The VST3 class IDs, bundle ID and four-character codes are a protected
+          # compatibility contract. A change requires an explicit identity migration.
+          $bundleMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*BUNDLE_ID[ \t]+"([^"]+)"')
+          $manufacturerMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*PLUGIN_MANUFACTURER_CODE[ \t]+([A-Za-z0-9]+)')
+          $pluginCodeMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*PLUGIN_CODE[ \t]+([A-Za-z0-9]+)')
+          $formatsMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*FORMATS[ \t]+([^\r\n]+)')
+          if (-not $bundleMatch.Success -or -not $manufacturerMatch.Success -or -not $pluginCodeMatch.Success -or -not $formatsMatch.Success) {
+            throw 'Could not read the complete VST3 identity contract from CMakeLists.txt'
+          }
+          $bundleId = $bundleMatch.Groups[1].Value
+          $manufacturerCode = $manufacturerMatch.Groups[1].Value
+          $pluginCode = $pluginCodeMatch.Groups[1].Value
+          $formats = @($formatsMatch.Groups[1].Value.Trim() -split '\s+')
+          if ($bundleId -cne 'uno.skellyr.silence') { throw "VST3 bundle ID changed unexpectedly: $bundleId" }
+          if ($manufacturerCode -cne 'SkAu') { throw "VST3 manufacturer code changed unexpectedly: $manufacturerCode" }
+          if ($pluginCode -cne 'Sl01') { throw "VST3 plugin code changed unexpectedly: $pluginCode" }
+          if ($formats.Count -ne 1 -or $formats[0] -cne 'VST3') { throw "Release target must remain VST3-only; CMake formats are: $($formats -join ', ')" }
 
           $metadataPath = Join-Path $vst.FullName 'Contents/Resources/moduleinfo.json'
           if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) { throw 'VST3 moduleinfo.json is missing' }
@@ -71,12 +90,24 @@ jobs:
           if ($metadata.Version -ne $projectVersion) { throw "VST3 metadata version $($metadata.Version) does not match CMake version $projectVersion" }
 
           $factory = $metadata.'Factory Info'
-          if ($factory.Vendor -ne 'Skell Audio') { throw "Unexpected VST3 vendor: $($factory.Vendor)" }
+          if ($factory.Vendor -cne 'Skell Audio') { throw "Unexpected VST3 vendor: $($factory.Vendor)" }
           $classes = @($metadata.Classes)
+          if ($classes.Count -ne 2) { throw "Expected exactly two protected VST3 classes, found $($classes.Count)" }
           $audioClasses = @($classes | Where-Object { $_.Category -eq 'Audio Module Class' })
           $controllerClasses = @($classes | Where-Object { $_.Category -eq 'Component Controller Class' })
           if ($audioClasses.Count -ne 1 -or $controllerClasses.Count -ne 1) { throw 'VST3 metadata must contain exactly one audio class and one controller class' }
-          if (@($classes | Where-Object { $_.Version -ne $projectVersion }).Count -ne 0) { throw 'A VST3 class version does not match the CMake project version' }
+
+          # These IDs were read from the independently inspected v2.8 Windows
+          # baseline artifact. Do not silently publish a binary that changes host identity.
+          $expectedAudioCid = 'ABCDEF019182FAEB536B4175536C3031'
+          $expectedControllerCid = 'ABCDEF011234ABCD536B4175536C3031'
+          if ([string]$audioClasses[0].CID -cne $expectedAudioCid) { throw "Audio VST3 class ID changed: $($audioClasses[0].CID)" }
+          if ([string]$controllerClasses[0].CID -cne $expectedControllerCid) { throw "Controller VST3 class ID changed: $($controllerClasses[0].CID)" }
+          foreach ($class in $classes) {
+            if ($class.Name -cne 'Skell Silence') { throw "Unexpected VST3 class name: $($class.Name)" }
+            if ($class.Vendor -cne $factory.Vendor) { throw "VST3 class vendor mismatch: $($class.Vendor)" }
+            if ($class.Version -cne $projectVersion) { throw "A VST3 class version does not match the CMake project version: $($class.Version)" }
+          }
           Set-Content -LiteralPath $metadataPath -Value $cleanMetadata -Encoding utf8 -NoNewline
 
           New-Item -ItemType Directory -Path 'dist' -Force | Out-Null
@@ -146,6 +177,11 @@ jobs:
               peOptionalHeader = 'PE32+'
               moduleInfoStrictJson = $true
               productAndClassVersionsMatch = $true
+              stableBundleIdMatchesBaseline = $true
+              manufacturerCodeMatchesBaseline = $true
+              pluginCodeMatchesBaseline = $true
+              classIdsMatchInspectedV28Baseline = $true
+              cmakeTargetIsVst3Only = $true
               exactlyOneVst3Bundle = $true
               exactlyOneWindowsModule = $true
               packagedBinaryHashMatchesBuild = $true
