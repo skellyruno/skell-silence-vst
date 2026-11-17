@@ -209,7 +209,7 @@ jobs:
             installer = [ordered]@{
               file = 'Install-SkellSilencePreview.ps1'
               sha256 = $installerHash
-              defaultInstallRoot = '%LOCALAPPDATA%\\Programs\\Common\\VST3'
+              defaultInstallRoot = '%LOCALAPPDATA%\Programs\Common\VST3'
               backupAndRollback = $true
               requiresManualUserAcceptance = $true
             }
