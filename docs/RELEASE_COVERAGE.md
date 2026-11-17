@@ -351,7 +351,7 @@ No PR was merged. No public release, production install, website deployment, DNS
 
 ### Selected project: Skell Cast (skell-cast-vst)
 
-Cast followed Separator in the non-DeEsser rotation. It outranked the previously proposed Cast follow-up? No: it was selected because the actual latest baseline artifact contained a confirmed strict-metadata packaging defect and had no provenance/checksum manifest or pluginval gate. The newer Skell Maw exact-head run #44007318584 has since passed Windows compile, all seven pluginval strictness-5 checks and upload (artifact #14295408141), so its earlier program-list CI failure is no longer the highest unresolved packaging blocker. Cast's old artifact remains a valid binary baseline but not a strict, reproducible preview package.
+Cast followed Separator in the non-DeEsser rotation. It was selected because the actual latest baseline artifact contained a confirmed strict-metadata packaging defect and had no provenance/checksum manifest or pluginval gate. The newer Skell Maw exact-head run #44007318584 has since passed Windows compile, all seven pluginval strictness-5 checks and upload (artifact #14295408141), so its earlier program-list CI failure is no longer the highest unresolved packaging blocker. Cast's old artifact remains a valid binary baseline but not a strict, reproducible preview package.
 
 - Draft PR #4: https://github.com/skellyruno/skell-cast-vst/pull/4
 - Branch: `release/cast-vst3-manifest-20261116b`
