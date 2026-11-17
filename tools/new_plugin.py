@@ -24,6 +24,22 @@ def detect_processor_class(source_dir: Path) -> str:
         raise ValueError(f"Expected exactly one JUCE AudioProcessor class in {header}; found {len(matches)}")
     return matches[0]
 
+
+def detect_editor_class(source_dir: Path) -> str:
+    """Find the concrete JUCE AudioProcessorEditor class in a template source tree."""
+    header = source_dir / "PluginEditor.h"
+    if not header.is_file():
+        raise FileNotFoundError(f"Missing editor header: {header}")
+    body = header.read_text(encoding="utf-8")
+    matches = re.findall(
+        r"\bclass\s+([A-Za-z_][A-Za-z0-9_]*)\s+(?:final\s+)?:\s*public\s+(?:juce::)?AudioProcessorEditor\b",
+        body,
+    )
+    if len(matches) != 1:
+        raise ValueError(f"Expected exactly one JUCE AudioProcessorEditor class in {header}; found {len(matches)}")
+    return matches[0]
+
+
 def make_project(name: str, destination: Path, code: str,
                  core_rev: str = DEFAULT_REV, core_repo: str = DEFAULT_REPO):
     if not re.fullmatch(r"[A-Za-z0-9]{4}", code):
@@ -44,6 +60,7 @@ def make_project(name: str, destination: Path, code: str,
     if not (source_dir / "PluginProcessor.cpp").is_file():
         raise FileNotFoundError("Run this generator from a SkellCore plugin source checkout")
     source_class = detect_processor_class(source_dir)
+    editor_class = detect_editor_class(source_dir)
     destination.mkdir(parents=True, exist_ok=False)
     try:
         src = destination / "Source"
@@ -53,7 +70,7 @@ def make_project(name: str, destination: Path, code: str,
                 continue
             body = oldfile.read_text(encoding="utf-8")
             body = re.sub(r"\b" + re.escape(source_class) + r"\b", f"{target}AudioProcessor", body)
-            body = body.replace("SkellAudioProcessor", f"{target}AudioProcessor")
+            body = re.sub(r"\b" + re.escape(editor_class) + r"\b", f"{target}AudioProcessorEditor", body)
             body = body.replace("Skell Quickstart", name)
             (src / oldfile.name).write_text(body, encoding="utf-8")
         cmake = f'''cmake_minimum_required(VERSION 3.22)

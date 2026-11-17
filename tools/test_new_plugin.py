@@ -14,6 +14,7 @@ class GeneratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             dest = Path(root) / "skell-compressor"
             self.assertEqual(module.detect_processor_class(ROOT / "Source"), "SkellSilenceAudioProcessor")
+            self.assertEqual(module.detect_editor_class(ROOT / "Source"), "SkellSilenceAudioProcessorEditor")
             module.make_project("Skell Compressor", dest, "SC01")
             self.assertIn("SkellCore::DSP SkellCore::UI", (dest / "CMakeLists.txt").read_text())
             self.assertIn('PLUGIN_CODE SC01', (dest / "CMakeLists.txt").read_text())
@@ -22,6 +23,9 @@ class GeneratorTests(unittest.TestCase):
             generated_processor = (dest / "Source" / "PluginProcessor.cpp").read_text()
             self.assertIn("SkellCompressorAudioProcessor", generated_processor)
             self.assertNotIn("SkellSilenceAudioProcessor", generated_processor)
+            generated_editor = (dest / "Source" / "PluginEditor.cpp").read_text()
+            self.assertIn("SkellCompressorAudioProcessorEditor", generated_editor)
+            self.assertNotIn("SkellSilenceAudioProcessorEditor", generated_editor)
             self.assertTrue((dest / ".github/workflows/build.yml").exists())
             self.assertFalse((dest / "SkellCore").exists())
             with self.assertRaises(FileExistsError):
