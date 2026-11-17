@@ -9,6 +9,21 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REV = "ecd585d55c1dff262567224f2bb5e55f987b86dd"
 DEFAULT_REPO = "https://github.com/skellyruno/skell-vst-template.git"
 
+
+def detect_processor_class(source_dir: Path) -> str:
+    """Find the concrete JUCE AudioProcessor class in a template source tree."""
+    header = source_dir / "PluginProcessor.h"
+    if not header.is_file():
+        raise FileNotFoundError(f"Missing processor header: {header}")
+    body = header.read_text(encoding="utf-8")
+    matches = re.findall(
+        r"\\bclass\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(?:final\\s+)?:\\s*public\\s+(?:juce::)?AudioProcessor\\b",
+        body,
+    )
+    if len(matches) != 1:
+        raise ValueError(f"Expected exactly one JUCE AudioProcessor class in {header}; found {len(matches)}")
+    return matches[0]
+
 def make_project(name: str, destination: Path, code: str,
                  core_rev: str = DEFAULT_REV, core_repo: str = DEFAULT_REPO):
     if not re.fullmatch(r"[A-Za-z0-9]{4}", code):
@@ -25,8 +40,10 @@ def make_project(name: str, destination: Path, code: str,
     destination = destination.resolve()
     if destination.exists():
         raise FileExistsError(f"Destination already exists: {destination}")
-    if not (ROOT / "Source" / "PluginProcessor.cpp").is_file():
-        raise FileNotFoundError("Run this generator from the SkellCore template checkout")
+    source_dir = ROOT / "Source"
+    if not (source_dir / "PluginProcessor.cpp").is_file():
+        raise FileNotFoundError("Run this generator from a SkellCore plugin source checkout")
+    source_class = detect_processor_class(source_dir)
     destination.mkdir(parents=True, exist_ok=False)
     try:
         src = destination / "Source"
@@ -35,6 +52,7 @@ def make_project(name: str, destination: Path, code: str,
             if oldfile.suffix not in (".cpp", ".h"):
                 continue
             body = oldfile.read_text(encoding="utf-8")
+            body = re.sub(r"\\b" + re.escape(source_class) + r"\\b", f"{target}AudioProcessor", body)
             body = body.replace("SkellAudioProcessor", f"{target}AudioProcessor")
             body = body.replace("Skell Quickstart", name)
             (src / oldfile.name).write_text(body, encoding="utf-8")
