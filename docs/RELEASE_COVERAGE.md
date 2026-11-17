@@ -703,7 +703,7 @@ The previous Afar release run had corrected the preview-status marker, but the n
 - Fix: call \`ShouldProcess\` in the advanced script scope, pass only its Boolean result to the install/rollback helpers, and preserve WhatIf/idempotent behavior. The test harness explicitly disables confirmation for non-interactive mutation tests.
 - New exact-head Windows run #44203361778 and real-SkellCore headless run #44203361746 are running. No corrected install-test pass, pluginval strictness-5 pass or new artifact is claimed until those jobs finish.
 - Parent artifact #14296195883 remains preserved as the known-good VST3 baseline; archive SHA-256 \`91777b84aad024b8015b7b510ffb53c3414aee74d2091d0adccbc955ac0d8f80\`; binary SHA-256 \`141df41650f510b5cbf49210f34c8a359fa9049481f5686fb397336a5275340f\`.
-- No DSP, UI, preset, parameter ID, automation ID or project-state code changed. The existing real JUCE Guided Tour capture artifact #14295551951 remains the visual baseline; no new screenshot is claimed because the UI did not change and this run's container could not resolve github.com to restore JUCE/Quick4 locally.
+- No DSP, UI, preset, parameter ID, automation ID or project-state code changed. The existing real JUCE Guided Tour capture artifact #14295551951 remains the visual baseline. The persistent Quick4 kit was restored from the ChatGPT Library; both embedded bundles passed checksum verification and JUCE 8.0.12/SkellCore are present. No new screenshot is claimed because the UI did not change. A fresh local Afar renderer was not built: the current source checkout is unavailable because github.com DNS fails, and required Linux FreeType/XRandR/ALSA development headers are absent (apt update timed out).
 
 ### Rotation exception and next selection
 
