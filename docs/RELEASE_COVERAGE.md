@@ -1,5 +1,5 @@
 # Skelly release coverage ledger
-Updated: 2026-11-17 08:04 EST (Release & Launch run 11; BPM Delay Calculator Windows-first VST3 package PR #1; exact-head CI not yet reported)
+Updated: 2026-11-17 08:04 EST (BPM Delay Calculator Windows-first VST3 package PR #1; exact-head CI not yet reported)
 Updated: 2026-11-17 04:12 EST (Release & Launch checkpoint 21; Modular FX Suite Windows VST3-only package PR #4; exact-head CI in progress)
 Owner: skellyruno
 Purpose: Windows-first VST3 / EXE / installer release readiness. This is a coverage register, not a declaration that every listed project is releasable.
@@ -40,7 +40,7 @@ Purpose: Windows-first VST3 / EXE / installer release readiness. This is a cover
 | Skell AutoTune — skell-autotune-vst | Not logged | Default branch is devin/1778052783-initial-plugin; release baseline and branch purpose need verification. | Confirm branch/PR ownership and JUCE/VST3 packaging before any changes. |
 | Skell Spectre — skell-spectre-vst | Not logged | No current release artifact or CI state independently inspected. | Confirm relationship to SkellGlitch, then inspect x64 package and DSP gates. |
 | Skell Chess — skell-chess-vst | Not logged | No current release artifact or CI state independently inspected. | Inventory product scope, build target and licensing before release work. |
-| BPM Delay Calculator — -bpmdelay-calculator-vst | 2026-11-17 (selected in Release & Launch run 11; VST3-only preview packaging) | Draft PR #1: https://github.com/skellyruno/-bpmdelay-calculator-vst/pull/1, branch `release/windows-vst3-package-20261117`, current head `721db621c326cf1e8d3083edb2bfbb3a87288941`, based on main `6366ff31c5ab8e76ec4a231100ba97a07096d3f9`. Before selection it had no open PR/issues, only main, and zero recorded Actions runs. Main CMake built VST3 + Standalone; the workflow uploaded both and treated pluginval as continue-on-error. PR restricts CMake to VST3, makes pinned pluginval 1.0.4 strictness 5 required, triggers PR/push/manual checks, and adds deterministic package+SHA-256/provenance. Local package tests **7/7 passed**. No pre-existing Windows binary/artifact was found, so no backup is claimed. Current PR head still has no Actions run or status checks; no package artifact exists yet. | Confirm Actions trigger/permissions; exact-head Windows x64 build, pluginval strictness 5, package tests and archive/hash inspection; then FL Studio host-tempo follow, pass-through, project save/reopen, actual UI capture and target-hardware checks. Commercial license/contact metadata must be resolved before release. |
+| BPM Delay Calculator — -bpmdelay-calculator-vst | 2026-11-17 (selected 2026-11-17; VST3-only preview packaging) | Draft PR #1: https://github.com/skellyruno/-bpmdelay-calculator-vst/pull/1, branch `release/windows-vst3-package-20261117`, current head `721db621c326cf1e8d3083edb2bfbb3a87288941`, based on main `6366ff31c5ab8e76ec4a231100ba97a07096d3f9`. Before selection it had no open PR/issues, only main, and zero recorded Actions runs. Main CMake built VST3 + Standalone; the workflow uploaded both and treated pluginval as continue-on-error. PR restricts CMake to VST3, makes pinned pluginval 1.0.4 strictness 5 required, triggers PR/push/manual checks, and adds deterministic package+SHA-256/provenance. Local package tests **7/7 passed**. No pre-existing Windows binary/artifact was found, so no backup is claimed. Current PR head still has no Actions run or status checks; no package artifact exists yet. | Confirm Actions trigger/permissions; exact-head Windows x64 build, pluginval strictness 5, package tests and archive/hash inspection; then FL Studio host-tempo follow, pass-through, project save/reopen, actual UI capture and target-hardware checks. Commercial license/contact metadata must be resolved before release. |
 | MuCalc — MuCalc-VST | Not logged | No current release artifact independently inspected. | Verify standalone/VST3 intent, packaging and numerical tests. |
 | MetaTuneInspiredvst | Not logged | Reference/inspired project; license/attribution and distributable status unverified. | Audit origin, licenses and whether it is an internal reference or product. |
 | EndlessSmileInspired-VST3 | Not logged | Reference/inspired project; license/attribution and distributable status unverified. | Audit origin, licenses and whether it is an internal reference or product. |
@@ -479,7 +479,7 @@ Next run should choose a different non-DeEsser plugin unless the Modular FX Suit
 
 No PR was merged, no public release was published, no stable baseline was overwritten, and no website deployment, DNS or payment action occurred.
 
-## Release & Launch run 11 — 2026-11-17 08:04 EST
+## Release & Launch checkpoint — 2026-11-17 08:04 EST
 
 ### Selected project: BPM Delay Calculator
 
@@ -492,7 +492,7 @@ Implemented draft PR #1, branch release/windows-vst3-package-20261117, head 721d
 - Added five then two additional local regression cases. Final local result: 7/7 passed.
 - No pre-existing VST3 binary or Actions artifact was found in this repository, so no backup is claimed. No DSP, UI, VST3 IDs, parameters or saved-state schema changed.
 
-### Run 11 release gates
+### Release gates
 - Passed: local Python package tests 7/7.
 - Pending / not reported: exact-head Windows/macOS CMake build, pluginval 1.0.4 and artifact upload. GitHub returned no workflow run and no commit statuses for head 721db621c326cf1e8d3083edb2bfbb3a87288941; do not call CI started or passed.
 - Unverified: actual Windows/FL Studio load, host-tempo follow, audio pass-through, state/project save-reopen, Quick4 UI screenshots, visual interaction, audio A/B, target-hardware CPU/latency.
