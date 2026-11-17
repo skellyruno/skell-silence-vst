@@ -87,3 +87,23 @@ The latest Preset Audit did not promote Alchemist Factory 49: its spectral error
 
 No PR was merged. No public release, installation over an existing version, website deployment, DNS change, payment action or irreversible update was performed.
 
+
+
+## First product launch readiness matrix
+
+**Lead packaging candidate: Skell Choir 0.9.0 preview.** Its corrected exact-head Windows build/package and native suites passed, and artifact #14279527660 was independently inspected. This is a packaging lead, not a final product selection or release approval.
+
+| Gate | Status | Evidence / next requirement |
+|---|---|---|
+| Windows build / download | PASS — preview | Artifact [#14279527660](https://github.com/skellyruno/skell-choir-vst/actions/runs/43973500170/artifacts/14279527660); one direct VST3 bundle, build-info and SHA256SUMS. Not public. |
+| Verified sound / A-B | UNVERIFIED | Real music A/B and owner listening approval not completed. |
+| Host compatibility | UNVERIFIED | FL Studio scan, automation, state save/reopen and old-project compatibility not run. |
+| Stable presets | UNVERIFIED | Preset compatibility and host recall require validation. |
+| Licensing / attribution | UNVERIFIED | Third-party notices and redistribution rights require review. |
+| Updater / rollback | UNVERIFIED | SkellyHub install, update, backup and rollback not exercised. |
+| Website storefront / email signup | UNVERIFIED | Website source checks pass; browser, storefront and signup acceptance remain outstanding. |
+| Release notes | UNVERIFIED | Final versioned notes not approved. |
+| Support / contact | BLOCKED | Vendor URL and support email are blank in current plugin metadata. |
+| Pricing / trial | OWNER APPROVAL REQUIRED | Pricing, trial length and commercial terms must be approved by the user. |
+
+A green build or downloadable Actions artifact is not a commercial release. Keep this candidate private until every gate is independently closed.
