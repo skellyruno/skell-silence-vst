@@ -1,9 +1,9 @@
 name: Build Skell Silence
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'release/**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'release/**' ]
   workflow_dispatch:
 # Cancel only outdated pull-request checks. Main, manual and release builds
 # use their unique run IDs and are never canceled by a newer commit.
