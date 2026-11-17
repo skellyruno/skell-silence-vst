@@ -1,5 +1,5 @@
 # Skelly release coverage ledger
-Updated: 2026-11-17 08:04 EST (BPM Delay Calculator Windows-first VST3 package PR #1; exact-head CI not yet reported)
+Updated: 2026-11-17 09:07 EST (Checkmate Windows VST3 preview PR #8; exact-head configure in progress)
 Updated: 2026-11-17 04:12 EST (Release & Launch checkpoint 21; Modular FX Suite Windows VST3-only package PR #4; exact-head CI in progress)
 Owner: skellyruno
 Purpose: Windows-first VST3 / EXE / installer release readiness. This is a coverage register, not a declaration that every listed project is releasable.
@@ -41,6 +41,7 @@ Purpose: Windows-first VST3 / EXE / installer release readiness. This is a cover
 | Skell Spectre — skell-spectre-vst | Not logged | No current release artifact or CI state independently inspected. | Confirm relationship to SkellGlitch, then inspect x64 package and DSP gates. |
 | Skell Chess — skell-chess-vst | Not logged | No current release artifact or CI state independently inspected. | Inventory product scope, build target and licensing before release work. |
 | BPM Delay Calculator — -bpmdelay-calculator-vst | 2026-11-17 (selected 2026-11-17; VST3-only preview packaging) | Draft PR #1: https://github.com/skellyruno/-bpmdelay-calculator-vst/pull/1, branch `release/windows-vst3-package-20261117`, current head `721db621c326cf1e8d3083edb2bfbb3a87288941`, based on main `6366ff31c5ab8e76ec4a231100ba97a07096d3f9`. Before selection it had no open PR/issues, only main, and zero recorded Actions runs. Main CMake built VST3 + Standalone; the workflow uploaded both and treated pluginval as continue-on-error. PR restricts CMake to VST3, makes pinned pluginval 1.0.4 strictness 5 required, triggers PR/push/manual checks, and adds deterministic package+SHA-256/provenance. Local package tests **7/7 passed**. No pre-existing Windows binary/artifact was found, so no backup is claimed. Current PR head still has no Actions run or status checks; no package artifact exists yet. | Confirm Actions trigger/permissions; exact-head Windows x64 build, pluginval strictness 5, package tests and archive/hash inspection; then FL Studio host-tempo follow, pass-through, project save/reopen, actual UI capture and target-hardware checks. Commercial license/contact metadata must be resolved before release. |
+| Checkmate — skell-chess-vst | 2026-11-17 (selected; VST3-only preview packaging) | Draft PR #8: https://github.com/skellyruno/skell-chess-vst/pull/8, branch `release/windows-vst3-preview-package-20261117`, head `b0cd10d73bf6e70cab81047e4c5deefbe6160dc8`, based on main `b21fe68482af69af0d1ca8bfa47e20f6bdd34518`. Baseline main run #43560219659 passed but artifact #14100575125 included both VST3 and EXE; archive SHA-256 `ba8023cfb249f3505221d5bb907e5e7318267b0c80a2dfb8098abbd504dc32e1`, module SHA-256 `a555a830f6d499e4362e69a4f88228b0fd803b3da3c2f1ed8800ab529240e995`. New PR uploads VST3 only, keeps Standalone local, normalizes JUCE trailing commas only in staged moduleinfo, verifies AMD64 PE32+, v2.4.0, vendor and two unique class IDs, adds provenance/checksums/preview+rollback notes, and requires pluginval 1.0.4 strictness 5. Local tests 12/12 passed; staging the actual baseline passed and all hashes recomputed. PR run #44099624708 is in progress at CMake configure; no new artifact/pluginval result claimed. | Finish exact-head Windows build/CTest, 12 tests, pluginval 5, current-build UI preview and VST3-only artifact upload; independently download/check ZIP and hashes; then FL Studio MIDI/audio/state/automation and old-project acceptance, license/contact approval, installer/Hub rollback. |
 | MuCalc — MuCalc-VST | Not logged | No current release artifact independently inspected. | Verify standalone/VST3 intent, packaging and numerical tests. |
 | MetaTuneInspiredvst | Not logged | Reference/inspired project; license/attribution and distributable status unverified. | Audit origin, licenses and whether it is an internal reference or product. |
 | EndlessSmileInspired-VST3 | Not logged | Reference/inspired project; license/attribution and distributable status unverified. | Audit origin, licenses and whether it is an internal reference or product. |
@@ -508,3 +509,37 @@ Implemented draft PR #1, branch release/windows-vst3-package-20261117, head 721d
 
 ### Next rotation
 Select a different non-DeEsser project after checking its current branches and exact-head CI. Do not repeat BPM Delay Calculator next run unless its new CI reveals a critical regression. Keep at least three distinct non-DeEsser substantive implementations within the six-run window; continue preserving draft-only status until real host acceptance and commercial gates are satisfied.
+
+## Release & Launch checkpoint 22 — 2026-11-17 09:07 EST
+
+### Selected project: Checkmate (skell-chess-vst)
+
+Checkmate was selected after the BPM Delay Calculator rotation because its repository had no open PRs or issues, its last Windows main build was a usable but non-release-ready candidate, and its existing artifact included a Standalone EXE alongside the VST3. The workflow did not run pluginval, and the actual VST3 moduleinfo.json contained JUCE trailing commas. This was a concrete packaging gap with no active branch owner.
+
+- Draft PR #8: https://github.com/skellyruno/skell-chess-vst/pull/8
+- Branch: `release/windows-vst3-preview-package-20261117`
+- Main baseline: `b21fe68482af69af0d1ca8bfa47e20f6bdd34518`
+- PR head: `b0cd10d73bf6e70cab81047e4c5deefbe6160dc8` (two focused commits)
+- Added a Windows PR/main/manual workflow with PR-only concurrency cancellation, CTest, 12 package tests, pluginval v1.0.4 strictness 5, separate current-build UI evidence, and a 30-day VST3-only preview artifact.
+- The Standalone CMake target remains available for local development, but the downloadable artifact contains only Checkmate.vst3.
+- Added a fail-closed package verifier for exact bundle inventory, x86_64-win module path, AMD64 PE32+, product/vendor/version, two VST3 class categories and unique class IDs. JUCE trailing commas are normalized only in the staged copy.
+- Added build provenance, module SHA-256, per-file SHA256SUMS, preview-only notice and manual backup/rollback instructions.
+- Local package regression tests: **12/12 passed**. Staging the real baseline artifact passed architecture, metadata, class-ID and checksum checks; no EXE was present in the staged package. The original artifact and source module were not modified.
+- Baseline artifact #14100575125 was downloaded and independently inspected: 8,103,936-byte AMD64 PE32+ VST3 module, SHA-256 `a555a830f6d499e4362e69a4f88228b0fd803b3da3c2f1ed8800ab529240e995`; original archive SHA-256 `ba8023cfb249f3505221d5bb907e5e7318267b0c80a2dfb8098abbd504dc32e1`. The same main commit's UI evidence artifact #14100575117 was inspected; no obvious clipping/overlap was found and no UI source changed.
+- Exact-head PR workflow #44099624708 is in progress at CMake configure. A branch-push run #44098832105 is also running from the initial base commit using the old workflow; it is not treated as evidence for the new package changes and was left untouched because it is a push/release-branch run, not a superseded PR run.
+- Quick4 persistent kit was restored and checksum-verified; JUCE 8.0.12 source is present. The bundled capture helper supports Master/Preset only, and the container could not resolve github.com to fetch current Checkmate source. No fresh Checkmate Quick4 screenshot or local full plugin build is claimed.
+- Commercial blockers remain: no root LICENSE/COPYING/NOTICE, blank vendor URL and support email, no signed installer/SkellyHub updater, and no FL Studio, MIDI routing, state recall, audio A/B or target-hardware CPU/latency acceptance.
+
+### Cross-automation ownership check
+
+- Preset Quality Audit's latest result advanced Skell Preset PR #58 with 11 explicit-null parser regression cases; exact-head portable CTest 32/32 passed, but the latest Windows build and package tests remain pending. Master PR #15's earlier Windows VST3 artifact was independently checked by that automation. No Preset-owned branch was edited.
+- Ecosystem Development's latest result merged Skell Delay PR #2 as `00b45315b79e194a3775b0f8a689d13ef93914a0`; post-merge main CI #44077183182 passed. Skell Maw PR #5 has a new active exact-head Windows run #44096649781 after its package-guide parser correction; its branch is owned by the active release workstream and was not touched.
+- Websites Development completed V91 with Preset Showcase V26 and 6/6 regression suites; WebGL remains unverified. No deploy, DNS or payment action.
+- Nightly Blueprint's Maw failure evidence predates the passing PR #3 package baseline; the new PR #5 install-guide follow-up is active. No Maw branch was edited.
+- DeEsser remains parked.
+
+### Next rotation
+
+Choose a different non-DeEsser project after checking current branch ownership and exact-head Actions. Do not repeat Checkmate next run unless its new Windows build exposes a critical regression. Continue rotating across at least three distinct non-DeEsser projects in the six-run window.
+
+No PR was merged, no public release was published, no stable baseline was overwritten, and no website deployment, DNS or payment action occurred.
