@@ -1,6 +1,6 @@
 # Skelly release coverage ledger
 
-Updated: 2026-11-16 19:55 EST (Release & Launch checkpoint 11; Skell EQ A/B state-test PR #10 open; Delay PR #9 exact-head package CI passed and Windows artifact inspected)
+Updated: 2026-11-16 20:53 EST (Release & Launch checkpoint 12; Skell Maw package-verification PR #3 opened, exact-head Windows CI in progress)
 Owner: skellyruno
 Purpose: Windows-first VST3 / EXE / installer release readiness. This is a coverage register, not a declaration that every listed project is releasable.
 
@@ -32,7 +32,7 @@ Purpose: Windows-first VST3 / EXE / installer release readiness. This is a cover
 | Skell Fan — skell-fan-vst | 2026-11-16 (previous release selection; exact-head pluginval repair now passed) | Preserved baseline artifact #14176270462 from run #43749240041: v1.9.0, one AMD64 PE32+ VST3 module, 9,404,416 bytes, original binary SHA-256 `bfafbc0437d958d637763933a81b1766c790bc8ebd759bae4a0463966b6a284f`, archive SHA-256 `0a383ec17c73246122fd128c746bfd8f983105c3378647842c636b5ef3ccfc95`. PR #10 exposed pluginval strictness 5 failure: program 0 had no name. PR #11 commit `a1ffdaf2354f4929a8680d31439d03bdb87342bd` fixes `getProgramName(0)` to `Chorus - Classic` and corrects its regression assertion. Exact-head Windows run #43944668734 passed source checks, 16 package tests, CMake configure/build, DSP/portable tests, VST3 staging, metadata normalization, AMD64 PE32+ verification and pluginval strictness 5. Artifact #14264828558 is a flat bundle + `build-info.json` + `SHA256SUMS.txt`, size 4,889,994 bytes, archive SHA-256 `0d2e247dc21ad5672eaa9dbbc1d84b5edba80bf6af80436fc7ad0b37e66d58d8`; binary SHA-256 `115cee937f29573d98dd62a0464ec9c5c1792d605cc1cc68c3a776d223a7a39d`. I independently inspected the artifact: one `SkellFan.vst3`, v1.9.0, strict JSON metadata, valid PE signature/machine/PE32+; manifest says PREVIEW_ONLY. UI snapshot artifact #14265127600 digest `866d1a2cb6568e15e3f4b75c0287b127dcf3e7d337ab1e0ca4e6252bee41e461` is available but not inspected in this run. | FL Studio scan/automation/state save-reopen, old-project compatibility, real music A/B, target-hardware CPU/latency, vendor URL/support email and license review; reconcile PR #8 UI and PR #9 VST3 release branch before any release. |
 | Skell Flang — skell-flang-vst | Not logged | No current release artifact or CI state independently inspected. | Inventory workflow and Windows bundle; validate modulation stability/CPU and host automation. |
 | Skell Afar — skell-afar-vst | Not logged | No current release artifact or CI state independently inspected. | Inventory workflow and dependencies; verify package, latency and state recall. |
-| Skell Maw — skell-maw-vst | Not logged | No current release artifact or CI state independently inspected. | First release inventory: CI, VST3 target, licensing and baseline binary. |
+| Skell Maw — skell-maw-vst | 2026-11-16 (current release selection; Windows VST3 package hardening) | Existing PR #1 head `ba44383cb14d1a84eff0a6d256c7acdd4c1065a3`; Windows/DSP run #43630679741 passed and artifact #14128013992 was downloaded. Outer artifact SHA-256 `c2205fcf71c8a5176aa3f64c03712373d1ec700f7b048fcb721758e1c982fb7f`; nested `SkellMaw-VST3.zip` SHA-256 `855e7e7e7d1a95e877c5972bd07095156009957f8103756f2a6936435beffc76`. Independently inspected seven expected `.vst3` bundles with AMD64 PE32+ modules, but all JUCE `moduleinfo.json` files contain trailing commas and are not strict JSON; the original artifact has a nested ZIP and no checksums/build provenance. New stacked draft PR #3 adds string-aware metadata normalization, strict JSON/name/vendor/version/class/CID checks, AMD64 PE verification, flat staging, `build-info.json`, `PREVIEW-ONLY.txt`, SHA256SUMS and six package-tool tests. Local validator passed all seven real baseline bundles and all generated checksums; repacked preview ZIP SHA-256 `a8233c35857122df492840e43e568b055cfd1a66c364cf55d8b32efb9fcfc746` (60,105,517 bytes). Exact-head PR #3 run #43999384010: Linux DSP tests passed; Windows configure in progress at checkpoint; no current-head Windows build or artifact yet. Vendor URL/support email are blank; no installer or FL Studio acceptance. | Finish exact-head Windows configure/build, six package tests, staging and artifact inspection; then FL Studio scan/state save-reopen, real audio A/B, target-hardware CPU/latency, license/attribution and vendor/support approval. |
 | Skell Necromancer — skell-necromancer-vst | Not logged | UI/DSP development exists in recent project context; no current release artifact independently inspected. | Verify current UI branch ownership, Windows VST3 build and real editor screenshots. |
 | Skell Gate — skell-gate-vst | Not logged | No current release artifact or CI state independently inspected. | Inventory workflow and test bypass, gate timing, denormals and x64 package. |
 | Skell Rack — skell-rack-vst | Not logged | No current release artifact or CI state independently inspected. | Inventory plugin format, dependencies, installer/export and host compatibility. |
@@ -162,3 +162,38 @@ Do not select EQ again next run unless PR #10 reveals a new critical regression.
 - CMake now removes the old Standalone plugin format. The product target is VST3-only; the new Windows-only console test executable is not a plugin format. enable_testing() is explicit for the new test gate.
 - New exact-head run #43992090707 is in progress on Windows and macOS; Configure is running and build/CTest/package steps are pending. No exact-head Windows build or A/B state-test result is claimed yet.
 - Superseded run #43991230953 completed its macOS build/CTest but its Windows build was still running at the 20:00 check. The available GitHub connector exposes no workflow-cancel action, so no cancellation was attempted; this old PR-only run was not a main/manual/release run.
+
+
+## Release & Launch checkpoint 12 — 2026-11-16 20:53 EST
+
+### Selected project: Skell Maw (skell-maw-vst)
+
+Skell Maw was selected after checking the latest Preset, Ecosystem, Websites and Nightly results. The Preset automation was actively editing Skell Master PR #9; Ecosystem's latest implementation was Delay and SkellNative, and its next planned workstream is Skell Studio; Websites was on Artist V86; the latest nightly report was the November 15 review. Maw had a real existing Windows VST3 collection artifact and a concrete packaging defect, while neither open Maw branch was being edited by those latest automation runs.
+
+- Existing source PR #1 remains open/draft at `ba44383cb14d1a84eff0a6d256c7acdd4c1065a3`; its exact-head Windows build and JUCE-free DSP tests passed in run #43630679741.
+- Existing PR #2 (hero readout bounds) remains open/draft at `8c92d0557d123e8f5e67bb2e11f1448491157808`; it is untouched and has no associated workflow run.
+- New stacked draft PR #3: https://github.com/skellyruno/skell-maw-vst/pull/3
+- Branch: `release/maw-package-manifest-20261116`; latest commit `9991424445a9c16e6930f83779a8ab06e5b7e389`; base branch `agent/skell-maw-quality-20261114` at PR #1 head `ba44383cb14d1a84eff0a6d256c7acdd4c1065a3`.
+- Added `Tools/verify_vst3_package.py` and `Tools/tests/test_verify_vst3_package.py`; updated `.github/workflows/build.yml`.
+- The package verifier requires exactly seven named VST3 bundles, one correctly named `Contents/x86_64-win/*.vst3` module per bundle, AMD64 PE headers, strict normalized moduleinfo JSON, expected product/vendor/version, processor + controller class pair, globally unique CIDs, and writes a build provenance manifest, preview-only notice and SHA256SUMS.
+- The six-test Python suite passed locally. Running the same validator against the actual downloaded Windows CI artifact staged all seven bundles; all checksums recomputed successfully. It identified blank vendor URL/support email as commercial-release warnings.
+- The original Actions artifact was double-wrapped: the outer artifact ZIP contains a second `SkellMaw-VST3.zip`. PR #3 changes Actions upload to the staged package directory directly, so the downloaded artifact will contain the flat bundles and sidecars without a nested ZIP.
+- Exact-head PR #3 run #43999384010: Linux `dsp_tests` passed. Windows job has completed checkout and Python setup; CMake configure was in progress at the checkpoint. The new Windows compile, package-tool tests, staging and artifact upload are not yet passed.
+- The local normalized repack from the existing Windows binary baseline is available at `SkellMaw-Windows-VST3-Preview-normalized-run43630679741.zip`, SHA-256 `a8233c35857122df492840e43e568b055cfd1a66c364cf55d8b32efb9fcfc746`. It is a metadata-normalized repack of the old CI binary, not a new build or commercial release.
+
+### Release gates still open for Maw
+
+- Windows compile and package verifier on PR #3's exact head.
+- FL Studio scan, loading, automation, project save/reopen and old-project compatibility.
+- Real music audio A/B and owner listening approval.
+- Target Windows hardware CPU and latency.
+- Current editor/menu/animation inspection and Quick4 screenshot workflow.
+- Licensing/attribution, vendor URL and support email.
+- Installer/export, SkellyHub install/update/backup/rollback.
+- Storefront, email signup, support and pricing/trial approval.
+
+### Next rotation
+
+Do not select Maw again on the next run unless a new critical regression appears. Choose a different non-DeEsser project after checking exact-head CI and active branch ownership; Afar or Separator are candidates, with Skell Studio/Project Hub also remaining in the broader rotation. DeEsser remains parked.
+
+No PR was merged. No installer was published, no existing installation was overwritten, and no website, DNS, payment or production action was taken.
