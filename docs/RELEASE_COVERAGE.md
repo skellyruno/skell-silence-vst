@@ -1,6 +1,6 @@
 # Skelly release coverage ledger
 
-Updated: 2026-11-16 (Skell Delay package-provenance PR #9 added; PR #9 head advanced to 5a148e7 for VST3-only non-Windows artifacts; new run #43984652327 queued. Previous run #43983322085 still running on the older head after tests/configure passed; upstream PR #7 run #43982892665 in progress; Skell Choir exact-head run #43973500170 passed both jobs and its new artifact was independently inspected)
+Updated: 2026-11-16 19:55 EST (Release & Launch checkpoint 11; Skell EQ A/B state-test PR #10 open; Delay PR #9 exact-head package CI passed and Windows artifact inspected)
 Owner: skellyruno
 Purpose: Windows-first VST3 / EXE / installer release readiness. This is a coverage register, not a declaration that every listed project is releasable.
 
@@ -107,3 +107,50 @@ No PR was merged. No public release, installation over an existing version, webs
 | Pricing / trial | OWNER APPROVAL REQUIRED | Pricing, trial length and commercial terms must be approved by the user. |
 
 A green build or downloadable Actions artifact is not a commercial release. Keep this candidate private until every gate is independently closed.
+
+
+## Release & Launch checkpoint 11 — 2026-11-16 19:55 EST
+
+### Selected project: Skell EQ (skell-eq-vst)
+
+Selected after the Preset Quality Audit explicitly identified the missing automated A/B snapshot host-state roundtrip test. Master was not selected because the Preset automation had just changed its true-peak PR #9 branch and its exact-head Windows workflow was active; Delay was already under the previous release selection and its latest package run has now completed. EQ's package PR #9 had passed its exact-head Windows gates, leaving a concrete, isolated compatibility gap to close.
+
+- New draft PR #10: https://github.com/skellyruno/skell-eq-vst/pull/10
+- Branch: test/eq-ab-snapshot-state-roundtrip-20261116
+- Single squashed commit: 90bbe8e9cb0dee225a8c50fb70fd7804de7db1d0
+- Base: main at 07089a613e06a24e0ef5ea3491e945601cbb45e5
+- Files: tests/state_roundtrip.cpp and CMakeLists.txt only.
+- Change: JUCE-backed Windows-only CTest harness instantiates the real processor and exercises A/B snapshot store/load, host-state serialization/restoration, current parameter state, selected-band restore, repeated saves without nested snapshots, old-state compatibility, and malformed/unknown/out-of-range/non-finite snapshot data. It creates a test console executable only; the plugin remains VST3-only.
+- Exact-head Actions run #43991230953: Windows and macOS configure passed; both builds were still in progress at the 19:55 check. No new test result or artifact is claimed. Windows CTest must pass before PR #10 can advance.
+- Local Quick4 kit was restored from Library; JUCE 8.0.12 and CMake/Ninja/C++/xvfb-run are present. EQ's exact SkellCore include pin is c4ae09c896fa84279d3cc42f19925f97a7e5c124. The kit's existing renderer supports Master/Preset, not EQ, and this run did not have a local EQ checkout; therefore no local EQ compile or current EQ screenshot is claimed. This is a state-test-only change, with no UI edits.
+
+### Freshly verified neighboring release evidence
+
+**Skell Delay PR #9** — https://github.com/skellyruno/skell-delay-vst/pull/9
+
+- Exact head: 5a148e78213d099a912d6956912b8e561f137654
+- Run #43984652327 completed successfully on Windows, Linux and macOS. Windows package-verifier tests, CMake configure/build, DSP/stress/real-time CTest, Windows VST3 staging, and pluginval strictness 10 passed. Linux and macOS configure/build, CTest and pluginval strictness 10 passed.
+- Windows artifact #14284769004: https://github.com/skellyruno/skell-delay-vst/actions/runs/43984652327/artifacts/14284769004
+- Downloaded archive SHA-256: d0f0196f3395af5e4b0d7ecba86a1366bdfea7c92e8be20752a47b45e763599b
+- Independent inspection: ZIP CRC passed; exactly one Skell-Delay.vst3 bundle and one Windows module; metadata Skell-Delay / Skelly Audio / 1.0.0, strict JSON, two classes; AMD64 PE32+ binary size 8,945,152 bytes, SHA-256 7b9b131368a41412e6e15f0e879908c984c53a1bf5d4300c28b1f499f111adbe; build-info.json and all three SHA256SUMS entries verified.
+- Archive includes a package/ wrapper directory and the VST3 bundle, manifest and checksums. No installer executable is present in this artifact despite the workflow's installer-upload step name. Manifest remains preview-only.
+- Oldest blockers: FL Studio scan/automation/save-reopen and old-project compatibility; real audio A/B and owner approval; vendor URL/support email; target Windows CPU/latency; Quick4; license/attribution; SkellHub updater/rollback. Do not call this a release.
+
+**Skell EQ PR #9** — https://github.com/skellyruno/skell-eq-vst/pull/9
+
+- Exact head: fe35edb7720b17b1120b5394cad79d1b3ee3aae0
+- Run #43903503501 succeeded: source checks, CMake configure/build, existing DSP CTests, VST3 staging, strict metadata/identity, AMD64 PE32+, pluginval strictness 5 and provenance.
+- Artifact #14245745380: https://github.com/skellyruno/skell-eq-vst/actions/runs/43903503501/artifacts/14245745380
+- Downloaded archive SHA-256: c53830878b07930c87036cee1f1344157c6f38fa1495e54ee15dffcf46e2c610
+- Independently inspected: ZIP CRC passed; exactly one Skelly EQ.vst3 bundle and one Windows module; Skelly EQ / Skelly Audio / 2.7.0, two unique class IDs; AMD64 PE32+ module 4,513,280 bytes, SHA-256 d556ddb218ffb5fa25db8b238a0e001694c2fab1278db1d76ab243dabe229414; all three SHA256SUMS entries matched. Manifest remains preview-only.
+- Oldest blockers remain FL Studio compatibility/state recall, real audio A/B, vendor/support metadata, target-hardware CPU/latency and rollback. PR #10 adds the missing automated A/B state coverage; its exact-head build is not yet complete.
+
+**Skell Master PR #9** — https://github.com/skellyruno/skell-master-vst/pull/9
+
+- Latest exact head: c4e57d85f42892417e2b305bc023f194666aed12
+- Preset automation reports Windows workflow #43986671477 passed Windows VST3 build, CTest 9/9, strict metadata, true-peak guard, five-band coloration, post-limiter presence, UI geometry/contrast and hosted VST3 audio at three rates. This is cross-automation evidence, not a fresh Release & Launch build in this checkpoint.
+- Keep PRs #5–#9 draft and do not edit their active branches while the Preset automation owns them. FL Studio and user-listening acceptance remain open.
+
+### Next rotation
+
+Do not select EQ again next run unless PR #10 reveals a new critical regression. Prefer a different under-served plugin such as Skell Maw, Afar, Separator or Cast after checking active branches and exact-head CI. DeEsser remains parked. Continue the minimum-three-distinct-non-DeEsser implementation requirement; the current rotation has already included Silence, Stop/StopDial, Glitch, Fan, Choir, Key, Delay and now EQ.
