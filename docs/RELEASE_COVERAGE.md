@@ -215,3 +215,7 @@ No PR was merged. No installer was published, no existing installation was overw
 ### Next-run candidate evidence — Afar vs Separator
 
 Afar currently outranks Separator for the next different-plugin selection: its latest VST3-only release PR #7 has a proven Windows package-step failure after successful compile and 5/5 tests because the PowerShell packaging step still demands a Standalone EXE. This is a concrete, bounded release blocker and no artifact was uploaded. Separator PR #4 has a successful Windows package/upload run and artifact #14191561557, so its next step is independent artifact inspection and host/runtime testing rather than a known CI repair. Recheck current branch ownership before starting Afar; PR #7 and #8 remain open/draft and neither branch should be edited in place.
+
+### Checkpoint 12 CI progress — 2026-11-16 21:05 EST
+
+Exact-head Maw PR #3 run #43999829295 advanced: Linux DSP tests passed, Windows CMake configure passed, and the Windows seven-plugin Release build is now running. Package-verifier tests, staging, pluginval strictness 5 for all seven bundles and artifact upload have not run yet. Keep draft; no merge.
