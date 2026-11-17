@@ -1,0 +1,43 @@
+SKELL SILENCE — PRIVATE WINDOWS VST3 PREVIEW INSTALLER
+====================================================
+
+This package is a PREVIEW ONLY. It is not a commercial release, signed installer,
+or FL Studio compatibility certification.
+
+1. Extract the complete artifact folder. Do not run the script from inside the ZIP.
+2. Open PowerShell in the extracted folder.
+3. Install the preview (PowerShell asks for confirmation by default):
+
+   .\Install-SkellSilencePreview.ps1 -Action Install
+
+4. The default destination is the current user's VST3 folder:
+
+   %LOCALAPPDATA%\Programs\Common\VST3
+
+   To use the system-wide VST3 folder, pass -InstallRoot
+   "C:\Program Files\Common Files\VST3" from an elevated PowerShell session.
+
+5. Before replacing an existing Skell Silence.vst3, the installer creates and
+   verifies a full backup under:
+
+   %LOCALAPPDATA%\SkellAudio\Backups\Skell Silence
+
+   If backup creation or staged-copy verification fails, the existing install
+   is left in place. Backups are retained; the script does not prune them.
+
+6. Roll back to the most recent unused verified install backup:
+
+   .\Install-SkellSilencePreview.ps1 -Action Rollback
+
+   Use the same -InstallRoot and -BackupRoot values used during installation.
+   Rollback first preserves the current install as a separate safety backup.
+
+7. The script validates the preview manifest, every SHA256SUMS entry, VST3
+   identity, moduleinfo.json, and AMD64 PE32+ architecture before installation.
+
+The Windows CI self-test uses synthetic fixture files only. It does not install
+anything on a user's machine and does not replace a real Windows/FL Studio test.
+
+Before testing in a DAW, close FL Studio and other hosts, install the preview,
+rescan VST3 plugins, then open a disposable project. Do not overwrite a production
+project or treat this preview as an approved commercial release.

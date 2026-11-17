@@ -1,9 +1,9 @@
 name: Build Skell Silence
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'release/**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'release/**' ]
   workflow_dispatch:
 # Cancel only outdated pull-request checks. Main, manual and release builds
 # use their unique run IDs and are never canceled by a newer commit.
@@ -35,6 +35,9 @@ jobs:
           if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Host regression missing: $exe" }
           & $exe
           if ($LASTEXITCODE -ne 0) { throw "JUCE processor host regression failed: $LASTEXITCODE" }
+      - name: Self-test private preview install and rollback
+        shell: pwsh
+        run: ./tools/Install-SkellSilencePreview.ps1 -Action SelfTest
       - name: Build actual SkellCore editor renderer
         run: cmake --build build --config Release --target SkellSilenceUIRenderer --parallel 2
       - name: Capture and validate actual editor UI
@@ -155,16 +158,14 @@ jobs:
           if ([string]::IsNullOrWhiteSpace([string]$factory.URL)) { $metadataWarnings += 'Factory Info.URL is empty; an approved product website is required before commercial release.' }
           if ([string]::IsNullOrWhiteSpace([string]$factory.'E-Mail')) { $metadataWarnings += 'Factory Info.E-Mail is empty; an approved support contact is required before commercial release.' }
 
-          $relativeModule = "$($vst.Name)/Contents/x86_64-win/$($copyModules[0].Name)"
-          $relativeMetadata = "$($vst.Name)/Contents/Resources/moduleinfo.json"
-          @(
-            "$copyHash  $relativeModule"
-            "$metadataHash  $relativeMetadata"
-          ) | Set-Content -LiteralPath 'dist/SHA256SUMS.txt' -Encoding ascii
+          Copy-Item -LiteralPath 'tools/Install-SkellSilencePreview.ps1' -Destination 'dist/Install-SkellSilencePreview.ps1' -Force
+          Copy-Item -LiteralPath 'INSTALL-PREVIEW.txt' -Destination 'dist/INSTALL-PREVIEW.txt' -Force
+          $installerHash = (Get-FileHash -LiteralPath 'dist/Install-SkellSilencePreview.ps1' -Algorithm SHA256).Hash.ToLowerInvariant()
 
           $releaseBlockers = @(
             'Real FL Studio host/session acceptance is pending.'
             'Manual visual review of current-source SkellCore screenshot artifact and Quick4 captures is pending.'
+            'Manual preview install/rollback and FL Studio session acceptance are pending.'
           ) + $metadataWarnings
           $uiManifestPath = 'ui-screenshots/manifest.json'
           if (-not (Test-Path -LiteralPath $uiManifestPath -PathType Leaf)) { throw 'SkellCore UI screenshot manifest missing during package staging' }
@@ -205,6 +206,13 @@ jobs:
               bundleId = $bundleId
               classIds = @($classes | ForEach-Object { $_.CID })
             }
+            installer = [ordered]@{
+              file = 'Install-SkellSilencePreview.ps1'
+              sha256 = $installerHash
+              defaultInstallRoot = '%LOCALAPPDATA%\Programs\Common\VST3'
+              backupAndRollback = $true
+              requiresManualUserAcceptance = $true
+            }
             uiEvidence = [ordered]@{
               renderer = $uiManifest.renderer
               sceneCount = $uiManifest.count
@@ -226,6 +234,8 @@ jobs:
               exactlyOneVst3Bundle = $true
               exactlyOneWindowsModule = $true
               packagedBinaryHashMatchesBuild = $true
+              previewInstallerSelfTest = $true
+              manualInstallAndRollbackRequired = $true
               pluginvalStrictnessRequired = 5
               uploadOccursOnlyAfterAllWorkflowGates = $true
             }
@@ -237,10 +247,21 @@ jobs:
           $manifestCheck = [System.Text.Json.JsonDocument]::Parse((Get-Content -LiteralPath 'dist/release-manifest.json' -Raw))
           $manifestCheck.Dispose()
 
+          $distRoot = (Resolve-Path 'dist').Path
+          $packageFiles = @(Get-ChildItem -LiteralPath 'dist' -Recurse -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' } | Sort-Object FullName)
+          $packageChecksums = foreach ($file in $packageFiles) {
+            $relative = $file.FullName.Substring($distRoot.Length + 1).Replace([string][char]92, '/')
+            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $relative"
+          }
+          if ($packageChecksums.Count -lt 5) { throw 'Package checksum inventory is unexpectedly small' }
+          $packageChecksums | Set-Content -LiteralPath 'dist/SHA256SUMS.txt' -Encoding ascii
+
           Write-Host "Skell Silence $projectVersion staged as PREVIEW_ONLY"
           Write-Host "Windows module SHA256=$copyHash"
           Write-Host "Module metadata SHA256=$metadataHash"
           Write-Host "Metadata warnings=$($metadataWarnings.Count)"
+          Write-Host "Preview installer SHA256=$installerHash"
       - name: Validate packaged VST3 with pluginval
         uses: Tracktion/pluginval/validate@v2.0.0-beta3
         with:
