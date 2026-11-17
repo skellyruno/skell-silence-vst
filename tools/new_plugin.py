@@ -17,7 +17,7 @@ def detect_processor_class(source_dir: Path) -> str:
         raise FileNotFoundError(f"Missing processor header: {header}")
     body = header.read_text(encoding="utf-8")
     matches = re.findall(
-        r"\\bclass\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(?:final\\s+)?:\\s*public\\s+(?:juce::)?AudioProcessor\\b",
+        r"\bclass\s+([A-Za-z_][A-Za-z0-9_]*)\s+(?:final\s+)?:\s*public\s+(?:juce::)?AudioProcessor\b",
         body,
     )
     if len(matches) != 1:
@@ -52,7 +52,7 @@ def make_project(name: str, destination: Path, code: str,
             if oldfile.suffix not in (".cpp", ".h"):
                 continue
             body = oldfile.read_text(encoding="utf-8")
-            body = re.sub(r"\\b" + re.escape(source_class) + r"\\b", f"{target}AudioProcessor", body)
+            body = re.sub(r"\b" + re.escape(source_class) + r"\b", f"{target}AudioProcessor", body)
             body = body.replace("SkellAudioProcessor", f"{target}AudioProcessor")
             body = body.replace("Skell Quickstart", name)
             (src / oldfile.name).write_text(body, encoding="utf-8")
