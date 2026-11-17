@@ -154,3 +154,11 @@ Selected after the Preset Quality Audit explicitly identified the missing automa
 ### Next rotation
 
 Do not select EQ again next run unless PR #10 reveals a new critical regression. Prefer a different under-served plugin such as Skell Maw, Afar, Separator or Cast after checking active branches and exact-head CI. DeEsser remains parked. Continue the minimum-three-distinct-non-DeEsser implementation requirement; the current rotation has already included Silence, Stop/StopDial, Glitch, Fan, Choir, Key, Delay and now EQ.
+
+
+### PR #10 VST3-only follow-up — 2026-11-16 20:00 EST
+
+- EQ PR #10 head was consolidated into one commit, 5518262771d72286302340994a2ce44b86d367ea, still based on main 07089a613e06a24e0ef5ea3491e945601cbb45e5.
+- CMake now removes the old Standalone plugin format. The product target is VST3-only; the new Windows-only console test executable is not a plugin format. enable_testing() is explicit for the new test gate.
+- New exact-head run #43992090707 is in progress on Windows and macOS; Configure is running and build/CTest/package steps are pending. No exact-head Windows build or A/B state-test result is claimed yet.
+- Superseded run #43991230953 completed its macOS build/CTest but its Windows build was still running at the 20:00 check. The available GitHub connector exposes no workflow-cancel action, so no cancellation was attempted; this old PR-only run was not a main/manual/release run.
