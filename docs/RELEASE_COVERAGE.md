@@ -1,5 +1,5 @@
 # Skelly release coverage ledger
-Updated: 2026-11-17 23:48 EST (BPM Delay Calculator release hardening; ScratchPad exact-head Windows artifact verified)
+Updated: 2026-11-18 00:06 EST (BPM Delay Calculator preview-only package safeguards; ScratchPad exact-head Windows artifact verified)
 Updated: 2026-11-17 04:12 EST (Release & Launch checkpoint 21; Modular FX Suite Windows VST3-only package PR #4; exact-head CI in progress)
 Owner: skellyruno
 Purpose: Windows-first VST3 / EXE / installer release readiness. This is a coverage register, not a declaration that every listed project is releasable.
