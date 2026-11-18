@@ -1,5 +1,5 @@
 # Skelly release coverage ledger
-Updated: 2026-11-17 (Mini pluginval VST3 program-list failure isolated and fixed; exact-head reruns in progress)
+Updated: 2026-11-17 (Mini program-name fix committed; portable DSP rerun passed; exact-head Windows rerun in progress)
 Updated: 2026-11-17 04:12 EST (Release & Launch checkpoint 21; Modular FX Suite Windows VST3-only package PR #4; exact-head CI in progress)
 Owner: skellyruno
 Purpose: Windows-first VST3 / EXE / installer release readiness. This is a coverage register, not a declaration that every listed project is releasable.
@@ -760,4 +760,4 @@ No merge, commercial release, website deployment, DNS change or payment action o
 - Windows run #44212653636 proved the new packaging path works through staging: build, editor startup/layout/paint/SkellKey IPC smoke, strict metadata normalization, PE32+ AMD64 check, license copy, source/dependency provenance and SHA256SUMS recomputation all passed.
 - Pinned pluginval v2.0.0-beta3 strictness 5 ran. Its scan, open, plugin info, editor, audio processing at 44.1/48/96 kHz and 64–1024 blocks, state, automation, editor automation, bus and DPI checks completed. The only reported failing subtest was the bundled VST3 validator: `Programlist 000->Program 000: has no name!!!`.
 - Root cause confirmed in `Source/PluginProcessor.h`: `getNumPrograms()` returned 1 but `getProgramName(int)` returned an empty string. Fix commit `872b6b66a94335593ac9cb6f7f79ae019813eb70` returns `Default` for index 0 and adds a GUI-smoke assertion for a non-empty default program name. Program count, IDs, state and DSP are unchanged.
-- Artifact upload was skipped after the validator failure; no invalid new artifact was published. New exact-head Windows run #44213523212 and portable DSP run #44213523208 are pending. The strictness-5 gate remains open until the rerun passes.
+- Artifact upload was skipped after the validator failure; no invalid new artifact was published. Portable DSP rerun #44213523208 passed all steps, including regression, gain/subsonic diagnostics, CPU diagnostic and saved real-singer render. Exact-head Windows run #44213523212 remains in progress at CMake configure. The strictness-5 gate remains open until the Windows rerun passes.
