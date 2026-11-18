@@ -1,3 +1,4 @@
+Updated: 2026-11-18 12:04 EST (Skell Delay exact-head run #44353755432 passed Windows CMake configure; MSVC Release VST3 build is in progress. Python release-package tests passed on this head. No new artifact or installer/host acceptance claimed.)
 Updated: 2026-11-18 11:48 EST (Release & Launch selected Skell Delay; draft PR #13 adds a checksum-verified per-user Windows VST3 installer/update/backup/rollback. Exact-head run #44353755432 is in progress; no new artifact or host acceptance claimed.)
 Updated: 2026-11-18 10:43 EST (Release & Launch selected SkellCast; draft PR #7 adds a checksum-verified per-user Windows VST3 installer, update, backup and rollback. Exact-head CI has not yet appeared; no new artifact or host acceptance is claimed.)
 Updated: 2026-11-18 10:38 EST (Separator exact-head Windows run #44336350915 passed; artifact #14440794981 downloaded and verified. Exact-head real JUCE UI run #44336351222 passed; artifact #14441882893 downloaded, CRC-tested and all eight PNGs compared pixel-identical to baseline.)
@@ -1122,3 +1123,11 @@ The original parent artifact remains unchanged and downloadable. No new artifact
 Finish the exact-head Windows run #44353755432. Fix any real PowerShell/packaging/build failure before another feature. If it passes, download and independently inspect the new artifact, verify all embedded hashes and the installer sidecars, and keep PR #13 draft. Then owner-side FL Studio scan/load, preset/state/automation save/reopen, real audio A/B and target-hardware CPU/latency are still required before release consideration.
 
 No PR was merged, no public release published, no production install, website deployment, DNS change or payment action occurred.
+
+
+### Skell Delay exact-head CI update — 2026-11-18 12:04 EST
+
+- Latest PR #13 head remains `6bc6136069d05cc44dd54f697816f7e27f1f2bbc`.
+- Windows run [#44353755432](https://github.com/skellyruno/skell-delay-vst/actions/runs/44353755432): checkout and Python 3.12 setup passed; the expanded Python release-package verifier suite passed; Windows CMake configure passed; MSVC Release VST3 build is now in progress.
+- DSP/stress/realtime CTests, pluginval strictness 10, package staging, PowerShell integration, artifact upload and host acceptance have not run yet.
+- No new artifact is available. Keep PR #13 draft and do not treat configure success as a completed Windows build.
