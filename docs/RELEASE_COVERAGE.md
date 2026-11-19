@@ -32,7 +32,7 @@ Selected after the immediately preceding Skell Maw run to honor the required dif
 
 - PR #4 push run #44612584938 and PR run #44612594930; PR #5 push run #44612587549 and PR run #44612598477.
 - All four Linux sanitizer-backed DSP jobs completed SUCCESS.
-- Windows jobs: PR #5 runs completed CMake configure and entered the VST3 build; PR #4 runs were still in CMake configure at the last refresh. Windows CTest, Python verifier, installer/update/rollback, pluginval and artifact upload remain pending. No new artifact/pass is claimed.
+- Windows jobs: all four runs completed CMake configure and are currently at the StopDial VST3 build step. Windows CTest, Python verifier, installer/update/rollback, pluginval and artifact upload remain pending. No new artifact/pass is claimed.
 - The trigger repair is confirmed by the new pull_request runs appearing for both stacked PRs. No run was manually cancelled; no main, production, release or manual CI was touched.
 
 ### Quick4 / JUCE dependency restore
