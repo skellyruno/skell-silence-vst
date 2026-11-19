@@ -1,8 +1,32 @@
 name: Skell Silence UI screenshots (real JUCE editor)
 
-# Routine screenshots now run locally with Quick4; this is a MANUAL deep-audit fallback.
+# Capture the actual JUCE editor whenever UI, processor, renderer, or build
+# configuration changes. Manual deep-audit runs remain available.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'CMakeLists.txt'
+      - 'Source/**'
+      - 'tests/**'
+      - '.github/workflows/ui-screenshots.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'CMakeLists.txt'
+      - 'Source/**'
+      - 'tests/**'
+      - '.github/workflows/ui-screenshots.yml'
   workflow_dispatch:
+
+# Superseded PR screenshots may be canceled. Main and manual runs have unique
+# groups and are never canceled by a newer run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   real-editor-screenshots:
@@ -31,7 +55,46 @@ jobs:
           test -n "$renderer"
           xvfb-run -a -s '-screen 0 1920x1200x24' \
             "$renderer" --output "$GITHUB_WORKSPACE/ui-screenshots" --full
-      - name: Upload actual JUCE screenshots and contact sheet
+          test -s ui-screenshots/contact-sheet.png
+          test "$(find ui-screenshots -type f -name '*.png' | wc -l)" -gt 0
+      - name: Write screenshot provenance manifest
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_EVENT: ${{ github.event_name }}
+          BUILD_RUN_ID: ${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, platform, subprocess
+          root = pathlib.Path("ui-screenshots")
+          images = []
+          for path in sorted(root.rglob("*.png")):
+              data = path.read_bytes()
+              images.append({
+                  "path": path.relative_to(root).as_posix(),
+                  "bytes": len(data),
+                  "sha256": hashlib.sha256(data).hexdigest(),
+              })
+          if not images or not any(x["path"] == "contact-sheet.png" for x in images):
+              raise SystemExit("actual editor screenshots/contact sheet missing")
+          manifest = {
+              "schema_version": 1,
+              "product": "Skell Silence",
+              "version": "2.8.0",
+              "renderer": "SkellSilenceUIRenderer --full",
+              "commit": os.environ["BUILD_COMMIT"],
+              "event": os.environ["BUILD_EVENT"],
+              "run_id": os.environ["BUILD_RUN_ID"],
+              "runner": platform.platform(),
+              "scene_count": len(images),
+              "images": images,
+          }
+          (root / "provenance.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(f"Recorded {len(images)} actual PNG screenshots with SHA-256 hashes")
+          PY
+      - name: Upload actual JUCE screenshots and provenance
         if: always()
         uses: actions/upload-artifact@v6
         with:
