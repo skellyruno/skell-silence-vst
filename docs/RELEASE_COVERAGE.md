@@ -6,9 +6,10 @@ Selected after the immediately preceding Skell Delay run, continuing the require
 
 ### Cross-automation and branch ownership check
 
-- Ecosystem Development's latest handoff identified Maw as a rotation candidate while its active work remained on DeEsser; no DeEsser branch was touched.
-- Preset Quality Audit's active release blocker is Skell Master true-peak/headroom; its branch remains owned by that lane and was not edited.
-- Websites Development remains a separate website lane; no website, DNS, storefront or deployment was changed.
+- Ecosystem Development's latest completed run (run 11, completed 2026-11-19 19:56 UTC) selected Business/releases and worked on Skell Delay PR #15/#19; it independently reported the Delay exact-head Windows pass, inspected Project Hub screenshots and opened Issue #20 for the hidden preset filters. Its next workstream is Foundation (SkellForge/SkellNative), not Maw. No Ecosystem branch was edited.
+- Preset Quality Audit's latest completed run (2026-11-19 19:34 UTC) worked on Deuce full-source A/B, Skell Master PR #27, Skell Preset PR #78 and Skell Rack PR #6. Master remains with that lane; no Master branch was edited.
+- Websites Development's latest completed run (2026-11-19 19:29 UTC) implemented Artist/Album V104 and regression-checked Creative V102 and Preset Showcase V34; Quick4/JUCE 8.0.12 was restored. No website, DNS, storefront or deployment was changed.
+- The nightly blueprint review (2026-11-19 02:32 UTC) still recommends Delay for the first FL Studio acceptance test and reports the older Maw PR #10 metadata defect. That older PR #10 artifact is superseded by PR #12's exact-head strict-metadata pass and independently verified preview artifact.
 - The immediately preceding Release & Launch run selected Skell Delay PR #19. Its exact-head Windows run #44594311690 has now completed SUCCESS; artifact #14565656993 was downloaded and independently inspected. Delay was not re-selected.
 - No other automation branch was observed editing the new Maw commercial-gate branch. PR #12 and PR #13 branches were not modified.
 
@@ -17,19 +18,19 @@ Selected after the immediately preceding Skell Delay run, continuing the require
 - Draft PR #14: https://github.com/skellyruno/skell-maw-vst/pull/14
 - Branch: `release/maw-owner-approval-commercial-candidate-gate-20261119`
 - Base: PR #12 branch `release/maw-rollback-path-guard-20261119`, exact base `2bb2c17e826eeaa967f182dcfd80a42072c7fec2`
-- Exact current head: `ad63ade008d33cf696c9a47593b7892b1895e258`
-- Four files changed: `Tools/verify_vst3_package.py`, `Tools/tests/test_verify_vst3_package.py`, `README.md`, and `CHANGELOG.md`.
+- Exact current head: `1d5135fb77b2c6b12e93bb7cd23a0bb0e84bd827`
+- Six files changed: `Tools/verify_vst3_package.py`, `Tools/tests/test_verify_vst3_package.py`, `Tools/tests/test_preview_install.ps1`, `.github/workflows/build.yml`, `README.md`, and `CHANGELOG.md`.
 - The package verifier now rejects duplicate JSON object keys, NaN/Infinity, non-object Factory Info and malformed class-category types instead of accepting Python's permissive JSON behavior.
 - Added a manual-only `--commercial-release --approval-manifest` path. It requires an explicit owner-supplied record for product/version, `approved_by: skellyruno`, timezone-aware approval time/reference, compiled vendor identity, HTTPS vendor URL, support email, relative LICENSE path and SHA-256, and one or more relative third-party notice paths and hashes.
 - The gate rejects pending/missing approval, vendor mismatch, bad contact data, tampered legal files, duplicate approval keys, symlinked sources and unsafe package destinations. It writes approved contact metadata only into the staged package, includes the supplied LICENSE/notices, and checksums every packaged file.
-- The normal Actions workflow does not pass the commercial flags; it remains preview-only. The candidate path remains unsigned and unpublished. The approval manifest is a declared owner record, not a cryptographic signature.
+- The normal Actions workflow does not pass the commercial flags; it remains preview-only. Even a candidate with approved metadata retains `build-info.json.release_status = preview-only; not a commercial release`, so the existing private installer remains compatible. The candidate path remains unsigned and unpublished. The approval manifest is a declared owner record, not a cryptographic signature. A PowerShell integration regression now verifies that the preview installer accepts the synthetic candidate and validates its legal-file checksums.
 - No license, vendor URL, support email or approval record was invented or committed. No DSP, UI, CMake target, plugin identity, parameter/automation IDs, presets, saved-state format or source VST3 binary changed.
 
 ### Protected baseline and exact-head CI
 
 - PR #12 exact-head Windows workflow #44465372978 completed SUCCESS: JUCE-free DSP CTests, Windows x64 CMake/MSVC Release build, package verifier, PowerShell install/update/rollback self-test, seven pluginval v2.0.0-beta3 strictness-5 validations and artifact upload all passed.
 - Protected PR #12 artifact #14502433275: 60,744,071 bytes; GitHub digest and independently downloaded ZIP SHA-256 `ce4dd3de9eb3e7d9fcafa94ba0ff27da3b62b7eb8feaf8a727c5ed2a4717cea5`. ZIP CRC passed; 20 entries; seven flat VST3 bundles; seven strict moduleinfo files with two classes each; seven AMD64 PE32+ modules; all 19 SHA256SUMS records matched. All seven Factory Info URL/E-Mail fields remain blank, so this is preview-only.
-- New PR #14 exact-head Windows workflow #44604331612 is IN PROGRESS on `ad63ade008d33cf696c9a47593b7892b1895e258`. The JUCE-free DSP job has passed configure, compile and CTest; the Windows job has started and was at CMake configure when this checkpoint was recorded. MSVC build, 21 Python package tests, PowerShell install/rollback tests, seven pluginval checks and new artifact upload remain pending. No PR #14 artifact or pass is claimed yet.
+- The first PR #14 workflow #44604331612 was safely cancelled by the workflow's PR-only concurrency group after the branch received additional commits; no main, release, production or manual run was cancelled. Current exact-head Windows workflow #44604903783 (run 36) is IN PROGRESS on `1d5135fb77b2c6b12e93bb7cd23a0bb0e84bd827`. The JUCE-free DSP job has passed configure, compile and CTest; the Windows job has started and was at CMake configure when this checkpoint was refreshed. MSVC build, 21 Python package tests, PowerShell install/rollback plus commercial-candidate compatibility assertions, seven pluginval checks and new artifact upload remain pending. No PR #14 artifact or pass is claimed yet. The workflow actions were upgraded to checkout/setup-python/upload-artifact v6.
 - FL Studio scan/load, project/state/preset/automation recall, real audio A/B, target-hardware CPU/latency, Quick4 screenshots, legal completeness/VST3 SDK terms, signing and public release remain unverified or owner-controlled. No merge or publication occurred.
 
 ### Next step
