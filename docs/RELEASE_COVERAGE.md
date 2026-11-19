@@ -1,3 +1,43 @@
+## Release & Launch checkpoint 42 — 2026-11-19 14:54 ET
+
+### Selected project: Skell Maw (skell-maw-vst)
+
+Selected after the immediately preceding Skell Delay run, continuing the required non-DeEsser rotation. The Ecosystem Development lane's latest handoff identified Maw as the next under-served plugin; its active PR #12 had a real Windows Release x64 build, seven pluginval strictness-5 passes, DSP CTests and a verified private-preview package. The remaining release blocker was not another UI/DSP feature: the package still had blank vendor URL/support email and no owner-approved product license/third-party distribution record. The other recent near-ready candidates (SkellTune Mini PR #11, EQ PR #18, Key PR #14 and Spacer PR #11) had passing Windows/package evidence; Skell Master remained with the active Preset Quality Audit lane, and DeEsser remained parked.
+
+### Cross-automation and branch ownership check
+
+- Ecosystem Development's latest handoff identified Maw as a rotation candidate while its active work remained on DeEsser; no DeEsser branch was touched.
+- Preset Quality Audit's active release blocker is Skell Master true-peak/headroom; its branch remains owned by that lane and was not edited.
+- Websites Development remains a separate website lane; no website, DNS, storefront or deployment was changed.
+- The immediately preceding Release & Launch run selected Skell Delay PR #19. Its exact-head Windows run #44594311690 has now completed SUCCESS; artifact #14565656993 was downloaded and independently inspected. Delay was not re-selected.
+- No other automation branch was observed editing the new Maw commercial-gate branch. PR #12 and PR #13 branches were not modified.
+
+### Source and packaging changes
+
+- Draft PR #14: https://github.com/skellyruno/skell-maw-vst/pull/14
+- Branch: `release/maw-owner-approval-commercial-candidate-gate-20261119`
+- Base: PR #12 branch `release/maw-rollback-path-guard-20261119`, exact base `2bb2c17e826eeaa967f182dcfd80a42072c7fec2`
+- Exact current head: `ad63ade008d33cf696c9a47593b7892b1895e258`
+- Four files changed: `Tools/verify_vst3_package.py`, `Tools/tests/test_verify_vst3_package.py`, `README.md`, and `CHANGELOG.md`.
+- The package verifier now rejects duplicate JSON object keys, NaN/Infinity, non-object Factory Info and malformed class-category types instead of accepting Python's permissive JSON behavior.
+- Added a manual-only `--commercial-release --approval-manifest` path. It requires an explicit owner-supplied record for product/version, `approved_by: skellyruno`, timezone-aware approval time/reference, compiled vendor identity, HTTPS vendor URL, support email, relative LICENSE path and SHA-256, and one or more relative third-party notice paths and hashes.
+- The gate rejects pending/missing approval, vendor mismatch, bad contact data, tampered legal files, duplicate approval keys, symlinked sources and unsafe package destinations. It writes approved contact metadata only into the staged package, includes the supplied LICENSE/notices, and checksums every packaged file.
+- The normal Actions workflow does not pass the commercial flags; it remains preview-only. The candidate path remains unsigned and unpublished. The approval manifest is a declared owner record, not a cryptographic signature.
+- No license, vendor URL, support email or approval record was invented or committed. No DSP, UI, CMake target, plugin identity, parameter/automation IDs, presets, saved-state format or source VST3 binary changed.
+
+### Protected baseline and exact-head CI
+
+- PR #12 exact-head Windows workflow #44465372978 completed SUCCESS: JUCE-free DSP CTests, Windows x64 CMake/MSVC Release build, package verifier, PowerShell install/update/rollback self-test, seven pluginval v2.0.0-beta3 strictness-5 validations and artifact upload all passed.
+- Protected PR #12 artifact #14502433275: 60,744,071 bytes; GitHub digest and independently downloaded ZIP SHA-256 `ce4dd3de9eb3e7d9fcafa94ba0ff27da3b62b7eb8feaf8a727c5ed2a4717cea5`. ZIP CRC passed; 20 entries; seven flat VST3 bundles; seven strict moduleinfo files with two classes each; seven AMD64 PE32+ modules; all 19 SHA256SUMS records matched. All seven Factory Info URL/E-Mail fields remain blank, so this is preview-only.
+- New PR #14 exact-head Windows workflow #44604331612 is IN PROGRESS on `ad63ade008d33cf696c9a47593b7892b1895e258`. The JUCE-free DSP job has passed configure, compile and CTest; the Windows job has started and was at CMake configure when this checkpoint was recorded. MSVC build, 21 Python package tests, PowerShell install/rollback tests, seven pluginval checks and new artifact upload remain pending. No PR #14 artifact or pass is claimed yet.
+- FL Studio scan/load, project/state/preset/automation recall, real audio A/B, target-hardware CPU/latency, Quick4 screenshots, legal completeness/VST3 SDK terms, signing and public release remain unverified or owner-controlled. No merge or publication occurred.
+
+### Next step
+
+Finish PR #14 exact-head Windows CI, download and independently inspect its preview artifact and all checksums, then hand off to owner-side FL Studio/audio/state/hardware acceptance and legal/contact approval. The next Release & Launch selection must be a different non-DeEsser project; do not repeat Maw unless a critical regression appears.
+
+---
+
 ## Release & Launch checkpoint 41 — 2026-11-19 13:21 ET
 
 ### Selected project: Skell Delay (skell-delay-vst)
@@ -77,7 +117,8 @@ mean the project is inactive or release-ready.
 | SkellyTune Mini | 2026-11-18 (checkpoint 33) | PR #11 Windows VST3/package runs 44275482606 and 44275482816 passed | Key-to-Mini sync and owner-host state recall | FL Studio live sync, save/reopen and preset recall |
 | Skell Key | 2026-11-19 10:47 ET (checkpoint 39) | PR #14 Windows run 44560110890 passed; installer regression coverage | Owner contact/licensing and Key-to-Mini host sync | FL Studio key/scale/A4 sync and project reopen |
 | Skell Afar | 2026-11-18 (checkpoint 34) | PR #12 strict metadata and true-peak integration work recorded | Owner-host audio/CPU acceptance | Exact-head pluginval, install/rollback and FL Studio |
-| Skell Delay | 2026-11-19 13:21 ET (checkpoint 41) | PR #17 run 44524087964 passed; PR #18 legal/package gate in progress | Owner legal approval, EULA, publisher contact, FL Studio/A-B/CPU and Hub review | Finish PR #18 exact-head Windows run, inspect package, then owner FL Studio test |
+| Skell Delay | 2026-11-19 14:03 ET (immediately preceding run) | PR #19 exact-head Windows run 44594311690 passed; artifact #14565656993 SHA-256 `90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d` independently verified | Owner legal approval, publisher contact, FL Studio/A-B/CPU, SkellHub review and signing | Owner FL Studio scan/load, state/preset recall, real A/B and target-hardware CPU/latency |
+| Skell Maw | 2026-11-19 14:54 ET (checkpoint 42) | PR #12 run 44465372978 passed; artifact #14502433275 SHA-256 `ce4dd3de9eb3e7d9fcafa94ba0ff27da3b62b7eb8feaf8a727c5ed2a4717cea5` independently verified; PR #14 run 44604331612 in progress | Owner-approved product license/attribution, vendor URL/support email, VST3 SDK terms, FL Studio/audio/CPU acceptance | Finish PR #14 exact-head CI and inspect artifact; then owner FL Studio/state/A-B/hardware test |
 | Skell Spacer | 2026-11-19 09:54 EST (checkpoint 38) | PR #11 Windows build and installer self-test passed | Owner-host sound/CPU and release licensing | FL Studio scan/load, automation and long-session test |
 | Skell Glitch | Not recorded | No exact-head release artifact verified in this run | Current build/package state not established | Inspect repository Actions, VST3 bundle and pluginval |
 | Skell Flang | Not recorded | Provenance/checksum repair PRs exist; exact-head status not refreshed here | Artifact provenance/checksum gate | Run exact-head Windows CI and independently inspect ZIP/hash |
@@ -97,7 +138,7 @@ mean the project is inactive or release-ready.
 
 ### Next selection
 
-The next Release & Launch run must rotate away from Skell Delay and choose a different
+The next Release & Launch run must rotate away from Skell Maw and choose a different
 non-DeEsser project after checking current Actions and branch ownership. Skell Master
 remains with the active Preset audit agent; do not edit its branch concurrently. Continue
 toward at least three distinct non-DeEsser substantive implementations in the six-run
