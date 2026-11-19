@@ -7,9 +7,10 @@ Selected after SkellCast to continue the required non-DeEsser rotation. Checkmat
 ### Candidate and automation ownership check
 
 - SkellCast was the immediately preceding release selection; this run selected a different plugin.
-- Ecosystem Development's latest completed result identified StopDial as its next candidate, but StopDial has multiple open installer/rollback PRs and active follow-up work; no StopDial branch was touched.
-- Preset Quality's latest result shows Skell Master PR #25 is an active sound-quality lane with a failed run; it remains owned by that automation and was not edited.
-- The nightly review recommends Skell Delay for first owner-side FL Studio acceptance, but Delay has active publisher-metadata/installer work and unresolved owner-approved vendor/contact data; no Delay branch was touched.
+- Ecosystem Development's latest completed result is still working on DeEsser PR #14 popup contrast and editor-lifecycle diagnostics. DeEsser remains parked for this release lane; no DeEsser branch was touched. StopDial also has multiple open installer/rollback PRs, so no StopDial branch was touched.
+- Preset Quality's latest completed result advanced the Alchemist same-take audit without promoting or overwriting a factory preset, and fixed a Skell Rack CMake test-target blocker in PR #6. Its next priorities are Deuce and the remaining Skell Rack regression/UI checks; neither branch was edited here.
+- Websites Development's current V111 run is working on the separate Creative V102 pointer-responsive skull fallback and three-site regression checks; no website, DNS or deployment was changed.
+- The nightly review recommends Skell Delay for first owner-side FL Studio acceptance and Spectre second; Delay still has active publisher-metadata/installer work and unresolved owner-approved vendor/contact data. Skell Maw's current package metadata defect is also recorded, but its release branch was not touched.
 - Skell EQ, Spacer, Key, Mini, Silence, Cast, Choir and other release branches were left untouched. Skell Studio's verified-upgrade task is disabled after its prior merged CI checks; SkellForge/SkellNative and SkellyHub remain separate integration tracks.
 - DeEsser remains parked.
 
@@ -28,7 +29,7 @@ Selected after SkellCast to continue the required non-DeEsser rotation. Checkmat
 ### Protected baseline and exact-head validation
 
 - Parent PR #8 head `b0cd10d73bf6e70cab81047e4c5deefbe6160dc8`; parent Windows run #44099624708 SUCCESS (CMake configure, MSVC Release x64 build, CTest, Python package verifier, pluginval strictness 5, UI preview capture and VST3-only artifact upload).
-- Protected parent VST3 artifact #14336521348, GitHub SHA-256 digest `7c8696d2d8637bd68788ec2eb9fb86ee6476ea39824dd30e56bdbcf7f4935ef2`; parent UI artifact #14335298022, digest `edabcfe2772403e4bdd2e6c69f6d09d938c91fd8d24a97c635cd1efbae23b71c`. Both remain available and unchanged.
+- Protected parent VST3 artifact #14336521348, archive SHA-256 `7c8696d2d8637bd68788ec2eb9fb86ee6476ea39824dd30e56bdbcf7f4935ef2`; independently downloaded, ZIP CRC passed, six unique entries, all five SHA256SUMS records matched; the single AMD64 PE32+ module is 8,103,936 bytes with SHA-256 `627298777cbb7a53064195f5013d7aaaac2b708dee2153f168283068f388ba3f`, product Checkmate 2.4.0 / Skell Audio, two preserved class IDs. Parent UI artifact #14335298022, digest `edabcfe2772403e4bdd2e6c69f6d09d938c91fd8d24a97c635cd1efbae23b71c`. Both remain available and unchanged.
 - Initial run #44584094593 was safely superseded by the PR concurrency group after the final changelog commit. Current exact-head Windows run #44584570227 is in progress at the time of this ledger entry. No build, installer test, pluginval result or new artifact is claimed yet.
 - PR #9 remains draft and stacked on PR #8; neither branch has been merged.
 
