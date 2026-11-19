@@ -6,6 +6,8 @@ Selected after StopDial because a fresh exact-head Windows release workflow expo
 
 ### Cross-automation and ownership check
 
+**Automation execution-state correction:** the latest completed Preset Audit report is Run 12 (created 20:45 UTC); a newer attempt started 21:58 UTC and is recorded `failed` at 22:00 UTC with no new chat report. The latest completed Ecosystem report is Run 11 (created 19:56 UTC); a newer attempt started 21:58 UTC and is recorded `failed` at 22:04 UTC with no new report. Their prior reports remain the latest usable evidence; no new work is inferred from those failed attempts. Websites V115 completed at 21:34 UTC. The latest available nightly blueprint report is still the November 18 review completed 02:32 UTC; no newer blueprint report was present.
+
 - Ecosystem Development run 11 completed its Skell Delay release checklist: PR #19 exact-head Windows x64 build, CTest, pluginval strictness 10, package metadata, installer/rollback and legal-payload integrity passed. Its next workstream is Foundation (SkellForge/SkellNative). No Maw branch was edited there.
 - Preset Quality Audit run 12 focused on Alchemist reference analysis, Skell Preset state/recall and Skell Rack compiler warnings. PR #67 Windows validation and the new Rack warning-fix validation were still running; PR #78 host-state sanitizer was already verified. No Maw branch was edited.
 - Websites Development V115 implemented Preset Showcase renderer scaling and recovered V15/V14 site sources; Artist/Album V104 and Creative V103 regression checks passed. No native plugin or deployment branch was edited.
