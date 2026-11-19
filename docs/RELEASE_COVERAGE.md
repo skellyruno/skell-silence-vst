@@ -1,3 +1,58 @@
+## Release & Launch checkpoint 43 — 2026-11-19 15:49 ET
+
+### Selected project: StopDial (skell-stop-vst)
+
+Selected after the immediately preceding Skell Maw run to honor the required different-plugin rotation. StopDial was a near-ready Windows VST3 candidate with a protected exact-head Windows package and installer work already staged in draft PRs #4/#5, but PR #5 had no Actions run. The concrete blocker was the workflow's `pull_request.branches` allow-list: PR #5 targets `release/stopdial-safe-install-rollback-20261117`, which was not in that list. A branch push trigger existed, but it did not replace PR validation. This meant a real installer change could remain without exact-head CI evidence.
+
+### Cross-automation and ownership check
+
+- Ecosystem Development's latest completed run (11) selected Skell Delay and recorded its Windows/pluginval/installer pass; next workstream is Foundation (SkellForge/SkellNative). No StopDial branch was being edited by that lane.
+- Preset Quality Audit's latest completed run (12) worked on Alchemist, Skell Preset and Skell Rack; it owns Master/Preset/Rack branches. No StopDial branch was being edited.
+- Websites Development's latest completed run (V114) implemented Creative V103 and rechecked Artist V104 and Preset Showcase V34; no website or deployment changes were made here.
+- Nightly Blueprint's latest available review still recommends Delay for the first owner FL Studio acceptance test. No Delay branch was edited.
+- DeEsser remains parked. StopDial follows Maw, and Delay/Maw/StopDial are now three distinct non-DeEsser plugins with substantive release engineering in the current six-run window.
+
+### Source and workflow changes
+
+- Existing draft product PR #4: https://github.com/skellyruno/skell-stop-vst/pull/4
+- Existing draft product PR #5: https://github.com/skellyruno/skell-stop-vst/pull/5
+- PR #4 branch `release/stopdial-safe-install-rollback-20261117`: commit `41442dfd89171d209a959b3fb20eadb815a6f155`
+- PR #5 branch `fix/stopdial-per-user-vst3-default-20261118`: commit `2cb5a174d8f91b7716364f32dfa5d4ea7c5d95ad`
+- Removed the `pull_request.branches` allow-list from both workflow definitions while retaining the existing path filters. Stacked release PRs now run when their changed files match the release workflow paths, regardless of the base release branch. The push branch lists remain scoped to their existing release/main branches.
+- This is a CI/release-validation fix; no DSP, C++, UI, parameter IDs, automation IDs, preset files, state serialization or plugin identity changed. PR #5 already carries the Windows per-user default `%LOCALAPPDATA%\\Programs\\Common\\VST3` and fails closed when LOCALAPPDATA is unavailable; PR #4 carries checksum-verified install/update/rollback and strict metadata validation.
+- The PR #5 CMake branch is already `FORMATS VST3`, and its workflow is Windows x64 VST3 plus Linux sanitizer-backed DSP tests; no macOS or standalone release output is introduced.
+
+### Protected baseline and UI inspection
+
+- Downloaded PR #4 Windows artifact #14433953450 from workflow #44319695813. Archive: 2,906,137 bytes; SHA-256 `0c3176a0c651b40dac1e473f6b51207d4d30127d5fdfc116b2c910ca32af43fa`. ZIP CRC passed; six file entries; all five SHA256SUMS entries matched. Exactly one flat `StopDial.vst3` bundle, one moduleinfo.json, one AMD64 PE32+ module (6,572,544 bytes; SHA-256 `f380eced76d197c4471ab973734eaddc6cc6d2d07453e8083b223e56796df72f`), version 2.3.1, two unique VST3 class IDs, no Standalone EXE. Manifest source commit `6e8aefc168ff3eaa1c650671f7ff2adbd2133f0e`, PR head `62f7f0bc2f863cf141640ec9c44ce4dd2fdef007`.
+- Downloaded UI artifact #14435156405; 663,345 bytes; SHA-256 `d86c5940872b2f0a1576a98e43c45c7d2844a83b52ee42fed213bfb4b45b9735`. It contains six real JUCE captures at 435×535, 725×892 and 1087×1338. Inspected contact sheet: no visible clipping or overlap across compact/default/large sizes. Menus/interactions and FL Studio remain unverified. The displayed title reads “Stop Dial” while the VST3 product identity is “StopDial”; record as a naming consistency check, not a confirmed functional defect.
+- Baseline package contains no root product LICENSE or third-party notice files. Factory Info has vendor `Skell Audio`, URL `https://skellyr.uno`, and blank E-Mail. Confirm the intended production domain and support contact, and complete JUCE/VST3 SDK licensing/EULA before any commercial distribution.
+
+### Exact-head CI after trigger repair — IN PROGRESS
+
+- PR #4 push run #44612584938 and PR run #44612594930; PR #5 push run #44612587549 and PR run #44612598477.
+- All four Linux sanitizer-backed DSP jobs completed SUCCESS.
+- Windows jobs: PR #5 runs completed CMake configure and entered the VST3 build; PR #4 runs were still in CMake configure at the last refresh. Windows CTest, Python verifier, installer/update/rollback, pluginval and artifact upload remain pending. No new artifact/pass is claimed.
+- The trigger repair is confirmed by the new pull_request runs appearing for both stacked PRs. No run was manually cancelled; no main, production, release or manual CI was touched.
+
+### Quick4 / JUCE dependency restore
+
+- Retrieved and verified the persistent Quick4 devkit from Library; archive SHA-256 `eb600ba3eeb52eb8fc0b76da199e1bb0561fdb42295a125f41170c9da86f3869`.
+- Restored JUCE 8.0.12 and SkellCore to `/mnt/data/skell-quick4`.
+- The bundled Quick4 capture script supports Master and Preset only, not StopDial. The local Linux image also lacks FreeType and ALSA development headers. Therefore no StopDial local Quick4 build/capture is claimed; the six real Windows CI captures above were used only for static visual inspection.
+
+### Urgent Maw regression repair (secondary, not the selected project)
+
+- Exact-head Maw run #44604903783 failed at `Tools/verify_vst3_package.py:462` with a Python SyntaxError (unterminated string in the commercial-candidate preview notice); Windows compilation itself had succeeded before the test import.
+- Fixed the malformed adjacent string literal on the existing draft PR #14 branch in commit `04557873d4ce64bacc3fbf427d48c42fdf7ece70`.
+- New exact-head run #44612219641: JUCE-free DSP CTests passed; Windows VST3 collection build is in progress. Python validator, PowerShell installer, seven pluginval checks and artifact upload are pending. No new Maw artifact/pass is claimed.
+
+### Next step
+
+Finish the exact-head Windows runs for StopDial PR #4/#5 and Maw PR #14, inspect any resulting packages independently, and keep all PRs draft until those checks pass. Then owner-side FL Studio scan/load, automation/state/preset recall, musical A/B, CPU/latency, and legal/contact/EULA approval remain mandatory. Next Release & Launch selection must be a different non-DeEsser project after checking fresh branch ownership.
+
+---
+
 ## Release & Launch checkpoint 42 — 2026-11-19 14:54 ET
 
 ### Selected project: Skell Maw (skell-maw-vst)
@@ -127,7 +182,7 @@ mean the project is inactive or release-ready.
 | Skell Key | 2026-11-19 10:47 ET (checkpoint 39) | PR #14 Windows run 44560110890 passed; installer regression coverage | Owner contact/licensing and Key-to-Mini host sync | FL Studio key/scale/A4 sync and project reopen |
 | Skell Afar | 2026-11-18 (checkpoint 34) | PR #12 strict metadata and true-peak integration work recorded | Owner-host audio/CPU acceptance | Exact-head pluginval, install/rollback and FL Studio |
 | Skell Delay | 2026-11-19 14:03 ET (immediately preceding run) | PR #19 exact-head Windows run 44594311690 passed; artifact #14565656993 SHA-256 `90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d` independently verified | Owner legal approval, publisher contact, FL Studio/A-B/CPU, SkellHub review and signing | Owner FL Studio scan/load, state/preset recall, real A/B and target-hardware CPU/latency |
-| Skell Maw | 2026-11-19 14:54 ET (checkpoint 42) | PR #12 run 44465372978 passed; artifact #14502433275 SHA-256 `ce4dd3de9eb3e7d9fcafa94ba0ff27da3b62b7eb8feaf8a727c5ed2a4717cea5` independently verified; PR #14 head `1d5135f` run 44604903783 in progress (DSP CTests passed) | Owner-approved product license/attribution and EULA, vendor URL/support email, VST3 SDK/artwork/trademark rights, signing, FL Studio/audio/CPU acceptance | Finish PR #14 exact-head CI and inspect artifact; then owner FL Studio/state/A-B/hardware test |
+| Skell Maw | 2026-11-19 14:54 ET (checkpoint 42; urgent CI repair 15:47 ET) | PR #12 run 44465372978 and artifact #14502433275 remain verified; PR #14 fix commit `04557873d4ce64bacc3fbf427d48c42fdf7ece70` repairs the line-462 Python SyntaxError exposed by run #44604903783; rerun #44612219641 has DSP tests passed and Windows VST3 build in progress | Owner-approved product license/attribution and EULA, vendor URL/support email, VST3 SDK/artwork/trademark rights, signing, FL Studio/audio/CPU acceptance | Finish exact-head #44612219641 Python/PowerShell/pluginval/package gates; inspect artifact; then owner FL Studio/state/A-B/hardware test |
 | Skell Spacer | 2026-11-19 09:54 EST (checkpoint 38) | PR #11 Windows build and installer self-test passed | Owner-host sound/CPU and release licensing | FL Studio scan/load, automation and long-session test |
 | Skell Glitch | Not recorded | No exact-head release artifact verified in this run | Current build/package state not established | Inspect repository Actions, VST3 bundle and pluginval |
 | Skell Flang | Not recorded | Provenance/checksum repair PRs exist; exact-head status not refreshed here | Artifact provenance/checksum gate | Run exact-head Windows CI and independently inspect ZIP/hash |
@@ -136,7 +191,7 @@ mean the project is inactive or release-ready.
 | Skell Separator | 2026-11-16 22:49 ET (checkpoint 15) | Windows/package work recorded in PR #4 | Owner-host UI/audio and low-latency behavior | Current exact-head pluginval, FL Studio and CPU/latency |
 | Skell AdlibLab | Not recorded | PR #11 private-preview installer/rollback work recorded | Owner-host audio and package acceptance | Exact-head Windows build, pluginval and install rollback |
 | SkellCast | 2026-11-19 11:52 ET (checkpoint 40) | PR #8 run 44572720407 passed; 43 installer assertions; artifact 14553494611 | Licensing/attribution and FL Studio/OBS/WASAPI A/B | Owner legal review and real host/routing test |
-| Skell Stop / StopDial | 2026-11-17 10:08 ET (checkpoint 23) | PR #4/#5 installer-default work recorded | Host compatibility and final installer acceptance | Verify per-user VST3 path, update and rollback |
+| Skell Stop / StopDial | 2026-11-19 15:49 ET (checkpoint 43) | PR #4 base head `41442dfd89171d209a959b3fb20eadb815a6f155`; PR #5 head `2cb5a174d8f91b7716364f32dfa5d4ea7c5d95ad`; path-filtered PR trigger repair now launches exact-head runs #44612584938/#44612594930 and #44612587549/#44612598477 (Linux DSP jobs passed; Windows configure/build in progress). Protected artifact #14433953450 SHA-256 `0c3176a0c651b40dac1e473f6b51207d4d30127d5fdfc116b2c910ca32af43fa`; UI artifact #14435156405 SHA-256 `d86c5940872b2f0a1576a98e43c45c7d2844a83b52ee42fed213bfb4b45b9735` inspected at 435×535, 725×892 and 1087×1338 with no clipping/overlap | Owner FL Studio scan/load, audio/state/preset/automation acceptance, legal notices/SDK terms, owner confirmation of `https://skellyr.uno`, support email, signing and EULA | Finish exact-head Windows CTest, verifier, installer/update/rollback, pluginval and artifact inspection; then owner FL Studio/audio/state test |
 | Skel Pad / ScratchPad | 2026-11-17 (checkpoint 30) | PR #3 strict VST3 package gate recorded | Host and installer acceptance | Exact-head artifact, class inventory and FL Studio |
 | OmniChoir / SkellyChoir | 2026-11-18 18:30 ET (checkpoint 36) | PR #10 Windows install/update/rollback work recorded | UI screenshot completeness and owner-host acceptance | Fresh Quick4 screenshots and FL Studio scan/load |
 | Skell Studio / DAW | Not selected in this ledger | Ecosystem PR #11 Windows compilation/core tests reported passed | Actual DAW runtime and plugin-host acceptance | Windows runtime, FL Studio interoperability and project reopen |
@@ -147,9 +202,10 @@ mean the project is inactive or release-ready.
 
 ### Next selection
 
-The next Release & Launch run must rotate away from Skell Maw and choose a different
-non-DeEsser project after checking current Actions and branch ownership. Skell Master
-remains with the active Preset audit agent; do not edit its branch concurrently. Continue
+The next Release & Launch run must rotate away from StopDial and choose a different
+non-DeEsser project after checking current Actions and branch ownership. Skell Master,
+Preset and Rack remain with the active Preset audit lane; SkellForge/SkellNative is the
+Ecosystem lane's next Foundation workstream, so avoid those branches while active. Continue
 toward at least three distinct non-DeEsser substantive implementations in the six-run
 window. No merge, tag, public release, website deployment, DNS change or payment action.
 
