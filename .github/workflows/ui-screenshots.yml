@@ -64,8 +64,12 @@ jobs:
           BUILD_RUN_ID: ${{ github.run_id }}
         run: |
           python3 - <<'PY'
-          import hashlib, json, os, pathlib, platform, subprocess
+          import hashlib, json, os, pathlib, platform, re
           root = pathlib.Path("ui-screenshots")
+          cmake = pathlib.Path("CMakeLists.txt").read_text(encoding="utf-8")
+          version_match = re.search(r"project\\(SkellSilence VERSION ([0-9]+\\.[0-9]+\\.[0-9]+)", cmake)
+          if not version_match:
+              raise SystemExit("could not read Skell Silence project version from CMakeLists.txt")
           images = []
           for path in sorted(root.rglob("*.png")):
               data = path.read_bytes()
@@ -79,7 +83,7 @@ jobs:
           manifest = {
               "schema_version": 1,
               "product": "Skell Silence",
-              "version": "2.8.0",
+              "version": version_match.group(1),
               "renderer": "SkellSilenceUIRenderer --full",
               "commit": os.environ["BUILD_COMMIT"],
               "event": os.environ["BUILD_EVENT"],
@@ -89,7 +93,7 @@ jobs:
               "images": images,
           }
           (root / "provenance.json").write_text(
-              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              json.dumps(manifest, indent=2, sort_keys=True) + "\\n",
               encoding="utf-8",
           )
           print(f"Recorded {len(images)} actual PNG screenshots with SHA-256 hashes")
