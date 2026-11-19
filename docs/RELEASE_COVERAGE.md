@@ -1,3 +1,108 @@
+## Release & Launch checkpoint 41 — 2026-11-19 13:21 ET
+
+### Selected project: Skell Delay (skell-delay-vst)
+
+Selected after SkellCast to continue the non-DeEsser rotation and advance a near-release
+Windows VST3 with a concrete package/legal blocker. The prior exact-head PR #17 build
+(run 44524087964) passed Windows Release x64 compilation, CTest, strict pluginval 10,
+package verification and private-preview install/update/rollback. Its verified artifact
+14531541240 was the protected package baseline. Inspection showed that the ZIP contained
+the VST3 and installer/guide files but omitted the repository's third-party notice and
+the actual pinned JUCE/VST3 SDK license texts. The EULA was still a template and the
+signed-tag path did not require an owner legal approval record.
+
+Selection comparison:
+- SkellCast PR #8 had just completed the prior release run (run 44572720407; 43 installer
+  assertions), so it was not repeated.
+- Skell Key PR #14, Skell EQ PR #18, Skell Spacer PR #11 and SkellyTune Mini PR #11 had
+  recent passing Windows evidence; their owner-host/audio gates remain.
+- Skell Master PR #25 has a proven true-peak failure in the active Preset Quality Audit
+  lane, so no concurrent edits were made there.
+- The current Ecosystem Development lane is still on DeEsser; DeEsser remains parked.
+- The nightly blueprint identified Skell Delay as a strong first manual FL Studio
+  acceptance candidate. No other active automation branch was found editing this Delay
+  release branch.
+
+### Source and packaging work
+
+Draft PR #18: https://github.com/skellyruno/skell-delay-vst/pull/18
+
+Branch: release/delay-legal-notice-gate-20261119
+
+Exact current head at checkpoint: ffdf1f231d4eca4d2d43cee281caee73e6a5b59f
+
+Parent: PR #17 exact head 1894302220c1f5d6bca9369d843c3f741a969435
+
+Changes:
+- Added legal/RELEASE_APPROVAL.json, intentionally NOT_APPROVED.
+- Public version-tag preparation now validates the owner approval record and final EULA
+  before mutating VST3 moduleinfo metadata.
+- Required explicit JUCE COMMERCIAL or AGPLv3 choice, evidence, VST3 SDK terms review,
+  compiled dependency inventory, bundled artwork rights, EULA review, trademark review,
+  approver and ISO approval date.
+- Windows packages now include the exact LICENSE.md and VST3 SDK LICENSE.txt from the
+  pinned JUCE 8.0.17-security FetchContent source.
+- Added rendered THIRD_PARTY_NOTICES.txt and SHA256SUMS coverage for all legal files.
+- Preview packages are explicitly NOT FOR REDISTRIBUTION OR SALE and omit the draft EULA.
+  The EULA is included only in a signed release candidate after the owner gate passes.
+- Added negative tests proving unresolved approval and template EULA fail before
+  moduleinfo mutation.
+
+No C++/DSP, UI, VST3 class IDs, parameter IDs, presets, automation IDs, saved-state
+formats, audio routing, or installer install/update/rollback logic changed.
+
+### Exact-head CI status at checkpoint
+
+PR #18 exact-head workflow 44588897363 was running on ffdf1f231d4eca4d2d43cee281caee73e6a5b59f:
+- Windows release package verifier tests: passed.
+- CMake configure: passed.
+- MSVC Release build: in progress.
+- CTest, pluginval 10, package staging, installer integration and artifact upload:
+  pending at the time of this checkpoint.
+
+The prior PR #17 artifact remains the protected baseline. No claim of new artifact,
+FL Studio acceptance, audio A/B, UI capture, or public distribution is made here.
+
+### Portfolio coverage snapshot — 2026-11-19
+
+Dates below are Release & Launch selections, not dates when another automation touched
+the project. “Not recorded” means the current ledger has no selection date; it does not
+mean the project is inactive or release-ready.
+
+| Project | Last selected | Latest verified output / evidence | Oldest known blocker | Next test |
+|---|---|---|---|---|
+| Skell Silence | Not recorded in checkpoints 38–41 | PR #39 UI/Windows evidence exists; PR #41 is the coverage ledger | Current-source UI/installer and owner-host acceptance | Fresh Quick4 capture, installer test, FL Studio scan/load |
+| Skell Master | Not selected; Preset audit active 2026-11-19 | PR #25 latest true-peak run failed at -3.07483 dBTP against -3.2 dBTP target | True-peak/headroom regression | Let Preset audit finish its owned branch; rerun same-take A/B and Windows CI |
+| Skell EQ | 2026-11-16 19:55 ET (checkpoint 11) | PR #18 Windows run 44539325351 passed | FL Studio sound/state acceptance and release licensing | FL Studio save/reopen, bypass and A/B |
+| SkellyTune Mini | 2026-11-18 (checkpoint 33) | PR #11 Windows VST3/package runs 44275482606 and 44275482816 passed | Key-to-Mini sync and owner-host state recall | FL Studio live sync, save/reopen and preset recall |
+| Skell Key | 2026-11-19 10:47 ET (checkpoint 39) | PR #14 Windows run 44560110890 passed; installer regression coverage | Owner contact/licensing and Key-to-Mini host sync | FL Studio key/scale/A4 sync and project reopen |
+| Skell Afar | 2026-11-18 (checkpoint 34) | PR #12 strict metadata and true-peak integration work recorded | Owner-host audio/CPU acceptance | Exact-head pluginval, install/rollback and FL Studio |
+| Skell Delay | 2026-11-19 13:21 ET (checkpoint 41) | PR #17 run 44524087964 passed; PR #18 legal/package gate in progress | Owner legal approval, EULA, publisher contact, FL Studio/A-B/CPU and Hub review | Finish PR #18 exact-head Windows run, inspect package, then owner FL Studio test |
+| Skell Spacer | 2026-11-19 09:54 EST (checkpoint 38) | PR #11 Windows build and installer self-test passed | Owner-host sound/CPU and release licensing | FL Studio scan/load, automation and long-session test |
+| Skell Glitch | Not recorded | No exact-head release artifact verified in this run | Current build/package state not established | Inspect repository Actions, VST3 bundle and pluginval |
+| Skell Flang | Not recorded | Provenance/checksum repair PRs exist; exact-head status not refreshed here | Artifact provenance/checksum gate | Run exact-head Windows CI and independently inspect ZIP/hash |
+| Skell Fan | Not recorded | PR #12 private-preview installer/rollback work recorded | Owner-host sound and package acceptance | Exact-head Windows installer/update/rollback test |
+| Skell Preset | Not selected by Release & Launch; Preset audit active | Audit reports a 55-program bank with 43 original programs retained; no factory promotion claimed | Deuce/Alchemist sound-match and host state recall | Same-take A/B and FL Studio preset/state recall |
+| Skell Separator | 2026-11-16 22:49 ET (checkpoint 15) | Windows/package work recorded in PR #4 | Owner-host UI/audio and low-latency behavior | Current exact-head pluginval, FL Studio and CPU/latency |
+| Skell AdlibLab | Not recorded | PR #11 private-preview installer/rollback work recorded | Owner-host audio and package acceptance | Exact-head Windows build, pluginval and install rollback |
+| SkellCast | 2026-11-19 11:52 ET (checkpoint 40) | PR #8 run 44572720407 passed; 43 installer assertions; artifact 14553494611 | Licensing/attribution and FL Studio/OBS/WASAPI A/B | Owner legal review and real host/routing test |
+| Skell Stop / StopDial | 2026-11-17 10:08 ET (checkpoint 23) | PR #4/#5 installer-default work recorded | Host compatibility and final installer acceptance | Verify per-user VST3 path, update and rollback |
+| Skel Pad / ScratchPad | 2026-11-17 (checkpoint 30) | PR #3 strict VST3 package gate recorded | Host and installer acceptance | Exact-head artifact, class inventory and FL Studio |
+| OmniChoir / SkellyChoir | 2026-11-18 18:30 ET (checkpoint 36) | PR #10 Windows install/update/rollback work recorded | UI screenshot completeness and owner-host acceptance | Fresh Quick4 screenshots and FL Studio scan/load |
+| Skell Studio / DAW | Not selected in this ledger | Ecosystem PR #11 Windows compilation/core tests reported passed | Actual DAW runtime and plugin-host acceptance | Windows runtime, FL Studio interoperability and project reopen |
+| SkellyHub / Project Hub | Not selected in this ledger | Project Hub PR #18 Windows workflow/compact-layout checks reported passed | Packaged WebView2, updater and rollback acceptance | Install/update/rollback on clean Windows profile |
+| SkellForge | Not selected in this ledger | PR #29 metadata work; PR #30 tests passed but export artifact was malformed | Valid Windows export artifact | Rebuild exact branch, inspect manifest and archive |
+| SkellNative | Not selected in this ledger | PR #6/#7 Windows VST3 CI evidence reported passed | Real FL Studio host acceptance | Install/scan/load/save/reopen on Windows |
+| SkellCore | Not selected in this ledger | PR #43 Windows VST3/headless UI checks reported passed | Local Quick4 UI and owner-host audio acceptance | Current-source Quick4 capture and host/CPU test |
+
+### Next selection
+
+The next Release & Launch run must rotate away from Skell Delay and choose a different
+non-DeEsser project after checking current Actions and branch ownership. Skell Master
+remains with the active Preset audit agent; do not edit its branch concurrently. Continue
+toward at least three distinct non-DeEsser substantive implementations in the six-run
+window. No merge, tag, public release, website deployment, DNS change or payment action.
+
 ## Release & Launch checkpoint 40 — 2026-11-19 11:52 ET
 
 ### Selected project: SkellCast (skell-cast-vst)
