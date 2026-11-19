@@ -1,3 +1,55 @@
+## Release & Launch checkpoint 44 — 2026-11-19 17:03 ET
+
+### Selected project: Skell Maw (skell-maw-vst)
+
+Selected after StopDial because a fresh exact-head Windows release workflow exposed a blocking package-validator regression. This was higher priority than candidates whose current exact-head packaging gates were already green. The current failure stopped the chain before installer integration, seven pluginval checks and artifact upload. The repair is isolated to the malformed regression fixture; it does not weaken or change the production metadata normalizer.
+
+### Cross-automation and ownership check
+
+- Ecosystem Development run 11 completed its Skell Delay release checklist: PR #19 exact-head Windows x64 build, CTest, pluginval strictness 10, package metadata, installer/rollback and legal-payload integrity passed. Its next workstream is Foundation (SkellForge/SkellNative). No Maw branch was edited there.
+- Preset Quality Audit run 12 focused on Alchemist reference analysis, Skell Preset state/recall and Skell Rack compiler warnings. PR #67 Windows validation and the new Rack warning-fix validation were still running; PR #78 host-state sanitizer was already verified. No Maw branch was edited.
+- Websites Development V115 implemented Preset Showcase renderer scaling and recovered V15/V14 site sources; Artist/Album V104 and Creative V103 regression checks passed. No native plugin or deployment branch was edited.
+- Nightly Blueprint's latest completed review still recommends Delay for the first owner FL Studio acceptance test; its older Maw metadata concern is superseded by PR #12's strict-metadata package baseline.
+- StopDial checkpoint 43 has now completed all four exact-head runs: PR #4 push/PR runs #44612584938 and #44612594930, and PR #5 push/PR runs #44612587549 and #44612598477, all SUCCESS. StopDial was not re-selected.
+- DeEsser remains parked. Delay, Maw and StopDial provide three distinct non-DeEsser substantive release workstreams in the current six-run rotation.
+
+### Confirmed failure and root cause
+
+- PR #14 exact head: `04557873d4ce64bacc3fbf427d48c42fdf7ece70`.
+- Windows workflow [#44612219641](https://github.com/skellyruno/skell-maw-vst/actions/runs/44612219641) failed in `Tools/tests/test_verify_vst3_package.py`, test `test_trailing_comma_removal_is_string_aware`.
+- JUCE-free DSP CTests passed 4/4. Windows CMake configure and the seven-plugin VST3 collection build passed. 20/21 Python package-verifier tests passed.
+- The single failing test supplied invalid JSON because its ordinary Python string escaped the embedded quote incorrectly. Python's JSON decoder raised `JSONDecodeError: Expecting ',' delimiter: line 1 column 28 (char 27)` before the string-aware normalizer was meaningfully tested. Installer tests, seven pluginval checks, final staging and upload were skipped as a consequence.
+- This was a test-fixture defect, not evidence that the production trailing-comma normalizer mishandles valid escaped strings.
+
+### Source / test repair
+
+- Draft follow-up PR #15: https://github.com/skellyruno/skell-maw-vst/pull/15
+- Branch: `fix/maw-json-trailing-comma-test-fixture-20261119`
+- Base: PR #14 head `release/maw-owner-approval-commercial-candidate-gate-20261119`
+- Parent: `04557873d4ce64bacc3fbf427d48c42fdf7ece70`
+- Commit: `1fe5fda06767a80f2b38d47e2fae77bc0ada2f9c`
+- Corrected the fixture to a raw Python string containing valid JSON escapes for a quoted substring and backslash. Added an exact normalized-output assertion proving the comma/brace inside the string is preserved while only the structural trailing commas are removed. Kept the decoded string and nested-array assertions.
+- Added a changelog note. The parser implementation, package behavior, DSP, UI, plugin identities, class IDs, parameter/automation IDs, presets, host-state schema and installer behavior are unchanged. PR #14 and its branch remain untouched.
+
+### Exact-head validation — IN PROGRESS
+
+- New PR #15 workflow [#44624761035](https://github.com/skellyruno/skell-maw-vst/actions/runs/44624761035) is running on exact head `1fe5fda06767a80f2b38d47e2fae77bc0ada2f9c`.
+- JUCE-free DSP job completed SUCCESS (4/4 CTests).
+- Windows job has completed checkout and Python setup and is at CMake configure. VST3 build, all 21 package-verifier tests, PowerShell install/update/rollback, seven pluginval strictness-5 validations, final package staging and artifact upload remain pending. No new Maw artifact or full pass is claimed.
+
+### Protected baseline and remaining release gates
+
+- Protected seven-plugin Windows preview baseline: PR #12 artifact #14502433275, archive SHA-256 `ce4dd3de9eb3e7d9fcafa94ba0ff27da3b62b7eb8feaf8a727c5ed2a4717cea5`. Prior independent inspection recorded 60,744,071 bytes, ZIP CRC pass, seven flat VST3 bundles, seven strict moduleinfo files with two classes each, seven AMD64 PE32+ modules and all 19 SHA256SUMS records matched. This artifact remains unchanged.
+- FL Studio scan/load, saved-project/state/preset/automation recall, musical A/B and owner listening, target-PC CPU/latency and current-source Quick4 UI inspection remain UNVERIFIED.
+- The commercial-candidate path requires actual owner-supplied LICENSE and third-party notices, canonical HTTPS vendor URL, support email and explicit approval record. None was invented or committed. The preview remains unsigned and unpublished. The GitHub repository is public, so its Actions artifacts are not an access-controlled private delivery channel.
+- No merge, tag, public release, website deployment, DNS change or payment operation occurred.
+
+### Next step and rotation
+
+Finish PR #15 exact-head Windows validation. If all gates pass, download and independently inspect the new seven-bundle artifact, checksums, strict metadata, AMD64 modules and installer manifest; then hand off to owner-side FL Studio/audio/state/hardware acceptance and legal/contact/EULA approval. The next Release & Launch selection must be a different non-DeEsser project after fresh automation and branch-ownership checks; do not repeat Maw unless a new critical regression appears.
+
+---
+
 ## Release & Launch checkpoint 43 — 2026-11-19 15:49 ET
 
 ### Selected project: StopDial (skell-stop-vst)
