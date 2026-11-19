@@ -32,6 +32,95 @@ function Write-Utf8NoBom {
     [IO.File]::WriteAllText($Path, $Text, $encoding)
 }
 
+function Assert-NoReparsePoints {
+    param([Parameter(Mandatory)][string]$Root)
+    $rootFull = Get-FullPath $Root
+    $probe = $rootFull
+    $rootItem = $null
+    while ($null -eq $rootItem) {
+        $rootItem = Get-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
+        if ($null -ne $rootItem) { break }
+        $parent = Split-Path -Parent $probe
+        if ([string]::IsNullOrWhiteSpace($parent) -or
+            [string]::Equals($parent, $probe, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Could not locate an existing ancestor for selected tree: $rootFull"
+        }
+        $probe = $parent
+    }
+
+    # Check every existing path component before any caller creates or copies
+    # into a not-yet-existing destination beneath it.
+    $pathRoot = [IO.Path]::GetPathRoot($probe)
+    $ancestor = $probe
+    while (-not [string]::IsNullOrWhiteSpace($ancestor)) {
+        $ancestorItem = Get-Item -LiteralPath $ancestor -Force -ErrorAction Stop
+        if (($ancestorItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Refusing a reparse-point path component: $ancestor"
+        }
+        if ([string]::Equals($ancestor, $pathRoot, [StringComparison]::OrdinalIgnoreCase)) { break }
+        $parent = Split-Path -Parent $ancestor
+        if ([string]::IsNullOrWhiteSpace($parent) -or
+            [string]::Equals($parent, $ancestor, [StringComparison]::OrdinalIgnoreCase)) { break }
+        $ancestor = $parent
+    }
+
+    # If the requested root already exists, walk it breadth-first. A reparse
+    # point is rejected before its target can be enqueued or traversed.
+    if (-not [string]::Equals($probe, $rootFull, [StringComparison]::OrdinalIgnoreCase)) { return }
+    if (-not $rootItem.PSIsContainer) { return }
+    $pending = [System.Collections.Generic.Queue[string]]::new()
+    $pending.Enqueue($rootFull)
+    while ($pending.Count -gt 0) {
+        $current = $pending.Dequeue()
+        foreach ($item in Get-ChildItem -LiteralPath $current -Force -ErrorAction Stop) {
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing a reparse point inside the selected tree: $($item.FullName)"
+            }
+            if ($item.PSIsContainer) { $pending.Enqueue($item.FullName) }
+        }
+    }
+}
+
+function Assert-JsonNoDuplicateKeys {
+    param([Parameter(Mandatory)][System.Text.Json.JsonElement]$Element,[string]$Location='$')
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        $seen=[System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach($property in $Element.EnumerateObject()) {
+            if(-not $seen.Add($property.Name)) { throw "Duplicate or case-ambiguous JSON property '$($property.Name)' at $Location" }
+            Assert-JsonNoDuplicateKeys -Element $property.Value -Location "$Location.$($property.Name)"
+        }
+    } elseif($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        $index=0
+        foreach($child in $Element.EnumerateArray()) {
+            Assert-JsonNoDuplicateKeys -Element $child -Location "$Location[$index]"
+            $index++
+        }
+    }
+}
+
+function ConvertFrom-StrictJson {
+    param([Parameter(Mandatory)][string]$Json,[string]$Context='JSON')
+    $document=[System.Text.Json.JsonDocument]::Parse($Json)
+    try {
+        Assert-JsonNoDuplicateKeys -Element $document.RootElement -Location $Context
+        return ($Json | ConvertFrom-Json -Depth 100 -ErrorAction Stop)
+    } finally { $document.Dispose() }
+}
+
+function Remove-SelfTestRoot {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string]$MarkerPath,[Parameter(Mandatory)][string]$Token)
+    if(-not (Test-Path -LiteralPath $Root -PathType Container)) { return }
+    try {
+        Assert-NoReparsePoints -Root $Root
+        if(-not (Test-Path -LiteralPath $MarkerPath -PathType Leaf)) { throw 'Self-test ownership marker is missing' }
+        if([IO.File]::ReadAllText($MarkerPath) -cne $Token) { throw 'Self-test ownership marker does not match' }
+        Remove-Item -LiteralPath $MarkerPath -Force -ErrorAction Stop
+        Remove-Item -LiteralPath $Root -Recurse -Force -ErrorAction Stop
+    } catch {
+        Write-Warning "Leaving self-test directory untouched because ownership/safety could not be proven: $Root ($($_.Exception.Message))"
+    }
+}
+
 function Get-Sha256 {
     param([Parameter(Mandatory)][string]$Path)
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -43,7 +132,8 @@ function Get-TreeDigest {
     if (-not (Test-Path -LiteralPath $root -PathType Container)) {
         throw "Bundle directory is missing: $root"
     }
-    $files = @(Get-ChildItem -LiteralPath $root -Recurse -File | Sort-Object FullName)
+    Assert-NoReparsePoints -Root $root
+    $files = @(Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction Stop | Sort-Object FullName)
     if ($files.Count -eq 0) {
         throw "Bundle contains no files: $root"
     }
@@ -99,6 +189,7 @@ function Get-BundleDetails {
     if (-not (Test-Path -LiteralPath $bundle -PathType Container)) {
         throw "VST3 bundle directory is missing: $bundle"
     }
+    Assert-NoReparsePoints -Root $bundle
 
     $contents = Join-Path $bundle 'Contents'
     $metadataPath = Join-Path $contents 'Resources/moduleinfo.json'
@@ -117,7 +208,7 @@ function Get-BundleDetails {
     }
     Assert-WindowsPe32Plus -Path $modulePath
 
-    $metadata = [IO.File]::ReadAllText($metadataPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop
+    $metadata = ConvertFrom-StrictJson -Json ([IO.File]::ReadAllText($metadataPath, [Text.Encoding]::UTF8)) -Context 'VST3 moduleinfo.json'
     if ($metadata.Name -cne $script:ProductName) {
         throw "Unexpected VST3 product name: $($metadata.Name)"
     }
@@ -165,6 +256,7 @@ function Get-BundleDetails {
 function Write-PackageChecksums {
     param([Parameter(Mandatory)][string]$Root)
     $rootFull = Get-FullPath $Root
+    Assert-NoReparsePoints -Root $rootFull
     $checksumPath = Join-Path $rootFull 'SHA256SUMS.txt'
     $files = @(Get-ChildItem -LiteralPath $rootFull -Recurse -File |
         Where-Object { (Get-FullPath $_.FullName) -cne (Get-FullPath $checksumPath) } |
@@ -182,6 +274,10 @@ function Write-PackageChecksums {
 function Get-PackageInfo {
     param([Parameter(Mandatory)][string]$Root)
     $rootFull = Get-FullPath $Root
+    if (-not (Test-Path -LiteralPath $rootFull -PathType Container)) {
+        throw "Preview package directory is missing: $rootFull"
+    }
+    Assert-NoReparsePoints -Root $rootFull
     $manifestPath = Join-Path $rootFull 'release-manifest.json'
     $checksumsPath = Join-Path $rootFull 'SHA256SUMS.txt'
     $installerPath = Join-Path $rootFull 'Install-SkellSilencePreview.ps1'
@@ -199,7 +295,7 @@ function Get-PackageInfo {
         throw "Preview package must contain exactly one '$($script:BundleName)' bundle"
     }
 
-    $manifest = [IO.File]::ReadAllText($manifestPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop
+    $manifest = ConvertFrom-StrictJson -Json ([IO.File]::ReadAllText($manifestPath, [Text.Encoding]::UTF8)) -Context 'release-manifest.json'
     if ($manifest.product -cne $script:ProductName -or
         $manifest.distribution -cne 'Windows VST3 x64' -or
         $manifest.releaseStatus -cne 'PREVIEW_ONLY' -or
@@ -301,7 +397,15 @@ function New-Backup {
         [Parameter(Mandatory)][string]$InstallRootPath,
         [Parameter(Mandatory)][ValidateSet('install-rollback', 'rollback-safety')][string]$Kind
     )
-    New-Item -ItemType Directory -Path $BackupRootPath -Force | Out-Null
+    Assert-NoReparsePoints -Root $BackupRootPath
+    if (Test-Path -LiteralPath $BackupRootPath) {
+        if (-not (Test-Path -LiteralPath $BackupRootPath -PathType Container)) { throw "Backup root is not a directory: $BackupRootPath" }
+    }
+    else {
+        New-Item -ItemType Directory -Path $BackupRootPath -ErrorAction Stop | Out-Null
+        Assert-NoReparsePoints -Root $BackupRootPath
+    }
+    Assert-NoReparsePoints -Root $SourceBundle
     $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
     $folder = Join-Path $BackupRootPath ($stamp + '-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $folder -Force | Out-Null
@@ -342,7 +446,15 @@ function Install-VerifiedBundle {
         [Parameter(Mandatory)][string]$SourceBundle,
         [Parameter(Mandatory)][string]$InstallRootPath
     )
-    New-Item -ItemType Directory -Path $InstallRootPath -Force | Out-Null
+    Assert-NoReparsePoints -Root $InstallRootPath
+    if (Test-Path -LiteralPath $InstallRootPath) {
+        if (-not (Test-Path -LiteralPath $InstallRootPath -PathType Container)) { throw "Install root is not a directory: $InstallRootPath" }
+    }
+    else {
+        New-Item -ItemType Directory -Path $InstallRootPath -ErrorAction Stop | Out-Null
+        Assert-NoReparsePoints -Root $InstallRootPath
+    }
+    Assert-NoReparsePoints -Root $SourceBundle
     $destination = Join-Path $InstallRootPath $script:BundleName
     $stage = Join-Path $InstallRootPath ('.Skell Silence.stage-' + [guid]::NewGuid().ToString('N'))
     $previous = Join-Path $InstallRootPath ('.Skell Silence.previous-' + [guid]::NewGuid().ToString('N'))
@@ -411,15 +523,21 @@ function Get-BackupCandidates {
     if (-not (Test-Path -LiteralPath $BackupRootPath -PathType Container)) {
         return @()
     }
-    foreach ($folder in Get-ChildItem -LiteralPath $BackupRootPath -Directory) {
+    Assert-NoReparsePoints -Root $BackupRootPath
+    foreach ($folder in Get-ChildItem -LiteralPath $BackupRootPath -Directory -ErrorAction Stop) {
         $manifestPath = Join-Path $folder.FullName 'backup-manifest.json'
         if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
             continue
         }
         try {
-            $manifest = [IO.File]::ReadAllText($manifestPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop
-            if ($manifest.kind -ne 'install-rollback' -or
+            $manifest = ConvertFrom-StrictJson -Json ([IO.File]::ReadAllText($manifestPath, [Text.Encoding]::UTF8)) -Context 'backup-manifest.json'
+            if ($manifest.schemaVersion -ne 1 -or
+                $manifest.product -cne $script:ProductName -or
+                $manifest.bundleName -cne $script:BundleName -or
+                $manifest.kind -ne 'install-rollback' -or
                 $manifest.installRoot -ine (Get-FullPath $InstallRootPath) -or
+                [string]$manifest.treeSha256 -notmatch '^[0-9a-fA-F]{64}$' -or
+                [string]::IsNullOrWhiteSpace([string]$manifest.createdUtc) -or
                 ($manifest.PSObject.Properties.Name -contains 'restoredUtc')) {
                 continue
             }
@@ -542,6 +660,10 @@ function New-TestPackage {
 
 function Invoke-SelfTest {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('SkellSilenceInstallerSelfTest-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
+    $cleanupToken = [guid]::NewGuid().ToString('N')
+    $cleanupMarker = Join-Path $root ('.skell-silence-selftest-' + $cleanupToken)
+    Write-Utf8NoBom -Path $cleanupMarker -Text $cleanupToken
     $packageA = Join-Path $root 'package-a'
     $packageB = Join-Path $root 'package-b'
     $packageBadArch = Join-Path $root 'package-bad-arch'
@@ -550,6 +672,102 @@ function Invoke-SelfTest {
 
     try {
         New-TestPackage -Root $packageA -Version '2.8.0' -VersionByte 1
+
+        # Strict JSON must reject duplicate/case-ambiguous keys and non-finite values.
+        $strictDuplicateRoot = Join-Path $root 'strict-duplicate'
+        New-TestPackage -Root $strictDuplicateRoot -Version '2.8.0' -VersionByte 4
+        $strictDuplicatePath = Join-Path $strictDuplicateRoot ($script:BundleName + '/Contents/Resources/moduleinfo.json')
+        $strictOriginal = [IO.File]::ReadAllText($strictDuplicatePath, [Text.Encoding]::UTF8)
+        $strictDuplicate = $strictOriginal.Replace(
+            '"Name": "Skell Silence",',
+            ('"Name": "Skell Silence",' + [Environment]::NewLine + '    "Name": "Skell Silence",')
+        )
+        [IO.File]::WriteAllText($strictDuplicatePath, $strictDuplicate, [Text.Encoding]::UTF8)
+        $strictRejected = $false
+        try { Get-BundleDetails -BundlePath (Join-Path $strictDuplicateRoot $script:BundleName) | Out-Null }
+        catch { $strictRejected = $true }
+        if (-not $strictRejected) { throw 'Self-test failed: duplicate moduleinfo JSON key was accepted' }
+        if ([IO.File]::ReadAllText($strictDuplicatePath, [Text.Encoding]::UTF8) -cne $strictDuplicate) { throw 'Self-test failed: rejected duplicate moduleinfo JSON was modified' }
+
+        $strictNonFiniteRoot = Join-Path $root 'strict-nonfinite'
+        New-TestPackage -Root $strictNonFiniteRoot -Version '2.8.0' -VersionByte 5
+        $strictNonFinitePath = Join-Path $strictNonFiniteRoot ($script:BundleName + '/Contents/Resources/moduleinfo.json')
+        $strictNonFiniteOriginal = [IO.File]::ReadAllText($strictNonFinitePath, [Text.Encoding]::UTF8)
+        $strictNonFinite = $strictNonFiniteOriginal.Replace(
+            '"Version": "2.8.0",',
+            ('"Version": "2.8.0",' + [Environment]::NewLine + '    "Unexpected": NaN,')
+        )
+        [IO.File]::WriteAllText($strictNonFinitePath, $strictNonFinite, [Text.Encoding]::UTF8)
+        $strictRejected = $false
+        try { Get-BundleDetails -BundlePath (Join-Path $strictNonFiniteRoot $script:BundleName) | Out-Null }
+        catch { $strictRejected = $true }
+        if (-not $strictRejected) { throw 'Self-test failed: non-finite moduleinfo JSON number was accepted' }
+        if ([IO.File]::ReadAllText($strictNonFinitePath, [Text.Encoding]::UTF8) -cne $strictNonFinite) { throw 'Self-test failed: rejected non-finite moduleinfo JSON was modified' }
+
+        $strictManifestRoot = Join-Path $root 'strict-manifest'
+        New-TestPackage -Root $strictManifestRoot -Version '2.8.0' -VersionByte 7
+        $strictManifestPath = Join-Path $strictManifestRoot 'release-manifest.json'
+        $strictManifestOriginal = [IO.File]::ReadAllText($strictManifestPath, [Text.Encoding]::UTF8)
+        $strictManifestDuplicate = $strictManifestOriginal.Replace(
+            '"product": "Skell Silence",',
+            ('"product": "Skell Silence",' + [Environment]::NewLine + '    "product": "Skell Silence",')
+        )
+        [IO.File]::WriteAllText($strictManifestPath, $strictManifestDuplicate, [Text.Encoding]::UTF8)
+        $strictRejected = $false
+        try { Get-PackageInfo -Root $strictManifestRoot | Out-Null }
+        catch { $strictRejected = $true }
+        if (-not $strictRejected) { throw 'Self-test failed: duplicate release-manifest JSON key was accepted' }
+        if ([IO.File]::ReadAllText($strictManifestPath, [Text.Encoding]::UTF8) -cne $strictManifestDuplicate) {
+            throw 'Self-test failed: rejected duplicate release-manifest JSON was modified'
+        }
+
+        # Package and install roots must not traverse junctions or symbolic links.
+        $reparsePackage = Join-Path $root 'reparse-package'
+        New-TestPackage -Root $reparsePackage -Version '2.8.0' -VersionByte 6
+        $reparseOutside = Join-Path $root 'reparse-outside'
+        New-Item -ItemType Directory -Path $reparseOutside -ErrorAction Stop | Out-Null
+        $reparseJunction = Join-Path (Join-Path $reparsePackage $script:BundleName) 'Contents/External'
+        & $env:ComSpec /d /c ('mklink /J "' + $reparseJunction + '" "' + $reparseOutside + '"') | Out-Null
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $reparseJunction -PathType Container)) { throw 'Self-test failed: could not create package junction fixture' }
+        $reparseRejected = $false
+        try { Get-PackageInfo -Root $reparsePackage | Out-Null } catch { $reparseRejected = $true }
+        if (-not $reparseRejected) { throw 'Self-test failed: package junction was accepted' }
+        & $env:ComSpec /d /c ('rmdir "' + $reparseJunction + '"') | Out-Null
+        if (Test-Path -LiteralPath $reparseJunction) { throw 'Self-test failed: package junction fixture could not be removed safely' }
+
+        $installTarget = Join-Path $root 'install-junction-target'
+        $installJunction = Join-Path $root 'install-junction'
+        New-Item -ItemType Directory -Path $installTarget -ErrorAction Stop | Out-Null
+        & $env:ComSpec /d /c ('mklink /J "' + $installJunction + '" "' + $installTarget + '"') | Out-Null
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $installJunction -PathType Container)) { throw 'Self-test failed: could not create install-root junction fixture' }
+        $reparseRejected = $false
+        try { Install-VerifiedBundle -SourceBundle (Join-Path $packageA $script:BundleName) -InstallRootPath $installJunction | Out-Null } catch { $reparseRejected = $true }
+        if (-not $reparseRejected -or (Test-Path -LiteralPath (Join-Path $installTarget $script:BundleName))) { throw 'Self-test failed: install-root junction was followed or modified' }
+        & $env:ComSpec /d /c ('rmdir "' + $installJunction + '"') | Out-Null
+        if (Test-Path -LiteralPath $installJunction) { throw 'Self-test failed: install junction fixture could not be removed safely' }
+
+        $ancestorTarget = Join-Path $root 'ancestor-target'
+        $ancestorJunction = Join-Path $root 'ancestor-junction'
+        $ancestorInstall = Join-Path $ancestorJunction 'Programs/VST3'
+        New-Item -ItemType Directory -Path $ancestorTarget -ErrorAction Stop | Out-Null
+        & $env:ComSpec /d /c ('mklink /J "' + $ancestorJunction + '" "' + $ancestorTarget + '"') | Out-Null
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $ancestorJunction -PathType Container)) { throw 'Self-test failed: could not create ancestor junction fixture' }
+        $reparseRejected = $false
+        try { Install-VerifiedBundle -SourceBundle (Join-Path $packageA $script:BundleName) -InstallRootPath $ancestorInstall | Out-Null } catch { $reparseRejected = $true }
+        if (-not $reparseRejected -or (Test-Path -LiteralPath (Join-Path $ancestorTarget 'Programs'))) { throw 'Self-test failed: install path traversed a junction ancestor or created files through it' }
+        & $env:ComSpec /d /c ('rmdir "' + $ancestorJunction + '"') | Out-Null
+        if (Test-Path -LiteralPath $ancestorJunction) { throw 'Self-test failed: ancestor junction fixture could not be removed safely' }
+
+        # A cleanup call without its exact ownership token must leave user data untouched.
+        $protectedCleanupRoot = Join-Path $root 'cleanup-guard'
+        New-Item -ItemType Directory -Path $protectedCleanupRoot -ErrorAction Stop | Out-Null
+        $protectedCleanupMarker = Join-Path $protectedCleanupRoot '.owner'
+        $protectedCleanupSentinel = Join-Path $protectedCleanupRoot 'sentinel.txt'
+        Write-Utf8NoBom -Path $protectedCleanupMarker -Text 'actual-owner'
+        Write-Utf8NoBom -Path $protectedCleanupSentinel -Text 'preserve'
+        Remove-SelfTestRoot -Root $protectedCleanupRoot -MarkerPath $protectedCleanupMarker -Token 'wrong-owner'
+        if (-not (Test-Path -LiteralPath $protectedCleanupSentinel -PathType Leaf)) { throw 'Self-test failed: cleanup removed a directory without its exact ownership token' }
+
         New-TestPackage -Root $packageB -Version '2.8.1' -VersionByte 2
         Invoke-Install -PackageRootPath $packageA -InstallRootPath $installRootPath -BackupRootPath $backupRootPath | Out-Null
         $installed = Get-BundleDetails -BundlePath (Join-Path $installRootPath $script:BundleName)
@@ -566,6 +784,20 @@ function Invoke-SelfTest {
         if ($candidates.Count -ne 1 -or $candidates[0].Manifest.version -cne '2.8.0') {
             throw 'Self-test failed: previous version was not backed up and indexed'
         }
+
+        $backupManifestPath = $candidates[0].ManifestPath
+        $backupManifestOriginal = [IO.File]::ReadAllText($backupManifestPath, [Text.Encoding]::UTF8)
+        $backupManifestDuplicate = $backupManifestOriginal.Replace(
+            '"product": "Skell Silence",',
+            ('"product": "Skell Silence",' + [Environment]::NewLine + '    "product": "Skell Silence",')
+        )
+        [IO.File]::WriteAllText($backupManifestPath, $backupManifestDuplicate, [Text.Encoding]::UTF8)
+        if (@(Get-BackupCandidates -BackupRootPath $backupRootPath -InstallRootPath $installRootPath).Count -ne 0) {
+            throw 'Self-test failed: duplicate backup-manifest JSON key was accepted'
+        }
+        [IO.File]::WriteAllText($backupManifestPath, $backupManifestOriginal, [Text.Encoding]::UTF8)
+        $candidates = @(Get-BackupCandidates -BackupRootPath $backupRootPath -InstallRootPath $installRootPath)
+        if ($candidates.Count -ne 1) { throw 'Self-test failed: valid backup manifest was not restored after strict-parser test' }
 
         Invoke-Rollback -InstallRootPath $installRootPath -BackupRootPath $backupRootPath | Out-Null
         $installed = Get-BundleDetails -BundlePath (Join-Path $installRootPath $script:BundleName)
@@ -604,12 +836,10 @@ function Invoke-SelfTest {
             throw 'Self-test failed: non-AMD64 package changed the installed plugin'
         }
 
-        Write-Host 'PASS: preview install, verified backup, rollback, checksum rejection, and PE32+ architecture rejection'
+        Write-Host 'PASS: strict JSON, reparse-point rejection, safe temp cleanup, preview install, verified backup, rollback, checksum and PE32+ gates'
     }
     finally {
-        if (Test-Path -LiteralPath $root) {
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-        }
+        Remove-SelfTestRoot -Root $root -MarkerPath $cleanupMarker -Token $cleanupToken
     }
 }
 
