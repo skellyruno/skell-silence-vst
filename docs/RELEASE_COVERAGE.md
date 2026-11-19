@@ -1,3 +1,55 @@
+## Release & Launch checkpoint 45 — 2026-11-19 18:48 ET
+
+### Selected project: Skell Separator (\`skell-separator-vst\`)
+
+Selected after Necromancer to keep the primary project rotating. Separator beat the other candidates because it already has an exact-head Windows VST3 package, pluginval pass, installer/update/rollback implementation and real JUCE editor captures, while its installer regression suite did not exercise the reparse-point guards that the installer relies on. Closing that test gap is a concrete release-safety improvement without touching DSP, UI, presets, host state or the protected binary.
+
+### Cross-automation and branch-ownership check
+
+- Ecosystem Development Run 11 most recently changed SkellForge dependency validation, a Maw test fixture, and SkellWorld PR #19. SkellForge PR #31 remains blocked by malformed trailing-comma \`moduleinfo.json\`; Maw Windows validation was still running; SkellWorld's mobile header fix passed checks but dashboard screenshots were missing. No Separator branch was reported active.
+- Preset Quality Audit's latest completed result is working on Alchemist/Skell Preset, branch \`feature/deuce-v25-listening-approved-20261115\`, commits \`56d5fbc6\`, \`2771839a\`, \`17b234f\`, \`e8e8cadb\`, \`73c8baf0\`; portable validation passed and three Windows builds were still running. Master/Preset/Rack remain owned by that lane; no such branch was edited.
+- Websites Development V117 completed Creative V104 and Artist V105 / Preset Showcase V35 regression checks; no Git commit or push was reported. No website or deployment branch was edited.
+- The latest available Nightly Blueprint result remains the November 18 review, which recommends Delay for first owner FL Studio acceptance. Delay is actively being worked in its own release/checklist branches (including run #44601947744), so it was not selected.
+- No newer completed Skell Studio Verified Upgrade result was available. No Studio branch was edited.
+- Other near-ready candidates were deliberately avoided where active release branches were visible: Delay, Key, EQ and Flang all have recent exact-head CI/PR activity. Skell Master and Preset remain with the Preset audit lane.
+- SkellCore issue #32 records approximately +0.25 dB inter-sample overshoot on an experimental generic limiter. It is not production-certified and must not be adopted by Master or other plugins as a workaround; its draft PR #43 remains separate from this run.
+
+### Source and test changes
+
+- Product repository: https://github.com/skellyruno/skell-separator-vst
+- Existing installer PR #5 remains unchanged and draft: https://github.com/skellyruno/skell-separator-vst/pull/5
+- New draft regression PR #6: https://github.com/skellyruno/skell-separator-vst/pull/6
+- Branch: \`test/separator-installer-reparse-coverage-20261119\`
+- Parent / exact base: PR #5 head \`4c1a1426a3942723f6b793b0cd446b872801cb66\`
+- Commit: \`31b53686afdc70a9e1487537684f67f32afab0e2\`
+- Changed only \`scripts/Test-Install-SkellSeparator.ps1\` (119 insertions). Added safe Windows junction create/remove helpers and assertions for package-root, nested-package, destination-root, destination-parent, backup-root, backup-parent and existing VST3 bundle-root junctions. Rejected operations must name the reparse-point guard and prove they did not write through the junction or change the installed bundle/version.
+- All test junctions and their targets are created beneath the disposable CI test root. Existing cleanup preserves the root if a reparse point remains, rather than deleting uncertain paths.
+- No DSP, C++, UI, CMake target, VST3 class IDs, parameter/automation IDs, presets, serialized state, licenses or product binaries changed. No existing branch was edited; PR #5 and its source branch remain untouched.
+
+### Exact-head CI — pending at ledger refresh
+
+- Windows VST3 workflow [#44641061421](https://github.com/skellyruno/skell-separator-vst/actions/runs/44641061421) is in progress at CMake configure. The release-verifier unit tests have passed; VST3 build, package staging, PowerShell junction/installer suite, pluginval strictness 5 and artifact upload remain pending.
+- Portable neural/benchmark/sanitizer workflow [#44641061403](https://github.com/skellyruno/skell-separator-vst/actions/runs/44641061403) completed SUCCESS (17/17 steps).
+- Real-editor screenshot workflow [#44641061439](https://github.com/skellyruno/skell-separator-vst/actions/runs/44641061439) is in progress installing JUCE/virtual-display dependencies. No new screenshot artifact or visual pass is claimed.
+- No exact-head VST3 artifact from PR #6 is claimed yet.
+
+### Protected baseline and screenshot inspection
+
+- Protected Windows VST3 artifact from PR #5: [artifact #14440794981](https://github.com/skellyruno/skell-separator-vst/actions/runs/44336350915/artifacts/14440794981), archive SHA-256 \`178de35d6b9a6729e352c4e8306ef7f9c4a7c56417dfb164398d2c1d520afcd7\`; module SHA-256 \`f8349e1826349efaf791c8c769c02c5e4f534b517f0032212db2746f61047f19\`. Prior independent inspection recorded ZIP CRC and all five package checksums passing, one flat VST3 bundle, one AMD64 PE32+ module, two unique class IDs and no Standalone EXE.
+- Prior exact-head pluginval 1.0.4 strictness 5 passed; installer/update/rollback suite passed 26 assertions; neural/benchmark/sanitizer run #44336351323 passed 17/17 steps.
+- Downloaded and inspected the real JUCE editor artifact #14441882893 (eight scenes at 785×448, 1047×597 and 1571×896). Main controls and columns show no clipping or overlap. One visible follow-up: the Guided Tour card remains fixed-size at 1571×896, so its instructional text is noticeably small relative to the enlarged editor; this is a shared GuidedTour scaling issue, not changed in this installer-only PR. Quick4 local capture remains UNVERIFIED.
+- The artifact is a public GitHub Actions artifact from a public repository, not an access-controlled private delivery channel.
+
+### Remaining release gates
+
+FL Studio scan/load, bypass, automation, presets/state recall, save/reopen and old-project compatibility; rights-cleared real vocal/music A/B; target-hardware CPU/latency; current-source Quick4 capture; final licensing/attribution, vendor/support metadata, signing and SkellyHub integration remain UNVERIFIED or owner-controlled. Keep PRs #4/#5/#6 draft. No merge, tag, public release, repository visibility change, website deployment, DNS change or payment action occurred.
+
+### Next selection
+
+The next Release & Launch run must choose a different non-DeEsser project after a fresh cross-automation/branch-ownership check. Do not repeat Separator unless PR #6 reveals a critical regression; prioritize an under-served project with a real package/CI blocker and no active owner branch.
+
+---
+
 ## Release & Launch checkpoint 44 — 2026-11-19 17:03 ET
 
 ### Selected project: Skell Maw (skell-maw-vst)
@@ -254,7 +306,7 @@ mean the project is inactive or release-ready.
 | Skell Flang | Not selected | Provenance/checksum repair PRs exist; exact-head status not refreshed here | Artifact provenance/checksum gate | Run exact-head Windows CI and independently inspect ZIP/hash |
 | Skell Fan | Not selected | PR #12 private-preview installer/rollback work recorded | Owner-host sound and package acceptance | Exact-head Windows installer/update/rollback test |
 | Skell Preset | Not selected by Release & Launch; Preset Audit owns preset work | Audit Run 12 records 55 development programs with 43 originals retained; no factory promotion; Alchemist correction was not justified by measured A/B | Deuce/Alchemist sound match and host-state recall | Same-take A/B and FL Studio preset/state recall |
-| Skell Separator | 2026-11-16 22:49 ET (checkpoint 15) | Windows/package work in PR #4 recorded; no new exact-head package reverified here | Owner-host UI/audio and low-latency behavior | Current exact-head pluginval, FL Studio and CPU/latency |
+| Skell Separator | 2026-11-19 18:48 ET (checkpoint 45) | PR #5 artifact #14440794981 SHA-256 178de35d6b9a6729e352c4e8306ef7f9c4a7c56417dfb164398d2c1d520afcd7; prior Windows build/pluginval/26 installer assertions passed; PR #6 adds seven junction regression scenarios, portable neural suite 17/17 passed, exact-head Windows/UI runs pending | Owner FL Studio/audio/state/CPU acceptance, guided-tour large-scale readability, legal/contact/signing and genuinely private delivery | Finish PR #6 exact-head Windows junction/installer tests, pluginval and UI artifact; then owner FL Studio scan/load, state recall and A/B |
 | Skell AdlibLab | Not selected | PR #11 private-preview installer/rollback work recorded | Owner-host audio and package acceptance | Exact-head Windows build, pluginval and install rollback |
 | SkellCast | 2026-11-19 11:52 ET (checkpoint 40) | PR #8 run #44572720407 passed; 43 installer assertions; artifact #14553494611 SHA-256 b7234aafd17949d2034150447302971bc3c8432aea6f126efe43df52c15e7015; AMD64 PE32+ module | Licensing/attribution and FL Studio/OBS/WASAPI A/B | Owner legal review and real host/routing test |
 | Skell Stop / StopDial | 2026-11-19 15:49 ET (checkpoint 43) | PR #4/#5 exact-head runs #44612584938, #44612594930, #44612587549 and #44612598477 all SUCCESS. PR #5 artifact #14571449819 SHA-256 2e6abb316f3c60b5e5d234f5c8819ac4b9052b989067ba1168858e72a6513a0f: ZIP CRC and five checksums pass, but moduleinfo.json fails strict JSON due trailing commas. Draft PR #6 commit 3d1a5f2253b005cfd5675c7f8d69d03e97dd5b6c normalizes staged metadata; run #44625564418 has sanitizer DSP passed and Windows configure in progress | Strict JSON package defect; then owner FL Studio/audio/state, legal notices/SDK terms, canonical URL/support email, signing and private delivery | Finish PR #6 Windows build, verifier, installer, pluginval and artifact; strict-parse moduleinfo and recheck every checksum |
