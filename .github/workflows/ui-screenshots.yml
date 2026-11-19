@@ -67,7 +67,7 @@ jobs:
           import hashlib, json, os, pathlib, platform, re
           root = pathlib.Path("ui-screenshots")
           cmake = pathlib.Path("CMakeLists.txt").read_text(encoding="utf-8")
-          version_match = re.search(r"project\\(SkellSilence VERSION ([0-9]+\\.[0-9]+\\.[0-9]+)", cmake)
+          version_match = re.search(r"project\(SkellSilence VERSION ([0-9]+\.[0-9]+\.[0-9]+)", cmake)
           if not version_match:
               raise SystemExit("could not read Skell Silence project version from CMakeLists.txt")
           images = []
@@ -93,7 +93,7 @@ jobs:
               "images": images,
           }
           (root / "provenance.json").write_text(
-              json.dumps(manifest, indent=2, sort_keys=True) + "\\n",
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
               encoding="utf-8",
           )
           print(f"Recorded {len(images)} actual PNG screenshots with SHA-256 hashes")
