@@ -44,6 +44,18 @@ Selected after StopDial because a fresh exact-head Windows release workflow expo
 - The commercial-candidate path requires actual owner-supplied LICENSE and third-party notices, canonical HTTPS vendor URL, support email and explicit approval record. None was invented or committed. The preview remains unsigned and unpublished. The GitHub repository is public, so its Actions artifacts are not an access-controlled private delivery channel.
 - No merge, tag, public release, website deployment, DNS change or payment operation occurred.
 
+### Urgent secondary packaging finding — StopDial strict JSON
+
+After the Maw PR #15 fix was opened, independent inspection of StopDial PR #5 artifact #14571449819 from run #44612598477 found a separate release-blocking issue:
+
+- Archive 2,906,270 bytes; SHA-256 `2e6abb316f3c60b5e5d234f5c8819ac4b9052b989067ba1168858e72a6513a0f`; ZIP CRC passed; all five package checksums matched.
+- Exactly one flat StopDial 2.3.1 VST3 bundle and one AMD64 PE32+ module (6,572,544 bytes; SHA-256 `cb390db372856db3d5797978023916b80845e4824d4d12df0039c66ee1208500`).
+- The packaged `moduleinfo.json` still contained Steinberg trailing commas and failed strict JSON parsing at line 11, column 41. The previous verifier stripped commas only in memory and did not write the normalized metadata into the staged package.
+
+Focused follow-up draft PR #6: https://github.com/skellyruno/skell-stop-vst/pull/6. Branch `fix/stopdial-normalize-moduleinfo-before-package-20261119`; base PR #5 head `2cb5a174d8f91b7716364f32dfa5d4ea7c5d95ad`; commit `3d1a5f2253b005cfd5675c7f8d69d03e97dd5b6c`. The verifier now writes canonical strict JSON into the staged directory before the existing checksum step, rejects unnormalized JSON5 ZIPs, and has regressions for escaped quotes/backslashes and literal `,}` inside strings. No production DSP, UI, VST3 binary or identity changed. Exact-head run #44625564418 is IN PROGRESS; no fixed artifact/pass is claimed. PR #5 remains untouched.
+
+StopDial's PR #4/#5 Windows and Linux workflows all completed SUCCESS, but this package-format defect means those green CI results alone do not establish release readiness. The repository is public; Actions artifacts are not a private testing channel.
+
 ### Next step and rotation
 
 Finish PR #15 exact-head Windows validation. If all gates pass, download and independently inspect the new seven-bundle artifact, checksums, strict metadata, AMD64 modules and installer manifest; then hand off to owner-side FL Studio/audio/state/hardware acceptance and legal/contact/EULA approval. The next Release & Launch selection must be a different non-DeEsser project after fresh automation and branch-ownership checks; do not repeat Maw unless a new critical regression appears.
