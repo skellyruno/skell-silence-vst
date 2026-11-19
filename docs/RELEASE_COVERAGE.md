@@ -33,6 +33,14 @@ Selected after the immediately preceding Skell Delay run, continuing the require
 - The first PR #14 workflow #44604331612 was safely cancelled by the workflow's PR-only concurrency group after the branch received additional commits; no main, release, production or manual run was cancelled. Current exact-head Windows workflow #44604903783 (run 36) is IN PROGRESS on `1d5135fb77b2c6b12e93bb7cd23a0bb0e84bd827`. The JUCE-free DSP job has passed configure, compile and CTest; the Windows job has started and was at CMake configure when this checkpoint was refreshed. MSVC build, 21 Python package tests, PowerShell install/rollback plus commercial-candidate compatibility assertions, seven pluginval checks and new artifact upload remain pending. No PR #14 artifact or pass is claimed yet. The workflow actions were upgraded to checkout/setup-python/upload-artifact v6.
 - FL Studio scan/load, project/state/preset/automation recall, real audio A/B, target-hardware CPU/latency, Quick4 screenshots, legal completeness/VST3 SDK terms, signing and public release remain unverified or owner-controlled. No merge or publication occurred.
 
+### Quick4 dependency restore (same execution)
+
+- Retrieved `/skellworld/Quick4/Skell_Quick4_Persistent_DevKit.zip` from the persistent Library.
+- Archive SHA-256: `eb600ba3eeb52eb8fc0b76da199e1bb0561fdb42295a125f41170c9da86f3869`; size 28,186,655 bytes.
+- `scripts/restore.py --verify-only` passed for both bundled archives; restore completed to `/mnt/data/skell-quick4`.
+- Verified JUCE macros 8.0.12, SkellCore source tree and the cached historical Skell Master renderer.
+- No Maw UI renderer exists in this kit's current supported capture path (Master/Preset only); no Maw screenshots or UI acceptance are claimed.
+
 ### Next step
 
 Finish PR #14 exact-head Windows CI, download and independently inspect its preview artifact and all checksums, then hand off to owner-side FL Studio/audio/state/hardware acceptance and legal/contact approval. The next Release & Launch selection must be a different non-DeEsser project; do not repeat Maw unless a critical regression appears.
