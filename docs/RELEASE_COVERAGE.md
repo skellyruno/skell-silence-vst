@@ -1,3 +1,50 @@
+## Release & Launch checkpoint 46 — 2026-11-19 19:51 ET
+
+### Selected project: SkellyTune Mini (skelltune-mini)
+
+Selected after Separator to continue the required different-plugin rotation. Mini is a near-ready Windows x64 VST3 candidate: PR #11 exact-head Windows build, GUI/SkellKey IPC smoke, installer/rollback self-test, flat package staging and pluginval strictness 5 passed on November 18; its portable DSP run also passed. The newly confirmed release blocker is that the repository is public while the product workflow unconditionally uploaded the VST3 package. The latest successful PR #11 artifact is therefore public, not a private preview. This is a direct distribution-control issue and a smaller, safer correction than reopening DSP or UI work.
+
+### Cross-automation and branch-ownership check
+
+- Ecosystem Development's latest completed run worked on Skell Maw. Its PR #15 corrected the malformed escaped-JSON fixture and exact-head Windows run #44627722227 passed the seven-plugin build, package tests, installer/rollback and pluginval checks. No SkellyTune Mini branch was edited.
+- Preset Quality Audit's latest completed run advanced Alchemist reference alignment and Skell Preset/Rack/Master regression fixtures. Its active ownership remains Alchemist, Preset, Rack, EQ and Master; no Mini branch was edited.
+- Websites Development V118 implemented Preset Showcase V36 and regression-tested Artist/Album and Creative. No native Mini branch or deployment was touched.
+- The latest available Nightly Blueprint review still identifies Skell Delay as the first owner-side FL Studio acceptance candidate. Delay, Key, EQ, Flang and Separator have active release PR/CI work; their branches were not modified.
+- DeEsser remains parked. Mini was not being edited by another automation at selection time.
+
+### Source and packaging changes
+
+- Product repository: https://github.com/skellyruno/skelltune-mini
+- Existing PR #11 remains open and draft; exact successful source head 022523ced3a5b1fb0c6575f1bcf9a2c633c3908a and branch release/mini-exact-class-inventory-20261118 were not edited.
+- New draft PR #12: https://github.com/skellyruno/skelltune-mini/pull/12
+- Branch: release/mini-public-artifact-guard-20261119
+- Current head: 5f407fb997512df90841114281435f4c5e1e9de4
+- Base: PR #11 branch, exact base 022523ced3a5b1fb0c6575f1bcf9a2c633c3908a
+- Four files changed: .github/workflows/build.yml, tools/artifact_access_policy.py, tests/test_artifact_access_policy.py and release/README-WINDOWS-PREVIEW.md.
+- Added a fail-closed policy: upload the product ZIP only when both repository visibility is private and the event's private flag is true. Public, internal, missing and unknown visibility are withheld.
+- The package now records repository visibility, repository-private flag, access mode and upload decision in ARTIFACT-ACCESS.json and BUILD-INFO.txt; the access manifest is included in SHA256SUMS.
+- Windows VST3 compilation, editor/SkellKey IPC smoke, package verification, installer tests and pluginval still run even when the product ZIP is withheld.
+- Added seven policy tests covering private/public/internal/unknown/mismatched values, normalization and CLI JSON output.
+- Updated the preview README to describe the access gate and explicitly warn that already-uploaded public artifacts remain public.
+- No DSP, UI, Quick4, presets, parameter IDs, automation IDs, VST3 class IDs, host-state schema, installer behavior or FL Studio projects changed. No repository visibility change, artifact deletion, merge or public release occurred.
+
+### Exact-head CI — current head in progress
+
+- First attempt PR run #44649012932 failed only in the new CLI JSON test: the initial helper emitted a literal escaped newline because of a source-string escaping mistake. The test exposed the defect; the helper was corrected in commit 7d52b482959bf30a1dc5f1a5996bbe31c848e089 to write valid LF-terminated JSON. The README then gained the ARTIFACT-ACCESS.json package-content entry in commit 5f407fb997512df90841114281435f4c5e1e9de4.
+- Current exact-head Windows run #44649117823: strict metadata normalizer tests, all seven artifact-policy tests and the installer self-test have passed. CMake configure is in progress; VST3 compilation, GUI/IPC smoke, package staging, pluginval and the upload/withhold decision remain pending.
+- Current exact-head portable DSP run #44649117808: configure passed; portable target compilation is in progress. DSP regressions, singer render and callback benchmark remain pending.
+- Superseded PR-only runs for the previous head were automatically cancelled after the newer head. No main, manual, release or production run was cancelled.
+- No new Mini artifact is claimed. The repository currently reports public visibility; until the exact-head workflow reaches the final step, the upload-withholding behavior is not yet accepted as tested.
+
+### Protected baseline and remaining gates
+
+- PR #11's previously inspected Windows preview artifact #14414742253 remains the prior package reference: 2,934,159 bytes; archive SHA-256 a0ae57de953c84d0372f40088db74b7bfe0dc9dc39e2ce441bf335efdad79089; one flat SkellyTune Realtime.vst3 bundle; AMD64 PE32+ module SHA-256 91e8dcadec3acc54f5312c93dab94a5298bf2be8d7686fdb8b11e8e0cfde240d; two unique class IDs; 11/11 package checksums matched. It was uploaded from a public repository and remains publicly accessible.
+- PR #10 artifact #14412709628 remains a separate earlier baseline. Neither historical artifact is made private by PR #12.
+- FL Studio scan/load, Skell Key live sync in host, state/preset/automation save-reopen, real-singer musical A/B, target-hardware CPU/latency, current-source local Quick4 screenshots, JUCE commercial entitlement, HelixTune/SkellCore/VST3 notices, vendor/support metadata, signing and owner commercial approval remain separate gates.
+- Next test: finish exact-head Windows build and pluginval; confirm ARTIFACT-ACCESS.json says public/withheld and the product ZIP upload step is skipped; then independently inspect the run logs and run the owner-side FL Studio and real-audio acceptance checklist.
+
+---
+
 ## Release & Launch checkpoint 45 — 2026-11-19 18:48 ET
 
 ### Selected project: Skell Separator (\`skell-separator-vst\`)
@@ -294,7 +341,7 @@ PR #18 exact-head workflow 44588897363 was running on ffdf1f231d4eca4d2d43cee281
 The prior PR #17 artifact remains the protected baseline. No claim of new artifact,
 FL Studio acceptance, audio A/B, UI capture, or public distribution is made here.
 
-### Portfolio coverage snapshot — refreshed 2026-11-19 17:10 ET
+### Portfolio coverage snapshot — refreshed 2026-11-19 19:51 ET
 
 Dates below are Release & Launch selections, not dates when another automation touched
 the project. “Not recorded” means the current ledger has no selection date; it does not
@@ -305,7 +352,7 @@ mean the project is inactive or release-ready.
 | Skell Silence | Not selected in Release & Launch | PR #39 Windows build and real-editor screenshot evidence; PR #44 is the coverage ledger | Current-source UI/installer and owner-host acceptance | Fresh Quick4 capture, Windows VST3/pluginval, FL Studio scan/load |
 | Skell Master | Not selected; Preset Audit owns Master | Preset Audit Run 12 advanced Alchemist/Preset/Rack; the previously reported PR #25 true-peak failure was not refreshed in Run 12 | True-peak/headroom regression and owner sound approval | Let Preset Audit finish its owned branch; rerun same-take A/B and Windows CI |
 | Skell EQ | 2026-11-16 19:55 ET (checkpoint 11) | PR #18 Windows run #44539325351 passed; artifact #14538301883 recorded in checkpoint 38 | FL Studio sound/state acceptance and release licensing | FL Studio save/reopen, bypass, A/B and CPU |
-| SkellyTune Mini | 2026-11-18 (checkpoint 33) | PR #11 Windows VST3/package runs #44275482606 and #44275482816 passed | Key-to-Mini sync and owner-host state recall | FL Studio live sync, save/reopen and preset recall |
+| SkellyTune Mini | 2026-11-19 19:47 ET (checkpoint 46) | PR #11 exact-head Windows run #44275482816 and portable run #44275482606 passed; PR #12 adds fail-closed public-artifact withholding, current head 5f407fb997512df90841114281435f4c5e1e9de4 with Windows run #44649117823 and portable run #44649117808 in progress | Public repository previously uploaded product ZIPs; historical artifacts #14412709628/#14414742253 remain public; owner-host sync/state and JUCE commercial entitlement | Finish exact-head Windows/pluginval, confirm upload is skipped on public visibility, then FL Studio live Key/Scale/A4 sync, save/reopen and real-singer A/B |
 | Skell Key | 2026-11-19 10:47 ET (checkpoint 39) | PR #14 run #44560110890 passed; artifact #14548826890 SHA-256 14e9572951012a677ba75371cf27438fbfd71f2fc9a28db8caae4e7823794e6b; 13 entries, 2 CIDs, AMD64 PE32+, pluginval 5 and 33 installer assertions | Owner contact/licensing and Key-to-Mini host sync | FL Studio key/scale/A4 sync and project reopen |
 | Skell Afar | 2026-11-18 (checkpoint 34) | PR #12 strict metadata and true-peak integration work recorded; not refreshed this checkpoint | Owner-host audio/CPU acceptance | Exact-head pluginval, install/rollback and FL Studio |
 | Skell Delay | 2026-11-19 13:21 ET (checkpoint 41) | PR #19 run #44594311690 passed; artifact #14565656993 SHA-256 90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d; eight package hashes matched | Owner legal approval, publisher contact, FL Studio/A-B/CPU, SkellHub review and signing | Owner FL Studio scan/load, state/preset recall, real A/B and target-hardware CPU/latency |
