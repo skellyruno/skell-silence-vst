@@ -341,7 +341,7 @@ PR #18 exact-head workflow 44588897363 was running on ffdf1f231d4eca4d2d43cee281
 The prior PR #17 artifact remains the protected baseline. No claim of new artifact,
 FL Studio acceptance, audio A/B, UI capture, or public distribution is made here.
 
-### Portfolio coverage snapshot — refreshed 2026-11-19 19:51 ET
+### Portfolio coverage snapshot — refreshed 2026-11-19 22:54 ET
 
 Dates below are Release & Launch selections, not dates when another automation touched
 the project. “Not recorded” means the current ledger has no selection date; it does not
@@ -353,6 +353,7 @@ mean the project is inactive or release-ready.
 | Skell Master | Not selected; Preset Audit owns Master | Preset Audit Run 12 advanced Alchemist/Preset/Rack; the previously reported PR #25 true-peak failure was not refreshed in Run 12 | True-peak/headroom regression and owner sound approval | Let Preset Audit finish its owned branch; rerun same-take A/B and Windows CI |
 | Skell EQ | 2026-11-16 19:55 ET (checkpoint 11) | PR #18 Windows run #44539325351 passed; artifact #14538301883 recorded in checkpoint 38 | FL Studio sound/state acceptance and release licensing | FL Studio save/reopen, bypass, A/B and CPU |
 | SkellyTune Mini | 2026-11-19 19:47 ET (checkpoint 46) | PR #11 exact-head Windows run #44275482816 and portable run #44275482606 passed; PR #12 adds fail-closed public-artifact withholding, current head 5f407fb997512df90841114281435f4c5e1e9de4 with Windows run #44649117823 and portable run #44649117808 in progress | Public repository previously uploaded product ZIPs; historical artifacts #14412709628/#14414742253 remain public; owner-host sync/state and JUCE commercial entitlement | Finish exact-head Windows/pluginval, confirm upload is skipped on public visibility, then FL Studio live Key/Scale/A4 sync, save/reopen and real-singer A/B |
+| SkellyTune / AutoTune (skell-autotune-vst) | 2026-11-19 22:48 ET (checkpoint 49) | PR #6 head d72c2de3d2767ebaa0ab0ab9db0bca33622054cd; run #44671211915 Windows x64 VST3 build, pluginval strictness 5 and package verifier passed; 48/52 offline DSP CTests passed, four failed. Current package ZIP was generated and verified by the runner but withheld from this public repo. Historical artifact #14528960226 was independently inspected: inner ZIP SHA-256 40fd658e25a9fea9596b0b91c08ac286848b59c7903e6e2888531faf55595e7c; module SHA-256 d1177d1125e95f8894bc616f7a1ade8fb65204ef7029de7e77c166872b542e92. | Four DSP failures (vibrato/glide pitch motion, onset latency contract, diagnostic audio identity, scalar/SIMD exact parity); historical preview artifact remains public; vendor/support/legal details incomplete. | Investigate four DSP failures without weakening assertions; correct C4458 shadow warnings; re-run 52/52 and Windows/pluginval; then FL Studio scan/load, preset/state/automation recall, real A/B and CPU/latency |
 | Skell Key | 2026-11-19 10:47 ET (checkpoint 39) | PR #14 run #44560110890 passed; artifact #14548826890 SHA-256 14e9572951012a677ba75371cf27438fbfd71f2fc9a28db8caae4e7823794e6b; 13 entries, 2 CIDs, AMD64 PE32+, pluginval 5 and 33 installer assertions | Owner contact/licensing and Key-to-Mini host sync | FL Studio key/scale/A4 sync and project reopen |
 | Skell Afar | 2026-11-18 (checkpoint 34) | PR #12 strict metadata and true-peak integration work recorded; not refreshed this checkpoint | Owner-host audio/CPU acceptance | Exact-head pluginval, install/rollback and FL Studio |
 | Skell Delay | 2026-11-19 13:21 ET (checkpoint 41) | PR #19 run #44594311690 passed; artifact #14565656993 SHA-256 90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d; eight package hashes matched | Owner legal approval, publisher contact, FL Studio/A-B/CPU, SkellHub review and signing | Owner FL Studio scan/load, state/preset recall, real A/B and target-hardware CPU/latency |
@@ -380,12 +381,14 @@ mean the project is inactive or release-ready.
 
 ### Next selection
 
-The next Release & Launch run must rotate away from StopDial and choose a different
-non-DeEsser project after checking current Actions and branch ownership. Skell Master,
-Preset and Rack remain with the active Preset audit lane; SkellForge/SkellNative is the
-Ecosystem lane's next Foundation workstream, so avoid those branches while active. Continue
-toward at least three distinct non-DeEsser substantive implementations in the six-run
-window. No merge, tag, public release, website deployment, DNS change or payment action.
+The next Release & Launch run must rotate away from SkellyTune / AutoTune and choose a
+different non-DeEsser project after checking fresh automation results, current Actions
+and branch ownership. SkellyTune remains blocked by four offline DSP failures; the
+Windows build and pluginval pass are not release acceptance. Master, EQ, Preset and
+Rack remain with the active Preset Audit lane; SkellForge, SkellNative and SkellCore
+remain with the Ecosystem Foundation lane while active. Continue toward at least three
+distinct non-DeEsser substantive implementations in the six-run window. No merge,
+tag, public release, website deployment, DNS change or payment action.
 
 ## Release & Launch checkpoint 40 — 2026-11-19 11:52 ET
 
