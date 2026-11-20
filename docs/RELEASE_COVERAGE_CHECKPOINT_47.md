@@ -41,13 +41,21 @@ Commits:
 
 No production DSP, UI, VST3 module, presets, parameter IDs, automation IDs, class IDs, host-state schema, installer logic, legal notices or FL Studio projects changed. No artifact or baseline was overwritten.
 
-## Exact-head validation status
+## Exact-head validation status — PASS
 
-- New PR #13 workflow [#44657440273](https://github.com/skellyruno/skell-choir-vst/actions/runs/44657440273) remains in progress.
-- Latest poll: Windows configure, MSVC Release build, exact bundle staging and PE32+ metadata verification passed; pluginval strictness 5 is running; installer/provenance/artifact upload remain pending.
-- Native test suite remains in progress; package-verifier tests are pending.
-- Local checkout was attempted but this execution container could not resolve github.com. No local build or local Quick4 screenshot is claimed.
-- Previous baseline: PR #10 artifact [#14482735854](https://github.com/skellyruno/skell-choir-vst/actions/runs/44420964148/artifacts/14482735854), 5,252,321 bytes; archive SHA-256 `1c35c3bd48009f1b49ee08ae5d704564dadd545bfd6974ce8968a6ee30445ba5`; module SHA-256 `63cd3016c64c6069cbcec452ac066bc8f3a6425baa0ff68a0aa50d08f3044080`. Its prior exact-head Windows/native workflow passed; it is a historical preview baseline, not FL Studio acceptance or a commercial release.
+Exact PR #13 head `bfd0669d443ce899b33edef070f1e818686bebcb`, workflow [#44657440273](https://github.com/skellyruno/skell-choir-vst/actions/runs/44657440273), completed SUCCESS.
+
+- Native DSP/room/state/UI-stub suite: **40 passed, 0 failed**, including `ui_syntax`.
+- Windows MSVC Release VST3 build, exact bundle staging and AMD64 PE32+ metadata verification: passed.
+- pluginval v2.0.0-beta3 strictness 5: **1 passed, 0 failed**.
+- Windows package-verifier regression suite: **28/28 passed**.
+- PowerShell installer/update/rollback self-test: **20 assertions passed**.
+- Provenance, checksums and artifact upload: passed.
+- No local build or local Quick4 screenshot is claimed; the execution container could not resolve github.com for a checkout.
+
+Current artifact [#14593862630](https://github.com/skellyruno/skell-choir-vst/actions/runs/44657440273/artifacts/14593862630): 5,252,338 bytes; archive SHA-256 / GitHub artifact digest `5ecb469b63cf8ae0ad63a51ecd1b96f9ea0c7efe25cb19b32bab67bb462ecc30`. Independently downloaded and inspected: ZIP CRC passed; 7 package entries; one flat VST3 bundle; no nested ZIP or extra VST3; all 6/6 SHA256SUMS entries matched; strict moduleinfo JSON; two preserved unique class IDs; AMD64 PE32+ module (10,593,280 bytes), SHA-256 `09a114142d0d3f80619157991a3aecf41921ffe2d40837857b260d269e8e9a4f`. Build-info remains `preview-only` with legal/contact blockers; repository is public, so the Actions artifact is not a private download channel.
+
+Baseline comparison against PR #10 artifact #14482735854: PE sections `.text`, `.data`, `.pdata`, `.rsrc` and `.reloc` are byte-identical; only `.rdata` differs (51 bytes), consistent with embedded build metadata. No DSP or code section changed. The baseline archive remains preserved: 5,252,321 bytes; SHA-256 `1c35c3bd48009f1b49ee08ae5d704564dadd545bfd6974ce8968a6ee30445ba5`; baseline module SHA-256 `63cd3016c64c6069cbcec452ac066bc8f3a6425baa0ff68a0aa50d08f3044080`.
 
 
 ## Real UI screenshot inspection
@@ -78,10 +86,10 @@ Re-downloaded PR #10 artifact [#14482735854](https://github.com/skellyruno/skell
 | Field | Current record |
 |---|---|
 | Last selected | 2026-11-19 (Checkpoint 47) |
-| Verified output | PR #10 Windows VST3 baseline artifact #14482735854; PR #11 Windows build/package/pluginval/installer job passed, but overall native job failed 39/40 |
+| Verified output | PR #13 exact-head workflow #44657440273: 40/40 native tests, 28/28 package tests, Windows VST3 build, pluginval 1/1, installer 20 assertions; artifact #14593862630 independently inspected. PR #10 baseline retained. |
 | Oldest blocker | Owner-side FL Studio scan/load, state/preset/automation recall, real musical A/B, target-PC CPU/latency, licensing/attribution and vendor/support approval |
-| Immediate CI blocker | Test-only JUCE stub was behind the real JUCE 8 FileOutputStream API; fix submitted in PR #13 |
-| Next test | Exact-head run #44657440273: require native 40/40 including `ui_syntax`, Windows MSVC VST3/package/pluginval/installer all green; then real editor screenshot/Quick4 and owner FL Studio acceptance |
+| Immediate CI blocker | Resolved by PR #13: test-only JUCE stub now matches JUCE 8 FileOutputStream API; exact-head CI passed. |
+| Next test | Owner-side FL Studio scan/load, audio/MIDI routing, state/preset/automation save-reopen, real musical A/B and target-PC CPU/latency; current-source Quick4 capture if local JUCE becomes available. |
 
 ## Rotation decision
 
