@@ -50,9 +50,9 @@ No DSP, UI source, VST3 class IDs, parameter/automation IDs, presets, host-state
 
 ### Exact-head CI status at checkpoint
 
-- Windows/native run #44707207579: in progress at CMake configure and native DSP/state/UI-stub tests. Downstream MSVC build, package verifier, pluginval and installer gates had not completed.
-- Real JUCE/Xvfb UI run #44707207538: dependency install and CMake configure passed; renderer build was in progress. No current-head screenshots were yet available to inspect.
-- No artifact from PR #14 is claimed. The expected public-run result is a skipped product upload, with the separate non-installable UI screenshot artifact allowed.
+- Windows/native run #44707207579: Windows build job PASS — CMake configure, MSVC Release VST3 build, exact bundle staging, AMD64 PE32+ metadata verification, pluginval strictness 5, provenance, installer/update/rollback self-test and public withholding notice all passed. The product upload step was SKIPPED and the build run artifact list is empty. The separate native DSP/state/UI-stub plus Python package-test job remains in progress; overall run not yet green.
+- Real JUCE/Xvfb UI run #44707207538: SUCCESS. The renderer produced all 35 current-head PNGs and the integrity/provenance verifier passed. Artifact #14616066318 is 7,055,108 bytes with archive SHA-256 e5844c878cbec0fe99bbb77dadf698fd7eb2c79d112486c1928b1d234831f8ff. Independent ZIP check passed; all 35 PNGs matched manifest hashes, had unique hashes and dimensions 33×765x534, 1×730x500 and 1×1300x900. A 35-image contact sheet and representative main, smallest, largest, first-run, room, listen, stems, neon-green and key/scale screenshots were visually inspected; no visible clipping or overlap found.
+- No installable artifact from PR #14 was uploaded or is claimed. The separate non-installable UI screenshot artifact is QA evidence only.
 
 ### Remaining release gates
 
