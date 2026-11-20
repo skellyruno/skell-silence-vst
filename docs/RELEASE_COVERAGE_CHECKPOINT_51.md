@@ -52,7 +52,15 @@ Confirmed parent results:
 
 The parent PR #6 source fix normalizes Steinberg trailing commas in the staged `moduleinfo.json` before package checksums are generated and rejects unnormalized JSON5 in an already-built ZIP. PR #6 and its branch remain unchanged.
 
-No new binary hash or independent local backup was created in this run. The parent source commit and existing Actions artifacts remain intact.
+The parent product artifact was downloaded from Actions artifact #14577734466 into a private working copy and independently inspected.
+
+- Archive: 2,926,553 bytes; ZIP CRC passed; SHA-256 `5d5d45eea32c2e4c96c04b274e67de3506997ff94e8a54f3a9141976fdceceef`.
+- Exactly six entries: installer, Windows install guide, release manifest, checksum file, one flat `StopDial.vst3` bundle, and its single `Contents/x86_64-win/StopDial.vst3` module. No nested ZIP and no Standalone EXE.
+- Module: AMD64 PE32+; 6,657,024 bytes; SHA-256 `2b5bd37512a06e87c8be0dc0f31bfc9e049da1a48a0f1f627ba03c3d635526f4`.
+- `moduleinfo.json`: strict RFC 8259 JSON parse passed; StopDial 2.3.1; two class IDs `ABCDEF019182FAEB536B417553643031` and `ABCDEF011234ABCD536B417553643031`.
+- All five `SHA256SUMS.txt` entries matched. The manifest records `pr_head_commit=3d1a5f2253b005cfd5675c7f8d69d03e97dd5b6c` and the workflow's synthetic merge `source_commit=f3d496c8ce77ed8e73e4934712374220d493d84c`.
+
+This is an inspected working copy, not a claim that the historical public artifact became private. The original Actions artifact remains present and public; no repository setting or artifact was changed.
 
 ## 3. New source/workflow implementation — PR #7
 
@@ -83,7 +91,7 @@ No C++/DSP, editor UI, VST3 identity/class IDs, parameter IDs, presets, automati
 [New PR #7 exact-head workflow run #44681318213](https://github.com/skellyruno/skell-stop-vst/actions/runs/44681318213) targets head `65bdd3fe02be0aef35f4128d36f002e3df407ca1`.
 
 - Linux sanitizer DSP job: **SUCCESS**.
-- Windows x64 job: **IN PROGRESS** at CMake configure/build stage when checked.
+- Windows x64 job: **IN PROGRESS**; CMake configure passed, while compile/test/upload steps were still pending when checked.
 - New Python workflow-contract tests: not yet confirmed passed.
 - Artifact list: empty at the time checked; the Windows job had not reached upload steps.
 - The public-repository withholding notice and skipped product upload are therefore **not yet verified**.
@@ -101,7 +109,7 @@ A local `git clone` attempt could not resolve `github.com` in the container. Rem
 | Windows x64 VST3 build | Parent PASS; new PR pending | Parent run #44625564418 passed; wait for PR #7 run #44681318213 |
 | Package metadata / bundle | Parent PASS | PR #6 strict JSON staging and package verifier passed |
 | pluginval | Parent PASS | Strictness 5 passed on parent; rerun on PR #7 exact head |
-| Private preview distribution | BLOCKED / new guard pending | Existing artifact #14577734466 remains public; confirm no new product artifact is uploaded |
+| Private preview distribution | Private chat copy available; GitHub guard pending | Original artifact #14577734466 remains public; confirm no new product artifact is uploaded and establish a private release location |
 | Install/update/rollback | Parent CI PASS; owner machine unverified | Parent PowerShell tests passed; target Windows profile not tested |
 | FL Studio host compatibility | UNVERIFIED | Scan/load, bypass, transport, automation, preset/state recall, save/reopen and old-project compatibility |
 | Sound / DSP A/B | UNVERIFIED | Real musical A/B, clipping/NaN/denormal/glitch review and user listening approval |
