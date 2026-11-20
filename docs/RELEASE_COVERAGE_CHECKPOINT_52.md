@@ -1,10 +1,10 @@
 # Skelly Release Coverage — Checkpoint 52
 
-**Recorded:** 2026-11-20, 01:05 ET  
+**Recorded:** 2026-11-20, 01:18 ET  
 **Selected project:** Skell-Snap — Windows x64 VST3  
 **Repository:** https://github.com/skellyruno/skell-snap  
 **Product PR:** https://github.com/skellyruno/skell-snap/pull/1  
-**Status:** Draft PR created with release-verifier and private-artifact guard. Exact-head Windows workflow has not yet surfaced in the available run lookup; no build pass or artifact is claimed.
+**Status:** First exact-head Windows build and bundle-verifier run passed. Follow-up exact-head run #44686204462 is in progress with VST3-only build targeting and pluginval strictness 5. No installable artifact was uploaded because the repository is public.
 
 This append-only checkpoint follows checkpoint 51. It does not replace the StopDial evidence or alter the protected source archive.
 
@@ -13,7 +13,7 @@ This append-only checkpoint follows checkpoint 51. It does not replace the StopD
 Skell-Snap was selected because it is a newly created, previously unworked plugin repository and the user's latest direct instruction in the recent project context was to use the new `skell-snap` repository and run its Windows VST3 workflow. At selection time:
 
 - Repository main baseline: `edfd390b179b9cdad2668ea7df4f9fcfa86171e7`.
-- Original source archive blob: `8b0bad343fbfdcd004e9685eb18f0d6a5a7cf6eb`.
+- Original source archive Git blob SHA: `8b0bad343fbfdcd004e9685eb18f0d6a5a7cf6eb`.
 - Main had no open issues or pull requests.
 - Only the `main` branch existed before this run.
 - No other automation reported active work on Skell-Snap.
@@ -23,63 +23,90 @@ The source archive, DSP implementation, UI, parameter IDs, state, presets and cl
 
 ## 2. Cross-automation check
 
-- **Preset Quality Audit:** latest completed Run 11 advanced Alchemist reference alignment, audited production/experimental preset banks, corrected a preset-recall fixture, and reviewed Rack/EQ/Master. Windows validation for several changes was still pending. Its current run was recorded in progress. No Skell-Snap branch was reported active.
-- **Ecosystem Development:** latest completed Run 11 advanced SkellWorld PR #19, reviewed SkellForge PR #31, and continued the Skell Master true-peak guard correction in PR #30. The newest Master validation was still pending after a previously measured 48 kHz true-peak failure. Its current run was recorded in progress. No Skell-Snap branch was reported active.
-- **Websites Development:** latest completed V122 reported Artist V107, Creative V105 regression checks, Preset Showcase V37 QA and restored Quick4/JUCE 8.0.12. A newer run was in progress. No website or deployment branch was touched.
+Latest actual results rechecked during this run:
+
+- **Preset Quality Audit:** the newest scheduled attempt at 05:59 UTC failed with only “There was a problem with your scheduled task.” It produced no new engineering result. The latest usable completed report remains Run 11, covering Alchemist alignment, production/experimental preset banks, preset recall, Rack, EQ and Master. No Skell-Snap branch was reported active.
+- **Ecosystem Development:** latest completed result at 06:03 UTC selected PitchNet, PR #1, commit `7472ae802a3a781cd3b5a3f66b12a1a78fd71a7b`, adding ARA processed-audio archive-header validation and 12 regression assertions; CI was awaiting verification. The run did not report Skell-Snap work.
+- **Websites Development:** latest completed V123 at 05:57 UTC implemented Artist V108's post-release countdown accessibility transition; Creative passed 44/44 and Preset Showcase 12/12, with packages verified and Quick4/JUCE 8.0.12 restored. No website deployment or DNS change occurred.
 - **Nightly Blueprint:** latest completed November 19 review still recorded zero verified commercial releases and zero verified revenue. Skell Delay remained the first owner-side FL Studio acceptance candidate. No Nightly project was changed by this run.
 
-Master was not selected because Ecosystem Development and Preset Audit both have current Master work and their exact branch ownership is active. StopDial was not repeated. DeEsser remains parked.
+Master was not selected because the Ecosystem and Preset lanes had current Master work in the previous completed results; this run instead used a newly created repository with no competing PR, issue or active branch. StopDial was not repeated. DeEsser remains parked.
 
 ## 3. Release-engineering changes
 
 Product PR #1: https://github.com/skellyruno/skell-snap/pull/1  
 Branch: `release/verify-windows-vst3-private-preview-20261120`  
 Base: `main` at `edfd390b179b9cdad2668ea7df4f9fcfa86171e7`  
-Latest head: `7f4c9d9a12ed10c73f5c993c8717f8da86379be9`  
-Four commits; four files changed.
+Latest head: `45c901e9957531ab89d2854c8cee81076327d125`  
+Six commits; four files changed.
 
-- `scripts/verify-vst3-bundle.ps1`: requires exactly one `Skell-Snap.vst3` bundle, strict parseable moduleinfo JSON, non-empty name/version, at least one class, unique class IDs, exactly one module under `Contents/x86_64-win`, and a valid AMD64 PE header. Writes `release-manifest.json` and `SHA256SUMS` bound to `GITHUB_SHA`.
-- The verifier self-test covers a valid AMD64 bundle and rejection of duplicate class IDs, duplicate top-level bundles, and wrong PE architecture.
-- `.github/workflows/windows-vst3.yml`: runs the verifier before packaging; PR-only concurrency cancellation is enabled, while main and manual builds are protected.
-- Installable VST3 artifact upload now runs only for private repositories. Since Skell-Snap is public, the build can run but the installable product artifact is withheld.
-- README and BUILDING.md now describe the exact release gates, public-artifact restriction, and owner-side acceptance boundary.
+- `scripts/verify-vst3-bundle.ps1`: requires exactly one `Skell-Snap.vst3` bundle, strict parseable moduleinfo JSON, non-empty name/version, at least one class, unique class IDs, exactly one module under `Contents/x86_64-win`, and a valid AMD64 PE header. Writes `release-manifest.json` and `SHA256SUMS` bound to the workflow build commit.
+- The verifier self-test accepts a valid AMD64 fixture and rejects duplicate class IDs, duplicate top-level bundles, and wrong PE architecture.
+- `.github/workflows/windows-vst3.yml`: runs the verifier, uses PR-only concurrency cancellation, protects main/manual builds, builds the `SkellSnap_VST3` target only (not JUCE Standalone), and adds pluginval v2.0.0-beta3 strictness 5.
+- Checkout/upload actions were upgraded to Node 24-compatible v6 versions.
+- Installable VST3 artifact upload runs only for private repositories. Since Skell-Snap is public, the installable product artifact is withheld.
+- README and BUILDING.md describe the release gates, public-artifact restriction and owner-side acceptance boundary.
 
-No production DSP/UI source, VST3 class IDs, parameter IDs, presets, host state, or automation IDs were modified.
+No production DSP/UI source, VST3 class IDs, parameter IDs, presets, host state or automation IDs were modified.
 
-## 4. Build and artifact status
+## 4. Exact-head Windows CI
 
-- The branch and PR were created successfully.
-- PR #1 is open and draft; it is not merged.
-- The exact-head workflow lookup returned no run record at checkpoint time. The PR event is intended to trigger the Windows VST3 workflow, but the Windows job has not been confirmed started or completed.
-- No Windows compile, portable DSP result, pluginval result, VST3 bundle, screenshot, or installable artifact is claimed.
-- The repository is public. The workflow is intentionally configured to withhold the installable artifact, so no public product download should be created by this PR.
-- The available local container has CMake and Git but no PowerShell executable, Windows host, FL Studio, or Quick4 runtime. The PowerShell self-test and JUCE build require the Windows Actions runner.
+### First exact-head run — PASS
 
-## 5. Release-readiness matrix
+[Windows VST3 run #44685396412](https://github.com/skellyruno/skell-snap/actions/runs/44685396412) completed SUCCESS on prior draft head `7f4c9d9a12ed10c73f5c993c8717f8da86379be9`.
 
-| Gate | Status | Next evidence |
+- PowerShell verifier self-test: PASS, including the positive fixture and rejection of duplicate CIDs, wrong PE architecture and duplicate bundles.
+- Portable DSP executable: `ALL PASSED`; worst absolute pitch error was 0.35 cents over 84 cases.
+- Windows compiler: Visual Studio 18 2026 / MSVC 19.51.36260.0.
+- JUCE 8.0.12 configure and Windows x64 Release VST3 build: PASS.
+- Actual bundle verifier: PASS; module name/version `Skell-Snap 0.1.0`, two classes, AMD64 PE.
+- Module SHA-256: `51dac26725acd9008a8d74a65f4bb676bde1417fdfc24108a08c4bdf33eaebbd`.
+- Public-repository withholding notice: emitted; product upload: SKIPPED; run artifacts: none.
+
+The first run exposed two cleanup items: the default CMake build also compiled the Standalone target, and Visual Studio reported unused `CMAKE_BUILD_TYPE`. It also emitted a JUCE splash-screen-flag warning and a Node 20 deprecation warning from checkout@v4. The follow-up removes the unused CMake variable, builds only `SkellSnap_VST3`, and upgrades checkout/upload to v6.
+
+### Follow-up exact-head run — IN PROGRESS
+
+[Windows VST3 run #44686204462](https://github.com/skellyruno/skell-snap/actions/runs/44686204462) targets latest head `45c901e9957531ab89d2854c8cee81076327d125`.
+
+At the latest job-step check:
+- Source archive extraction: PASS.
+- PowerShell release-verifier self-test: PASS.
+- Portable DSP CMake configure: PASS.
+- Portable DSP executable: PASS (step completed; full log not yet retrieved).
+- JUCE VST3 configure: IN PROGRESS.
+- VST3-only compile, bundle verification, pluginval strictness 5 and public-artifact withholding: PENDING.
+
+No pass is inferred for steps that have not completed. The first run is a valid prior-head build result; it does not substitute for latest-head pluginval.
+
+## 5. Artifact and release-readiness matrix
+
+| Gate | Status | Evidence / next action |
 |---|---|---|
-| Source baseline | Protected | Main commit and source-archive blob recorded above |
-| Windows VST3 compile | UNVERIFIED | Exact-head Windows Actions run |
-| Portable DSP tests | UNVERIFIED | Windows CI test executable output |
-| Bundle structure / metadata / AMD64 PE | Implemented, test pending | Verifier self-test and actual bundle pass |
-| VST3 class inventory / duplicate prevention | Implemented, test pending | moduleinfo class-ID report |
-| Artifact provenance / checksum | Implemented, test pending | release-manifest.json and SHA256SUMS |
+| Source baseline | Protected | Main commit and source-archive Git blob SHA recorded above |
+| Windows x64 VST3 compile | Prior head PASS; latest head pending | Finish run #44686204462 |
+| Portable DSP tests | Prior head PASS; latest step PASS | Prior run worst error 0.35 cents / 84 cases; retrieve latest log |
+| Verifier self-test | Prior and latest head PASS | Valid AMD64 fixture; duplicate CIDs/bundles and wrong PE rejected |
+| Bundle structure / metadata / AMD64 PE | Prior head PASS; latest pending | Prior module name/version, 2 classes, AMD64 PE and module hash recorded above |
+| VST3-only target | Implemented; latest build pending | Confirm log shows only `SkellSnap_VST3`, no Standalone target |
+| pluginval strictness 5 | Added; pending | Run #44686204462 |
+| Manifest / checksums | Prior head generated; not persisted | Public artifact withheld, so inspect exact-head logs after verifier |
 | Private preview distribution | BLOCKED | Repository is public; no private delivery location configured |
 | FL Studio scan/load and state recall | UNVERIFIED | Owner Windows/FL Studio session |
 | Real vocal A/B, CPU, glitches and latency | UNVERIFIED | Same-source level-matched A/B and target-hardware measurements |
-| Licensing / attribution / EULA | BLOCKED | Confirm rights and notices; do not invent license terms |
+| Licensing / attribution / EULA | BLOCKED | No root LICENSE, LICENSE.txt, NOTICE or THIRD_PARTY_NOTICES.md found; confirm source/asset rights and notices |
 | Vendor/support/signing | BLOCKED | Owner-approved identity, support contact and signing |
 | Storefront / pricing / trial | Awaiting owner approval | Website lane and owner decision |
 
-The repository and source archive did not expose a separate root LICENSE or third-party-notice file during this inspection; rights and attribution therefore remain unverified.
+No UI source changed and no UI screenshot was generated. The available local container has CMake and Git but no PowerShell executable, Windows host, FL Studio or Quick4 runtime. Owner-side host and visual acceptance remain unverified.
 
 ## 6. Next step
 
-1. Confirm the PR #1 Windows workflow actually starts and retrieve its exact-head run.
-2. Fix any PowerShell, CMake, JUCE, DSP-test, or bundle-verifier failure at its root cause; keep the PR draft.
-3. If CI passes, verify the manifest/checksum output and confirm the public artifact upload is skipped.
-4. Obtain owner-side Windows/FL Studio and real-audio acceptance only after a private preview location is available.
-5. The next release-engineering selection must rotate to a different non-DeEsser plugin after fresh ownership checks; do not repeat Skell-Snap absent a critical regression.
+1. Finish exact-head run #44686204462 and retrieve its job logs.
+2. Fix any PowerShell, CMake, JUCE, DSP, bundle-verifier or pluginval failure at its root cause; keep PR #1 draft.
+3. Confirm the VST3-only target did not build Standalone, the bundle manifest/checksum step passed, pluginval strictness 5 passed, and the public product artifact upload was skipped.
+4. Establish an owner-controlled private distribution location before producing an installable preview.
+5. Obtain owner-side Windows/FL Studio, state/automation and real-audio acceptance; resolve licensing/attribution, vendor/support and signing.
+6. The next release-engineering selection must rotate to a different non-DeEsser plugin after fresh ownership checks; do not repeat Skell-Snap absent a critical regression.
 
-No merge, tag, public release, repository-visibility change, website deployment, DNS change, payment action, or irreversible setting change occurred.
+No merge, tag, public release, repository-visibility change, website deployment, DNS change, payment action or irreversible setting change occurred.
