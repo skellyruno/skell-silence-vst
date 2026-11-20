@@ -48,7 +48,7 @@ Confirmed parent results:
 - pluginval strictness 5 passed.
 - Offscreen JUCE UI renders were uploaded.
 - Product artifact #14577734466 was uploaded unconditionally from the public repository.
-- Separate UI artifact #14580260198 was uploaded. It was not re-downloaded or re-inspected in this checkpoint.
+- Parent-run UI artifact #14580260198 was uploaded but not re-downloaded. The new PR #7 run's separate UI artifact #14605035916 was downloaded and inspected below.
 
 The parent PR #6 source fix normalizes Steinberg trailing commas in the staged `moduleinfo.json` before package checksums are generated and rejects unnormalized JSON5 in an already-built ZIP. PR #6 and its branch remain unchanged.
 
@@ -98,7 +98,11 @@ No C++/DSP, editor UI, VST3 identity/class IDs, parameter IDs, presets, automati
 - pluginval strictness 5: **PASS**.
 - Public-repository notice: emitted as intended.
 - Installable product artifact upload: **SKIPPED** because the repository is public.
-- The only new artifact is UI diagnostic artifact #14605035916 (663,345 bytes); no installable product artifact was uploaded.
+- The only new artifact is UI diagnostic artifact #14605035916 (663,345 bytes; SHA-256 `6b09715ee2c7ec25f300e80c4f09703c2a49ef79efe5d3eab97ed67799339a6b`); no installable product artifact was uploaded.
+
+### UI screenshot review
+
+The six-PNG artifact contains real JUCE-rendered editor captures. I inspected the main editor at 435×535, 725×892 and 1087×1338. No visible clipping or control overlap was found. The compact view is dense and its text is smaller, but controls and labels remain separated. UI source was not changed; menu interactions and local Quick4 capture remain unverified.
 
 The prior parent run is green, but that does not validate this new branch. Keep PR #7 draft.
 
@@ -118,7 +122,7 @@ A local `git clone` attempt could not resolve `github.com` in the container. Rem
 | FL Studio host compatibility | UNVERIFIED | Scan/load, bypass, transport, automation, preset/state recall, save/reopen and old-project compatibility |
 | Sound / DSP A/B | UNVERIFIED | Real musical A/B, clipping/NaN/denormal/glitch review and user listening approval |
 | CPU / latency | UNVERIFIED | Measure on the target Ryzen/Vega machine and actual FL Studio audio device |
-| UI / Quick4 | UNVERIFIED for current head | UI source unchanged; parent UI artifact exists but was not re-inspected here |
+| UI / Quick4 | Windows JUCE captures inspected; Quick4 partial | Current run UI artifact #14605035916 inspected at 435×535, 725×892 and 1087×1338; no visible clipping/overlap, compact text small. UI source unchanged; menus and local Quick4 remain unverified |
 | Licensing / attribution / EULA | BLOCKED | Confirm JUCE/VST3 SDK and asset rights, notices and customer terms |
 | Vendor / support / signing | BLOCKED | Factory Info URL confirmation, support email, signing identity and certificate remain owner-controlled |
 | SkellyHub updater / rollback | NOT VERIFIED | Integrate only after private artifact location and manifest contract are approved |
