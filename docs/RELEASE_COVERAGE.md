@@ -105,9 +105,12 @@ FL Studio scan/load, bypass, automation, presets/state recall, save/reopen and o
 The next Release & Launch run must rotate away from StopDial and choose a different
 non-DeEsser product after fresh automation-result, exact-head Actions and branch-ownership
 checks. StopDial PR #7 is a focused public-artifact guard stacked on PR #6; exact-head
-run #44681318213 has Linux sanitizer DSP SUCCESS while its Windows job remains IN
-PROGRESS. Do not count the guard as verified until the Windows job completes and the
-run's artifact list confirms that no installable product artifact was uploaded.
+run #44681318213 completed SUCCESS. Linux sanitizer DSP CTest passed 1/1; Windows
+x64 VST3 build, JUCE CTest 2/2, Python release/package tests 21/21, installer/update/
+rollback integration and pluginval strictness 5 passed. The public-repository notice
+was emitted, the product upload step was skipped, and only UI diagnostic artifact
+#14605035916 (663,345 bytes) was produced. The guard is verified for this public PR
+event; a private distribution location is still absent.
 
 SkellGlitch was the prior checkpoint-50 selection. Its PR #10 exact-head run
 #44678649998 completed SUCCESS with Linux 30/30 release/archive tests, DSP CTest 1/1,
@@ -359,7 +362,7 @@ PR #18 exact-head workflow 44588897363 was running on ffdf1f231d4eca4d2d43cee281
 The prior PR #17 artifact remains the protected baseline. No claim of new artifact,
 FL Studio acceptance, audio A/B, UI capture, or public distribution is made here.
 
-### Portfolio coverage snapshot — refreshed 2026-11-20 00:34 ET
+### Portfolio coverage snapshot — refreshed 2026-11-20 00:36 ET
 
 Dates below are Release & Launch selections, not dates when another automation touched
 the project. “Not recorded” means the current ledger has no selection date; it does not
@@ -385,7 +388,7 @@ mean the project is inactive or release-ready.
 | Skell Separator | 2026-11-19 18:48 ET (checkpoint 45) | PR #6 Windows run #44641061421 SUCCESS: 50 installer assertions, pluginval strictness 5, 17/17 portable suite; artifact #14586831653 SHA-256 8cc00b14b28ad61e851f140ffb5471cd2fad4c30d8fef57dc301efd65d80f152, module SHA 1afdf93b61f09c7298d1aed7b31422cab04cea918db370e1f7200944ac329da6; PR #7 visibility guard pending | Owner FL Studio/audio/state/CPU acceptance, GuidedTour scale, legal/contact/signing and private delivery | Finish PR #7 exact-head build and verify product upload is skipped on public repo; then owner FL Studio scan/load, state recall and A/B |
 | Skell AdlibLab | Not selected | PR #11 private-preview installer/rollback work recorded | Owner-host audio and package acceptance | Exact-head Windows build, pluginval and install rollback |
 | SkellCast | 2026-11-19 11:52 ET (checkpoint 40) | PR #8 run #44572720407 passed; 43 installer assertions; artifact #14553494611 SHA-256 b7234aafd17949d2034150447302971bc3c8432aea6f126efe43df52c15e7015; AMD64 PE32+ module | Licensing/attribution and FL Studio/OBS/WASAPI A/B | Owner legal review and real host/routing test |
-| Skell Stop / StopDial | 2026-11-20 00:28 ET (checkpoint 51) | PR #6 head `3d1a5f2253b005cfd5675c7f8d69d03e97dd5b6c`; exact-head run [#44625564418](https://github.com/skellyruno/skell-stop-vst/actions/runs/44625564418) completed SUCCESS: Linux sanitizer DSP; Windows x64 MSVC VST3 build, JUCE CTest 2/2, package verifier 17/17, installer/update/rollback, pluginval strictness 5 and UI capture. Artifact #14577734466 independently inspected: ZIP SHA-256 `5d5d45eea32c2e4c96c04b274e67de3506997ff94e8a54f3a9141976fdceceef`; module SHA-256 `2b5bd37512a06e87c8be0dc0f31bfc9e049da1a48a0f1f627ba03c3d635526f4`; strict moduleinfo, one flat VST3, two CIDs, five checksums, no Standalone/nested ZIP. Draft PR #7 head `65bdd3fe02be0aef35f4128d36f002e3df407ca1` adds private-only product upload; run #44681318213 Linux DSP SUCCESS, Windows configure passed and Windows job still IN PROGRESS; no new artifacts yet. | Historical product artifact #14577734466 remains public; FL Studio/audio/state, legal/attribution, EULA, vendor/support/signing and private distribution remain unverified | Finish PR #7 exact-head Windows CI; confirm product artifact is withheld on public repo while UI diagnostics remain; then owner Windows/FL Studio scan/load, save/reopen, preset/automation recall, musical A/B and CPU/latency |
+| Skell Stop / StopDial | 2026-11-20 00:28 ET (checkpoint 51) | PR #6 exact-head run #44625564418 passed Linux sanitizer DSP and Windows x64 MSVC VST3, JUCE CTest 2/2, verifier 17/17, installer/update/rollback and pluginval 5. Artifact #14577734466 independently inspected: ZIP SHA-256 `5d5d45eea32c2e4c96c04b274e67de3506997ff94e8a54f3a9141976fdceceef`; module SHA-256 `2b5bd37512a06e87c8be0dc0f31bfc9e049da1a48a0f1f627ba03c3d635526f4`; strict JSON, one flat VST3, two CIDs, five checksums, no Standalone/nested ZIP. Draft PR #7 head `65bdd3fe02be0aef35f4128d36f002e3df407ca1`; exact-head run #44681318213 SUCCESS: Windows VST3 build, CTest 2/2, Python 21/21, installer integration, pluginval 5, Linux DSP CTest 1/1. Public notice emitted; product upload skipped; only UI artifact #14605035916 (663,345 bytes) produced. | Historical artifact #14577734466 remains public; owner FL Studio/audio/state, legal/attribution, EULA, vendor/support/signing and private distribution location remain unverified | Owner Windows/FL Studio scan/load, save/reopen, preset/automation recall, musical A/B and CPU/latency; establish private release storage before future product upload |
 | Skel Pad / ScratchPad | 2026-11-17 (checkpoint 30) | PR #3 strict VST3 package gate recorded | Host and installer acceptance | Exact-head artifact, class inventory and FL Studio |
 | OmniChoir / SkellyChoir | 2026-11-18 18:30 ET (checkpoint 36) | PR #10 Windows install/update/rollback work recorded | UI screenshot completeness and owner-host acceptance | Fresh Quick4 screenshots and FL Studio scan/load |
 | Skell Studio / DAW | Not selected in this release ledger | Ecosystem PR #11 Windows compilation/core tests reported passed | Actual DAW runtime and plugin-host acceptance | Windows runtime, FL Studio interoperability and project reopen |

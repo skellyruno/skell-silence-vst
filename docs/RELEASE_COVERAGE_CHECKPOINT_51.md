@@ -5,7 +5,7 @@
 **Repository:** https://github.com/skellyruno/skell-stop-vst  
 **Product follow-up:** https://github.com/skellyruno/skell-stop-vst/pull/7  
 **Parent product PR:** https://github.com/skellyruno/skell-stop-vst/pull/6  
-**Status:** Parent PR #6 exact-head Windows/Linux CI passed. New PR #7 is draft; its Linux sanitizer DSP job passed and its Windows job is still running. The new private-only upload guard is not yet verified. No merge or release.
+**Status:** Parent PR #6 exact-head Windows/Linux CI passed. Draft PR #7 exact-head run #44681318213 also completed SUCCESS; the private-only upload guard is verified for the public PR event. The product upload was skipped and only the separate UI diagnostic artifact was produced. No merge or release.
 
 This append-only checkpoint supplements checkpoint 50. It does not replace prior evidence or change the parent PR #6 branch, existing binaries, DSP, UI, presets, parameter IDs, automation IDs, saved state or FL Studio projects.
 
@@ -90,11 +90,15 @@ No C++/DSP, editor UI, VST3 identity/class IDs, parameter IDs, presets, automati
 
 [New PR #7 exact-head workflow run #44681318213](https://github.com/skellyruno/skell-stop-vst/actions/runs/44681318213) targets head `65bdd3fe02be0aef35f4128d36f002e3df407ca1`.
 
-- Linux sanitizer DSP job: **SUCCESS**.
-- Windows x64 job: **IN PROGRESS**; CMake configure passed, while compile/test/upload steps were still pending when checked.
-- New Python workflow-contract tests: not yet confirmed passed.
-- Artifact list: empty at the time checked; the Windows job had not reached upload steps.
-- The public-repository withholding notice and skipped product upload are therefore **not yet verified**.
+- Linux sanitizer DSP CTest: **1/1 PASS**.
+- Windows x64 MSVC VST3 build: **PASS**.
+- JUCE CTest: **2/2 PASS**.
+- Python release/package tests: **21/21 PASS**, including all three new workflow-contract tests.
+- PowerShell installer/update/rollback integration: **PASS**.
+- pluginval strictness 5: **PASS**.
+- Public-repository notice: emitted as intended.
+- Installable product artifact upload: **SKIPPED** because the repository is public.
+- The only new artifact is UI diagnostic artifact #14605035916 (663,345 bytes); no installable product artifact was uploaded.
 
 The prior parent run is green, but that does not validate this new branch. Keep PR #7 draft.
 
@@ -109,7 +113,7 @@ A local `git clone` attempt could not resolve `github.com` in the container. Rem
 | Windows x64 VST3 build | Parent PASS; new PR pending | Parent run #44625564418 passed; wait for PR #7 run #44681318213 |
 | Package metadata / bundle | Parent PASS | PR #6 strict JSON staging and package verifier passed |
 | pluginval | Parent PASS | Strictness 5 passed on parent; rerun on PR #7 exact head |
-| Private preview distribution | Private chat copy available; GitHub guard pending | Original artifact #14577734466 remains public; confirm no new product artifact is uploaded and establish a private release location |
+| Private preview distribution | Private chat copy available; public upload guard verified | Original artifact #14577734466 remains public; new run #44681318213 uploaded no product artifact; establish a private release location for future preview builds |
 | Install/update/rollback | Parent CI PASS; owner machine unverified | Parent PowerShell tests passed; target Windows profile not tested |
 | FL Studio host compatibility | UNVERIFIED | Scan/load, bypass, transport, automation, preset/state recall, save/reopen and old-project compatibility |
 | Sound / DSP A/B | UNVERIFIED | Real musical A/B, clipping/NaN/denormal/glitch review and user listening approval |
@@ -123,11 +127,10 @@ A local `git clone` attempt could not resolve `github.com` in the container. Rem
 
 ## 6. Next step
 
-1. Finish PR #7 exact-head Windows CI and inspect the test output.
-2. Confirm the public-repository notice appears and that no `StopDial-Windows-x64-VST3` product artifact is uploaded, while the UI diagnostic artifact remains available.
-3. Keep the existing public artifact #14577734466 intact; decide separately whether the repository should remain public. No visibility change is made here.
-4. Establish an owner-controlled private distribution location before generating another installable preview artifact.
-5. Run target Windows/FL Studio acceptance: scan/load, transport/bypass, automation, presets/state, save/reopen and old-project compatibility; then perform real audio A/B and target-hardware CPU/latency tests.
-6. Resolve licensing/attribution, EULA, vendor/support contact and signing before any commercial release.
+1. PR #7 exact-head Windows/Linux CI and the public-repository upload guard are verified; keep the PR draft until owner-side gates are complete.
+2. Keep the existing public artifact #14577734466 intact; decide separately whether the repository should remain public. No visibility change is made here.
+3. Establish an owner-controlled private distribution location before generating another installable preview artifact.
+4. Run target Windows/FL Studio acceptance: scan/load, transport/bypass, automation, presets/state, save/reopen and old-project compatibility; then perform real audio A/B and target-hardware CPU/latency tests.
+5. Resolve licensing/attribution, EULA, vendor/support contact and signing before any commercial release.
 
 The next Release & Launch selection must be a different non-DeEsser plugin/project. Continue the six-run portfolio balance; do not return to StopDial unless a new critical regression appears. No merge, tag, public release, website deployment, DNS change, payment or irreversible repository setting change occurred.
