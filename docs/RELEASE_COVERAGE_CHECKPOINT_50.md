@@ -5,7 +5,7 @@
 **Repository:** https://github.com/skellyruno/skell-gate-vst  \
 **Product PR:** https://github.com/skellyruno/skell-gate-vst/pull/10  \
 **Parent release PR:** https://github.com/skellyruno/skell-gate-vst/pull/9  \
-**Status:** Exact-head Linux and Windows CI completed SUCCESS. The installer-inclusive ZIP was generated and checksum-verified in CI but deliberately withheld because the repository is public. FL Studio and owner-machine acceptance remain UNVERIFIED.
+**Status:** Exact-head Linux and Windows CI completed SUCCESS at 00:12 ET. The installer-inclusive ZIP was generated and checksum-verified in CI but deliberately withheld because the repository is public. FL Studio and owner-machine acceptance remain UNVERIFIED.
 
 This checkpoint is append-only and supplements checkpoint 49. It does not change or replace the prior SkellyTune report, PR #9, the original source branch, VST3 identity, presets, UI, host state, automation IDs, or FL Studio projects.
 
