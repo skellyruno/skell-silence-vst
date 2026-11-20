@@ -62,6 +62,17 @@ Downloaded the JUCE screenshot artifact [#14526230838](https://github.com/skelly
 - No visible clipping, overlap, off-canvas controls or unreadable tour-card text was found in these captures.
 - The current PR #13 changes only the syntax-test stand-in and its README, not the UI. Therefore no new UI screenshot was required for this change. Local Quick4/current-source capture remains UNVERIFIED because this execution container could not resolve github.com for a local checkout.
 
+## Fresh protected-baseline verification
+
+Re-downloaded PR #10 artifact [#14482735854](https://github.com/skellyruno/skell-choir-vst/actions/runs/44420964148/artifacts/14482735854) to `/mnt/data/SkellyChoir-PR10-Baseline-Windows-VST3.zip` and independently checked it during this checkpoint.
+
+- Archive size: 5,252,321 bytes.
+- Archive SHA-256: `1c35c3bd48009f1b49ee08ae5d704564dadd545bfd6974ce8968a6ee30445ba5`.
+- ZIP CRC: passed.
+- Exact flat package entries: installer, checksum manifest, build-info, one VST3 bundle (moduleinfo + x64 module), third-party notices and Windows install guide; no nested product ZIP or extra VST3.
+- SHA256SUMS: 6/6 entries matched.
+- Module: 10,593,280 bytes, AMD64 PE32+ (machine 0x8664, optional magic 0x20b), SHA-256 `63cd3016c64c6069cbcec452ac066bc8f3a6425baa0ff68a0aa50d08f3044080`.
+
 ## Coverage row — SkellyChoir
 
 | Field | Current record |
