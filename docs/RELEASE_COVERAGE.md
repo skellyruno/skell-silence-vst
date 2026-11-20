@@ -46,7 +46,7 @@ Selected after Necromancer to keep the primary project rotating. Separator beat 
 - Branch `release/separator-artifact-visibility-guard-20261119`, head `cba692f0407d1c1c2592468a232ae9359d6fa608`; five files updated (verifier, unit tests, Windows workflow, README, changelog).
 - The verifier now records repository visibility, artifact access and upload permission. The product ZIP upload step is conditioned on `github.event.repository.visibility == 'private'`; public/internal/unknown visibility still runs validation and uploads only non-product diagnostics. README now states Windows VST3-only and uses the actual artifact name.
 - Exact-head portable neural workflow [#44642130573](https://github.com/skellyruno/skell-separator-vst/actions/runs/44642130573) completed SUCCESS (17/17 steps); package-verifier unit tests passed in Windows run #44642130730.
-- Windows VST3 workflow [#44642130730](https://github.com/skellyruno/skell-separator-vst/actions/runs/44642130730) remains IN PROGRESS at CMake configure; the visibility report/upload-skip step has not run, so the guard is not yet validated. No PR #7 product artifact is claimed.
+- Windows VST3 workflow [#44642130730](https://github.com/skellyruno/skell-separator-vst/actions/runs/44642130730): CMake configure passed; Release VST3 compilation is IN PROGRESS. The visibility report/upload-skip step has not run, so the guard is not yet validated. No PR #7 product artifact is claimed.
 - No repository visibility change was made. Existing public artifacts cannot be made private by this guard.
 
 ### Remaining release gates
