@@ -43,9 +43,9 @@ No production DSP, UI, VST3 module, presets, parameter IDs, automation IDs, clas
 
 ## Exact-head validation status
 
-- New PR #13 workflow [#44657440273](https://github.com/skellyruno/skell-choir-vst/actions/runs/44657440273) was observed in progress.
-- Native test job was compiling/running the test suite; package-verifier tests were pending.
-- Windows job was in CMake configure; build, package staging, pluginval and installer checks were pending.
+- New PR #13 workflow [#44657440273](https://github.com/skellyruno/skell-choir-vst/actions/runs/44657440273) remains in progress.
+- Latest poll: Windows configure, MSVC Release build, exact bundle staging and PE32+ metadata verification passed; pluginval strictness 5 is running; installer/provenance/artifact upload remain pending.
+- Native test suite remains in progress; package-verifier tests are pending.
 - Local checkout was attempted but this execution container could not resolve github.com. No local build or local Quick4 screenshot is claimed.
 - Previous baseline: PR #10 artifact [#14482735854](https://github.com/skellyruno/skell-choir-vst/actions/runs/44420964148/artifacts/14482735854), 5,252,321 bytes; archive SHA-256 `1c35c3bd48009f1b49ee08ae5d704564dadd545bfd6974ce8968a6ee30445ba5`; module SHA-256 `63cd3016c64c6069cbcec452ac066bc8f3a6425baa0ff68a0aa50d08f3044080`. Its prior exact-head Windows/native workflow passed; it is a historical preview baseline, not FL Studio acceptance or a commercial release.
 
