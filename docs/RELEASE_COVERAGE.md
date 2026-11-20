@@ -102,21 +102,25 @@ FL Studio scan/load, bypass, automation, presets/state recall, save/reopen and o
 
 ### Next selection
 
-The next Release & Launch run must rotate away from SkellGlitch and choose a different
-non-DeEsser project after checking fresh automation results, exact-head Actions and
-branch ownership. SkellGlitch PR #10 exact-head run #44678649998 completed SUCCESS:
-Linux release/archive tests 30/30 and DSP CTest 1/1; Windows x64 VST3 build, Windows
-CTest 1/1, real JUCE UI smoke at four sizes, package verification, pluginval strictness
-5, Steinberg validator, PowerShell installer/update/rollback integration and deterministic
-ZIP creation all passed. The product ZIP was correctly withheld because the repository
-is public. This is CI/package readiness, not FL Studio or owner-machine acceptance; the
-PowerShell integration suite uses a synthetic package fixture. SkellyTune remains blocked
-by four offline DSP failures. Master, EQ, Preset and Rack remain with the active Preset
-Audit lane; SkellForge, SkellNative and SkellCore remain with the Ecosystem Foundation
-lane while active. Nightly continues to identify Skell Delay as the first owner-side
-FL Studio acceptance candidate. Continue toward at least three distinct non-DeEsser
-substantive implementations in the six-run window. No merge, tag, public release,
-website deployment, DNS change or payment action.
+The next Release & Launch run must rotate away from StopDial and choose a different
+non-DeEsser product after fresh automation-result, exact-head Actions and branch-ownership
+checks. StopDial PR #7 is a focused public-artifact guard stacked on PR #6; exact-head
+run #44681318213 has Linux sanitizer DSP SUCCESS while its Windows job remains IN
+PROGRESS. Do not count the guard as verified until the Windows job completes and the
+run's artifact list confirms that no installable product artifact was uploaded.
+
+SkellGlitch was the prior checkpoint-50 selection. Its PR #10 exact-head run
+#44678649998 completed SUCCESS with Linux 30/30 release/archive tests, DSP CTest 1/1,
+Windows x64 VST3 build, CTest 1/1, JUCE UI smoke at four sizes, package verification,
+pluginval strictness 5, Steinberg validation, installer/update/rollback integration and
+deterministic ZIP generation. The product ZIP was withheld because that repository is
+public. SkellyTune remains blocked by four offline DSP failures. Master, EQ, Preset and
+Rack remain with Preset Audit; SkellForge, SkellNative, SkellCore and SkellWorld remain
+with Ecosystem Development. Nightly still identifies Skell Delay as the first owner-side
+FL Studio acceptance candidate, but its release/legal branch chain is active. Continue
+toward at least three distinct non-DeEsser substantive implementations in the six-run
+window. DeEsser remains parked. No merge, tag, public release, website deployment, DNS
+change or payment action.
 
 ---
 
@@ -355,7 +359,7 @@ PR #18 exact-head workflow 44588897363 was running on ffdf1f231d4eca4d2d43cee281
 The prior PR #17 artifact remains the protected baseline. No claim of new artifact,
 FL Studio acceptance, audio A/B, UI capture, or public distribution is made here.
 
-### Portfolio coverage snapshot — refreshed 2026-11-20 00:12 ET
+### Portfolio coverage snapshot — refreshed 2026-11-20 00:28 ET
 
 Dates below are Release & Launch selections, not dates when another automation touched
 the project. “Not recorded” means the current ledger has no selection date; it does not
@@ -381,7 +385,7 @@ mean the project is inactive or release-ready.
 | Skell Separator | 2026-11-19 18:48 ET (checkpoint 45) | PR #6 Windows run #44641061421 SUCCESS: 50 installer assertions, pluginval strictness 5, 17/17 portable suite; artifact #14586831653 SHA-256 8cc00b14b28ad61e851f140ffb5471cd2fad4c30d8fef57dc301efd65d80f152, module SHA 1afdf93b61f09c7298d1aed7b31422cab04cea918db370e1f7200944ac329da6; PR #7 visibility guard pending | Owner FL Studio/audio/state/CPU acceptance, GuidedTour scale, legal/contact/signing and private delivery | Finish PR #7 exact-head build and verify product upload is skipped on public repo; then owner FL Studio scan/load, state recall and A/B |
 | Skell AdlibLab | Not selected | PR #11 private-preview installer/rollback work recorded | Owner-host audio and package acceptance | Exact-head Windows build, pluginval and install rollback |
 | SkellCast | 2026-11-19 11:52 ET (checkpoint 40) | PR #8 run #44572720407 passed; 43 installer assertions; artifact #14553494611 SHA-256 b7234aafd17949d2034150447302971bc3c8432aea6f126efe43df52c15e7015; AMD64 PE32+ module | Licensing/attribution and FL Studio/OBS/WASAPI A/B | Owner legal review and real host/routing test |
-| Skell Stop / StopDial | 2026-11-19 15:49 ET (checkpoint 43) | PR #4/#5 exact-head runs #44612584938, #44612594930, #44612587549 and #44612598477 all SUCCESS. PR #5 artifact #14571449819 SHA-256 2e6abb316f3c60b5e5d234f5c8819ac4b9052b989067ba1168858e72a6513a0f: ZIP CRC and five checksums pass, but moduleinfo.json fails strict JSON due trailing commas. Draft PR #6 commit 3d1a5f2253b005cfd5675c7f8d69d03e97dd5b6c normalizes staged metadata; run #44625564418 has sanitizer DSP passed and Windows configure in progress | Strict JSON package defect; then owner FL Studio/audio/state, legal notices/SDK terms, canonical URL/support email, signing and private delivery | Finish PR #6 Windows build, verifier, installer, pluginval and artifact; strict-parse moduleinfo and recheck every checksum |
+| Skell Stop / StopDial | 2026-11-20 00:28 ET (checkpoint 51) | PR #6 head `3d1a5f2253b005cfd5675c7f8d69d03e97dd5b6c`; exact-head run [#44625564418](https://github.com/skellyruno/skell-stop-vst/actions/runs/44625564418) completed SUCCESS: Linux sanitizer DSP; Windows x64 MSVC VST3 build, JUCE CTest 2/2, package verifier 17/17, installer/update/rollback, pluginval strictness 5 and UI capture. Product artifact #14577734466 (2,926,553 bytes) was uploaded from the public repository. Draft PR #7 head `65bdd3fe02be0aef35f4128d36f002e3df407ca1` adds private-only product upload; run #44681318213 has Linux DSP SUCCESS and Windows job IN PROGRESS, no new artifacts yet. | Historical product artifact #14577734466 remains public; FL Studio/audio/state, legal/attribution, EULA, vendor/support/signing and private distribution remain unverified | Finish PR #7 exact-head Windows CI; confirm product artifact is withheld on public repo while UI diagnostics remain; then owner Windows/FL Studio scan/load, save/reopen, preset/automation recall, musical A/B and CPU/latency |
 | Skel Pad / ScratchPad | 2026-11-17 (checkpoint 30) | PR #3 strict VST3 package gate recorded | Host and installer acceptance | Exact-head artifact, class inventory and FL Studio |
 | OmniChoir / SkellyChoir | 2026-11-18 18:30 ET (checkpoint 36) | PR #10 Windows install/update/rollback work recorded | UI screenshot completeness and owner-host acceptance | Fresh Quick4 screenshots and FL Studio scan/load |
 | Skell Studio / DAW | Not selected in this release ledger | Ecosystem PR #11 Windows compilation/core tests reported passed | Actual DAW runtime and plugin-host acceptance | Windows runtime, FL Studio interoperability and project reopen |
