@@ -49,6 +49,19 @@ No production DSP, UI, VST3 module, presets, parameter IDs, automation IDs, clas
 - Local checkout was attempted but this execution container could not resolve github.com. No local build or local Quick4 screenshot is claimed.
 - Previous baseline: PR #10 artifact [#14482735854](https://github.com/skellyruno/skell-choir-vst/actions/runs/44420964148/artifacts/14482735854), 5,252,321 bytes; archive SHA-256 `1c35c3bd48009f1b49ee08ae5d704564dadd545bfd6974ce8968a6ee30445ba5`; module SHA-256 `63cd3016c64c6069cbcec452ac066bc8f3a6425baa0ff68a0aa50d08f3044080`. Its prior exact-head Windows/native workflow passed; it is a historical preview baseline, not FL Studio acceptance or a commercial release.
 
+
+## Real UI screenshot inspection
+
+Downloaded the JUCE screenshot artifact [#14526230838](https://github.com/skellyruno/skell-choir-vst/actions/runs/44515655187/artifacts/14526230838) from the PR #11 screenshot workflow and independently inspected it.
+
+- ZIP CRC: passed.
+- PNGs: 35/35 decoded successfully.
+- Dimensions: 33 at 765×534, one at 730×500, one at 1300×900.
+- Duplicate image hashes: zero.
+- Full-size inspection: first-run tour, smallest editor, selected long preset (“Midnight Cathedral”), plus a contact sheet including Easy, Pro, large, neon-green theme and key/scale states.
+- No visible clipping, overlap, off-canvas controls or unreadable tour-card text was found in these captures.
+- The current PR #13 changes only the syntax-test stand-in and its README, not the UI. Therefore no new UI screenshot was required for this change. Local Quick4/current-source capture remains UNVERIFIED because this execution container could not resolve github.com for a local checkout.
+
 ## Coverage row — SkellyChoir
 
 | Field | Current record |
