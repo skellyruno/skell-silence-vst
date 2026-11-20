@@ -1,3 +1,53 @@
+## Release & Launch checkpoint 53 — 2026-11-20 01:35 ET
+
+### Selected project: Skell Delay (skell-delay-vst)
+
+Selected as a different product from checkpoint 51 StopDial, after checking the latest Preset Audit, Ecosystem, Websites and Nightly results and the exact GitHub PR/Actions state. The Nightly Blueprint still identifies Skell Delay as the first owner-side FL Studio acceptance candidate. Delay already has a Windows x64 VST3 preview with exact-head build, DSP/stress/realtime CTests, pluginval strictness 10, package staging and PowerShell install/update/rollback checks passing. Its remaining blockers are release approval and owner acceptance, and issue #20 exposed a real preset-browser usability defect: six implemented category filters were unreachable because they were hidden.
+
+### Cross-automation evidence checked
+
+- Preset Quality Audit: the newest scheduled attempt failed without a report. The latest usable completed result remains Run 11: Alchemist analysis alignment corrected to 49 samples with regression test; production bank 43 and experimental bank 55 audited without promotion; Rack/EQ/Master checks reported. No Preset-owned branch was edited.
+- Ecosystem Development: latest completed run selected PitchNet and opened draft PR #1, commit 7472ae802a3a781cd3b5a3f66b12a1a78fd71a7b, adding ARA processed-audio archive-header validation and 12 assertions. Standalone C++17 assertions passed; full CI was not yet surfaced. No PitchNet or other Ecosystem branch was edited.
+- Websites Development: latest completed V123 implemented Artist V108's post-release countdown accessibility transition; Creative 44/44 and Preset Showcase 12/12 passed. No public deployment, DNS change or website edit occurred in this run.
+- Nightly Blueprint: latest completed review still records zero verified commercial releases and zero verified revenue. Skell Delay remains the first owner-side FL Studio acceptance candidate; SkellyChoir is second.
+- Release coverage before this run recorded StopDial at checkpoint 51 and Skell-Snap at checkpoint 52. This run selected a third, different project. DeEsser remains parked.
+
+### Protected baseline and independent artifact inspection
+
+- Repository: https://github.com/skellyruno/skell-delay-vst
+- Main baseline commit: 00b45315b79e194a3775b0f8a689d13ef93914a0.
+- Release PR #19 head: 146dc8e3c499da7159edbaa6528c488a69d5f5bc; exact-head Windows run #44594311690 completed SUCCESS.
+- Actions artifact #14565656993: 4,754,314 bytes; archive SHA-256 90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d.
+- ZIP CRC passed. All eight checksum entries matched. Strict moduleinfo JSON parsed; exactly one flat `Skell-Delay.vst3` bundle and one Windows module were present. The module is AMD64 PE32+; SHA-256 268a8017326277671a941a472b7078b0d179dacb57e8eeb1596c47e9e4f77737. Two unique VST3 class IDs were preserved. No Standalone executable or duplicate VST3 bundle was present.
+- The manifest binds source commit 146dc8e3c499da7159edbaa6528c488a69d5f5bc and workflow run 44594311690. It explicitly says `release_status=preview-only`, `legal.status=not-approved-for-distribution`, publisher contact incomplete and owner legal approval not passed.
+- Important: artifact #14565656993 was uploaded by a public repository workflow and remains publicly accessible. It is not a private delivery channel and must not be presented as a commercial download. No attempt was made to delete it or change repository visibility.
+
+### Source and packaging changes — draft PR #22
+
+- Product PR: https://github.com/skellyruno/skell-delay-vst/pull/22
+- Branch: `fix/delay-accessible-preset-category-filter-v2-20261120`
+- Base: PR #19 branch head 146dc8e3c499da7159edbaa6528c488a69d5f5bc.
+- Latest commit: d38d0a9f6bbb1885e6b1da9347a2369d12249979.
+- Files changed: `Source/PresetBrowser.h`, `tests/dsp_tests.cpp`, `.github/workflows/release.yml`, `tests/test_release_workflow.py`.
+- The six hidden category filters now use a keyboard-focusable JUCE ComboBox with reset plus VOCAL/RHYTHM/SPACE/TAPE/LO-FI/CREATIVE. ALL/FAV/USER remain one-click filters. Selection state stays synchronized; search, favourites, preset audition, save/delete, randomise, undo/redo and serialized state are preserved.
+- Added C++ regression assertions for visibility, bounds, keyboard focus, all six category mappings, reset behavior and unchanged current preset.
+- The PR #19 release workflow now emits an explicit notice and uploads the installable Windows preview only when the repository is private. Failure diagnostics remain separate. Added three Python workflow-contract tests for private-only upload, public withholding notice and preservation of failure diagnostics.
+- No DSP source, parameter IDs, automation IDs, presets, VST3 class IDs, host-state format, CMake targets or approved artwork changed.
+- Initial draft PR #21 was superseded and closed without merge; its branch remains preserved. Its first CI run #44690142565 was still in progress at the last check and used the older unconditional artifact-upload workflow. No artifact from that run is claimed or distributed; treat any resulting installable artifact as a public exposure and do not use it for release. The new PR #22 branch carries the public-upload guard.
+
+### Exact-head validation status
+
+- Source-level checks passed: all six category names present; ComboBox visible, described and keyboard-focusable; the top row uses 594 px of 624 px available at the 640×190 browser design size; regression assertions are present.
+- PR #22 latest head d38d0a9f6bbb1885e6b1da9347a2369d12249979: workflow run #44691128056 was pending at checkpoint time. No Windows compile, CTest, DSP/stress/realtime, pluginval, package, installer or artifact-withholding pass is claimed yet.
+- A local source clone could not be fetched because the container could not resolve github.com. JUCE 8.0.17-security ComboBox API declarations were checked from the pinned upstream source, but no local JUCE build or Quick4 capture was possible. Current UI screenshot, compact/large resize and keyboard popup behavior remain UNVERIFIED.
+- FL Studio scan/load, bypass, automation, state/preset save-reopen, real musical A/B, target-hardware CPU/latency, owner legal approval, reviewed EULA, vendor/support contact, signing and SkellHub updater acceptance remain separate gates.
+
+### Next selection
+
+After the Delay PR #22 exact-head checks complete, rotate to a different non-DeEsser project rather than repeating Delay. Recheck Skell-Snap's follow-up CI and under-served plugins for fresh failures/branch ownership. DeEsser remains parked. No merge, tag, public release, website deployment, DNS change or payment action occurred.
+
+---
+
 ## Release & Launch checkpoint 46 — 2026-11-19 19:51 ET
 
 ### Selected project: SkellyTune Mini (skelltune-mini)
@@ -362,7 +412,7 @@ PR #18 exact-head workflow 44588897363 was running on ffdf1f231d4eca4d2d43cee281
 The prior PR #17 artifact remains the protected baseline. No claim of new artifact,
 FL Studio acceptance, audio A/B, UI capture, or public distribution is made here.
 
-### Portfolio coverage snapshot — refreshed 2026-11-20 00:40 ET
+### Portfolio coverage snapshot — refreshed 2026-11-20 01:35 ET
 
 Dates below are Release & Launch selections, not dates when another automation touched
 the project. “Not recorded” means the current ledger has no selection date; it does not
@@ -378,7 +428,7 @@ mean the project is inactive or release-ready.
 | SkellGlitch (skell-gate-vst) | 2026-11-20 00:05 ET (checkpoint 50) | Draft product PR #10 head `6313412d14c0081d815b8cf65893f43a3ca7dabc`; exact-head run #44678649998 completed SUCCESS: Linux 30/30 release/archive tests + CTest 1/1; Windows x64 MSVC VST3 build, Windows CTest 1/1, JUCE UI smoke at four sizes, package verifier, pluginval strictness 5 (1/0), Steinberg validator exit 0, PowerShell installer/update/rollback integration PASS, deterministic ZIP generated. ZIP SHA-256 `5cabd20aaba54ed52c7cbe5bf59793629de3ffb54c91e7cfa6f6771435ae3132`; product ZIP withheld because repo is public. Current-head UI artifact #14603827434 (7 PNGs; SHA-256 `294b022b56c2aabf834be30cb2aaa74c348cf8bef8a33da3a71204092f41f594`) downloaded and inspected. | FL Studio, real musical A/B, owner preset/state recall, target CPU/latency, licensing/attribution, EULA, vendor/support/signing, SkellHub updater integration and private distribution remain unverified. Windows installer tests used a synthetic fixture; owner-machine installation remains pending. | Owner Windows/FL Studio scan/load, bypass, automation/state recall, real A/B and CPU/latency; review private distribution and SkellHub integration. Keep product ZIP withheld. |
 | Skell Key | 2026-11-19 10:47 ET (checkpoint 39) | PR #14 run #44560110890 passed; artifact #14548826890 SHA-256 14e9572951012a677ba75371cf27438fbfd71f2fc9a28db8caae4e7823794e6b; 13 entries, 2 CIDs, AMD64 PE32+, pluginval 5 and 33 installer assertions | Owner contact/licensing and Key-to-Mini host sync | FL Studio key/scale/A4 sync and project reopen |
 | Skell Afar | 2026-11-18 (checkpoint 34) | PR #12 strict metadata and true-peak integration work recorded; not refreshed this checkpoint | Owner-host audio/CPU acceptance | Exact-head pluginval, install/rollback and FL Studio |
-| Skell Delay | 2026-11-19 13:21 ET (checkpoint 41) | PR #19 run #44594311690 passed; artifact #14565656993 SHA-256 90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d; eight package hashes matched | Owner legal approval, publisher contact, FL Studio/A-B/CPU, SkellHub review and signing | Owner FL Studio scan/load, state/preset recall, real A/B and target-hardware CPU/latency |
+| Skell Delay | 2026-11-20 01:35 ET (checkpoint 53) | PR #19 exact-head run #44594311690 SUCCESS; artifact #14565656993 (4,754,314 bytes; ZIP SHA-256 90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d). Independent inspection: ZIP CRC pass, 8/8 hashes, one flat Windows VST3 bundle, strict moduleinfo JSON, two unique class IDs, AMD64 PE32+ module SHA-256 268a8017326277671a941a472b7078b0d179dacb57e8eeb1596c47e9e4f77737, no Standalone. Draft PR #22 head d38d0a9f6bbb1885e6b1da9347a2369d12249979 adds accessible category filtering and public artifact withholding; exact-head run #44691128056 pending. The prior artifact is from a public repository and remains public; manifest says preview-only / not-approved-for-distribution. | Owner legal approval, publisher contact, Quick4 UI acceptance, FL Studio/A-B/CPU, SkellHub review, vendor/signing and private distribution remain open | Finish PR #22 Windows build/CTest/DSP/pluginval/package/installer tests; verify public upload is skipped; then Quick4 screenshots/interactions and owner FL Studio scan/load, state/preset recall, real A/B and target-hardware CPU/latency |
 | Skell Maw | 2026-11-19 17:03 ET (checkpoint 44) | Protected PR #12 artifact #14502433275 SHA-256 ce4dd3de9eb3e7d9fcafa94ba0ff27da3b62b7eb8feaf8a727c5ed2a4717cea5. PR #14 run #44612219641: DSP 4/4 and Windows build passed, but 20/21 Python package tests passed. PR #15 commit 1fe5fda06767a80f2b38d47e2fae77bc0ada2f9c corrects the invalid escaped-string fixture; run #44624761035 has DSP 4/4 passed and Windows build in progress | Owner-approved LICENSE/third-party notices and EULA, vendor URL/support email, VST3 SDK/artwork/trademark rights, signing, FL Studio/audio/CPU acceptance; exact-head package gate still pending | Finish PR #15 Windows tests, PowerShell installer, seven pluginval checks and artifact upload; inspect package before owner host/audio/legal tests |
 | Skell Spacer | 2026-11-19 09:54 ET (checkpoint 38) | PR #11 run #44549535790 passed; artifact #14542812861 SHA-256 0b589912328ac50a90a6beb1f6b1ef8c954992859981224609b1bf9b06be93c4; 7 entries, six package hashes, AMD64 PE32+, pluginval 5, installer 21 assertions, DSP/CPU fixture | Owner-host sound/CPU, legal/contact and public-artifact delivery | FL Studio scan/load/sidechain, automation, long-session test and owner A/B |
 | Skell Glitch | Not selected | No exact-head release artifact verified in this lane | Current build/package state not established | Inspect repository Actions, VST3 bundle and pluginval |
