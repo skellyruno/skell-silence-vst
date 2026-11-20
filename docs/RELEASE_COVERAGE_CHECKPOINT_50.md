@@ -5,7 +5,7 @@
 **Repository:** https://github.com/skellyruno/skell-gate-vst  \
 **Product PR:** https://github.com/skellyruno/skell-gate-vst/pull/10  \
 **Parent release PR:** https://github.com/skellyruno/skell-gate-vst/pull/9  \
-**Status at ledger refresh:** Linux release/archive tests 30/30 and DSP CTest 1/1 passed; exact-head Windows job still in progress at JUCE/SkellCore configure. No current-head product ZIP or Windows acceptance is claimed.
+**Status:** Exact-head Linux and Windows CI completed SUCCESS. The installer-inclusive ZIP was generated and checksum-verified in CI but deliberately withheld because the repository is public. FL Studio and owner-machine acceptance remain UNVERIFIED.
 
 This checkpoint is append-only and supplements checkpoint 49. It does not change or replace the prior SkellyTune report, PR #9, the original source branch, VST3 identity, presets, UI, host state, automation IDs, or FL Studio projects.
 
@@ -84,39 +84,49 @@ No C++ DSP, UI source, JUCE/SkellCore pin, CMake plugin target, VST3 vendor/prod
 
 ## 4. Exact-head validation — run #44678649998
 
-[PR #10 exact-head workflow run #44678649998](https://github.com/skellyruno/skell-gate-vst/actions/runs/44678649998) targets commit `6313412d14c0081d815b8cf65893f43a3ca7dabc`.
+[PR #10 exact-head workflow run #44678649998](https://github.com/skellyruno/skell-gate-vst/actions/runs/44678649998) targets commit 6313412d14c0081d815b8cf65893f43a3ca7dabc. Both workflow jobs completed SUCCESS.
 
-**Linux job — PASS at ledger refresh**
+**Linux job — PASS**
 
 - Python release/archive unit tests: 30/30 passed.
 - Portable C++ DSP test executable built successfully.
 - DSP CTest: 1/1 passed; stress output reported 768,000 stereo frames and a finite checksum.
-- The new archive test confirms the installer is included and required; the workflow-contract test confirms Windows installer integration executes before archive creation.
+- The archive tests confirm the installer is included and required; workflow-contract tests confirm the Windows installer integration runs before archive creation.
 
-**Windows job — IN PROGRESS at ledger refresh**
+**Windows x64 job — PASS**
 
-- Checkout and setup-python steps passed.
-- JUCE 8.0.12 and pinned SkellCore checkout steps passed.
-- Configure JUCE and pinned SkellCore was still running.
-- Windows VST3 build, JUCE UI smoke, Windows CTest, package verification, pluginval strictness 5, Steinberg validator, PowerShell install/update/rollback integration, and ZIP creation were still pending.
-- No current-head Windows pass, installer integration pass, product ZIP or downloadable artifact is claimed.
+- JUCE 8.0.12 and pinned SkellCore checkout/configure passed.
+- Windows x64 MSVC VST3 and JUCE UI smoke targets compiled successfully.
+- Windows DSP test executable compiled; Windows CTest 1/1 passed.
+- Real JUCE offscreen UI smoke rendered and validated four window sizes.
+- VST3 package staging and release-manifest verification passed.
+- pluginval v2.0.0-beta3 strictness 5: 1 passed, 0 failed. Cold/warm open, editor, audio processing, plugin state, automation, parameter, bus-layout and DPI checks completed. Embedded VST3 validator exited 0.
+- Windows PowerShell 7 installer integration printed `SkellGlitch installer integration tests: PASS`. Dry-run, first install, identical reinstall no-op, update, rollback to previous version, first-install removal, tampered module rejection, unexpected file rejection, checksum path traversal rejection, and machine-wide/out-of-scope path rejection passed.
+- The integration suite uses a synthetic test VST3 fixture to validate installer behavior. It does not replace owner-machine installation or FL Studio host acceptance.
+- Deterministic installer-inclusive preview ZIP was generated and checksum sidecar written. ZIP SHA-256: `5cabd20aaba54ed52c7cbe5bf59793629de3ffb54c91e7cfa6f6771435ae3132`.
+- Release manifest module SHA-256: `54900d798db4bf2dd8566c5f7400a147cf57ba6e4402c724d212413c76c43827`. moduleinfo SHA-256: `81db5ff87d3252d2ca88498c7792a012fcf464a4a12dc31af9d63ca497b41ec2`.
+- The product ZIP upload step was skipped as intended because the repository is public. No product ZIP artifact or download link exists. The workflow uploaded only the real JUCE UI snapshot artifact #14603827434 (1,325,372 bytes; SHA-256 `294b022b56c2aabf834be30cb2aaa74c348cf8bef8a33da3a71204092f41f594`).
 
-A separate earlier push run #44677880833 on the parent PR #9 head f414bd4... completed successfully; it is not evidence for PR #10. Do not confuse that parent run with the current exact-head PR #10 run.
+### Current-head screenshot inspection
+
+Downloaded artifact #14603827434 and inspected all seven PNGs: 480×360, 720×540, 960×720, 1200×900, Amethyst skin, Burst skin and Settings. The 960×720 and 1200×900 layouts show no visible clipping or control overlap. The Settings overlay stays inside the editor bounds. The default/Burst skin uses the green accent; Amethyst uses purple. The compact 480×360 layout is dense and its labels are small, but no control collision or off-canvas element was visible. No UI source was changed in this PR; these are post-build captures and inspection, not interactive host testing.
+
+A separate earlier push run #44677880833 on the parent PR #9 head f414bd4... completed successfully; it is not evidence for PR #10.
 
 ## 5. Release readiness matrix
 
 | Gate | Status | Evidence / next requirement |
 |---|---|---|
-| Windows x64 VST3 build | Parent PR #9 passed; PR #10 pending | Finish run #44678649998 on exact head |
-| VST3 bundle structure / version / duplicates | Parent PR #9 passed | Re-run verifier on PR #10 exact head |
-| pluginval strictness 5 | Parent PR #9 passed | PR #10 exact-head pluginval still pending |
-| Steinberg VST3 validator | Parent PR #9 passed | PR #10 exact-head validator still pending |
-| Deterministic ZIP / checksums | Parent PR #9 generated ZIP | PR #10 installer-inclusive ZIP pending; public upload remains withheld |
-| Installer / update / backup / rollback | Implemented in PR #10 | Windows PowerShell integration tests pending |
-| DSP smoke | Parent CTest 1/1; PR #10 Linux CTest 1/1 | Real musical A/B and owner target-hardware tests still unverified |
+| Windows x64 VST3 build | PASS on PR #10 exact head | MSVC x64 VST3 target built in run #44678649998 |
+| VST3 bundle structure / version / duplicates | PASS on PR #10 exact head | Exact-head package verifier passed |
+| pluginval strictness 5 | PASS on PR #10 exact head | 1 passed / 0 failed; embedded VST3 validator exit 0 |
+| Steinberg VST3 validator | PASS on PR #10 exact head | pluginval's VST3 validator exited 0 |
+| Deterministic ZIP / checksums | PASS on PR #10 exact head; withheld | Installer-inclusive ZIP SHA-256 `5cabd20aaba54ed52c7cbe5bf59793629de3ffb54c91e7cfa6f6771435ae3132`; no public product artifact |
+| Installer / update / backup / rollback | PASS in Windows CI with synthetic fixture | Dry-run, install, idempotence, update, rollback, first-install removal and fail-closed cases passed; owner-machine install and SkellHub integration remain unverified |
+| DSP smoke | PASS: Linux CTest 1/1 and Windows CTest 1/1 | Real musical A/B and owner target-hardware tests still unverified |
 | FL Studio scan/load / bypass / automation | UNVERIFIED | Owner Windows/FL Studio session required |
 | Preset/state recall and old-project compatibility | No state/IDs changed; runtime UNVERIFIED | Open/save/reopen owner projects and recall factory/user presets |
-| UI | Parent real JUCE screenshots inspected | No UI source changed; interaction/animation still unverified |
+| UI | PASS: current-head JUCE screenshots generated and inspected at four sizes plus skins/settings | No UI source changed; interaction/animation and FL Studio editor behavior remain unverified |
 | Licensing / attribution / EULA | BLOCKED | JUCE, VST3, SkellCore and asset licensing/attribution review |
 | Updater / rollback | Rollback helper implemented; SkellHub integration absent | Test helper on owner Windows machine, then review SkellyHub install/update/rollback integration |
 | Storefront / email signup | Separate website automation | No deploy or storefront claim in this run |

@@ -104,15 +104,19 @@ FL Studio scan/load, bypass, automation, presets/state recall, save/reopen and o
 
 The next Release & Launch run must rotate away from SkellGlitch and choose a different
 non-DeEsser project after checking fresh automation results, exact-head Actions and
-branch ownership. SkellGlitch PR #10 is still a draft: its Linux 30/30 release/archive
-tests and DSP CTest 1/1 pass, but the exact-head Windows build and new installer/update/
-rollback integration are still pending. Do not treat the earlier PR #9 green build as
-acceptance of PR #10. SkellyTune remains blocked by four offline DSP failures. Master,
-EQ, Preset and Rack remain with the active Preset Audit lane; SkellForge, SkellNative
-and SkellCore remain with the Ecosystem Foundation lane while active. Nightly continues
-to identify Skell Delay as the first owner-side FL Studio acceptance candidate. Continue
-toward at least three distinct non-DeEsser substantive implementations in the six-run
-window. No merge, tag, public release, website deployment, DNS change or payment action.
+branch ownership. SkellGlitch PR #10 exact-head run #44678649998 completed SUCCESS:
+Linux release/archive tests 30/30 and DSP CTest 1/1; Windows x64 VST3 build, Windows
+CTest 1/1, real JUCE UI smoke at four sizes, package verification, pluginval strictness
+5, Steinberg validator, PowerShell installer/update/rollback integration and deterministic
+ZIP creation all passed. The product ZIP was correctly withheld because the repository
+is public. This is CI/package readiness, not FL Studio or owner-machine acceptance; the
+PowerShell integration suite uses a synthetic package fixture. SkellyTune remains blocked
+by four offline DSP failures. Master, EQ, Preset and Rack remain with the active Preset
+Audit lane; SkellForge, SkellNative and SkellCore remain with the Ecosystem Foundation
+lane while active. Nightly continues to identify Skell Delay as the first owner-side
+FL Studio acceptance candidate. Continue toward at least three distinct non-DeEsser
+substantive implementations in the six-run window. No merge, tag, public release,
+website deployment, DNS change or payment action.
 
 ---
 
@@ -364,7 +368,7 @@ mean the project is inactive or release-ready.
 | Skell EQ | 2026-11-16 19:55 ET (checkpoint 11) | PR #18 Windows run #44539325351 passed; artifact #14538301883 recorded in checkpoint 38 | FL Studio sound/state acceptance and release licensing | FL Studio save/reopen, bypass, A/B and CPU |
 | SkellyTune Mini | 2026-11-19 19:47 ET (checkpoint 46) | PR #11 exact-head Windows run #44275482816 and portable run #44275482606 passed; PR #12 adds fail-closed public-artifact withholding, current head 5f407fb997512df90841114281435f4c5e1e9de4 with Windows run #44649117823 and portable run #44649117808 in progress | Public repository previously uploaded product ZIPs; historical artifacts #14412709628/#14414742253 remain public; owner-host sync/state and JUCE commercial entitlement | Finish exact-head Windows/pluginval, confirm upload is skipped on public visibility, then FL Studio live Key/Scale/A4 sync, save/reopen and real-singer A/B |
 | SkellyTune / AutoTune (skell-autotune-vst) | 2026-11-19 22:48 ET (checkpoint 49) | PR #6 head d72c2de3d2767ebaa0ab0ab9db0bca33622054cd; run #44671211915 Windows x64 VST3 build, pluginval strictness 5 and package verifier passed; 48/52 offline DSP CTests passed, four failed. Current package ZIP was generated and verified by the runner but withheld from this public repo. Historical artifact #14528960226 was independently inspected: inner ZIP SHA-256 40fd658e25a9fea9596b0b91c08ac286848b59c7903e6e2888531faf55595e7c; module SHA-256 d1177d1125e95f8894bc616f7a1ade8fb65204ef7029de7e77c166872b542e92. | Four DSP failures (vibrato/glide pitch motion, onset latency contract, diagnostic audio identity, scalar/SIMD exact parity); historical preview artifact remains public; vendor/support/legal details incomplete. | Investigate four DSP failures without weakening assertions; correct C4458 shadow warnings; re-run 52/52 and Windows/pluginval; then FL Studio scan/load, preset/state/automation recall, real A/B and CPU/latency |
-| SkellGlitch (skell-gate-vst) | 2026-11-20 00:05 ET (checkpoint 50) | Draft product PR #10 head `6313412d14c0081d815b8cf65893f43a3ca7dabc`, stacked on PR #9; exact-head run #44678649998: Linux release/archive tests 30/30 and DSP CTest 1/1 passed; Windows x64 job still in Configure at ledger refresh. Parent PR #9 exact-head run #44664854681 passed Windows MSVC VST3, JUCE UI smoke, pluginval strictness 5, Steinberg validator and deterministic ZIP; product ZIP withheld because repo is public. Real screenshot artifact #14597547792 (7 PNGs; SHA-256 `578a9b489eb269546152e1bc39a7ca5eb586bf9082691e1e6cb97275309f830d`) downloaded and inspected. | New per-user installer/update/rollback is implemented but exact-head Windows integration, package and pluginval gates remain pending; FL Studio, musical A/B, preset/state recall, target CPU/latency, licensing/attribution, vendor/support/signing and private distribution remain unverified. | Finish exact-head Windows run #44678649998; inspect installer/update/rollback test logs and package checksum results; then owner FL Studio scan/load, bypass, automation/state recall, A/B and CPU/latency. Keep product ZIP withheld. |
+| SkellGlitch (skell-gate-vst) | 2026-11-20 00:05 ET (checkpoint 50) | Draft product PR #10 head `6313412d14c0081d815b8cf65893f43a3ca7dabc`; exact-head run #44678649998 completed SUCCESS: Linux 30/30 release/archive tests + CTest 1/1; Windows x64 MSVC VST3 build, Windows CTest 1/1, JUCE UI smoke at four sizes, package verifier, pluginval strictness 5 (1/0), Steinberg validator exit 0, PowerShell installer/update/rollback integration PASS, deterministic ZIP generated. ZIP SHA-256 `5cabd20aaba54ed52c7cbe5bf59793629de3ffb54c91e7cfa6f6771435ae3132`; product ZIP withheld because repo is public. Current-head UI artifact #14603827434 (7 PNGs; SHA-256 `294b022b56c2aabf834be30cb2aaa74c348cf8bef8a33da3a71204092f41f594`) downloaded and inspected. | FL Studio, real musical A/B, owner preset/state recall, target CPU/latency, licensing/attribution, EULA, vendor/support/signing, SkellHub updater integration and private distribution remain unverified. Windows installer tests used a synthetic fixture; owner-machine installation remains pending. | Owner Windows/FL Studio scan/load, bypass, automation/state recall, real A/B and CPU/latency; review private distribution and SkellHub integration. Keep product ZIP withheld. |
 | Skell Key | 2026-11-19 10:47 ET (checkpoint 39) | PR #14 run #44560110890 passed; artifact #14548826890 SHA-256 14e9572951012a677ba75371cf27438fbfd71f2fc9a28db8caae4e7823794e6b; 13 entries, 2 CIDs, AMD64 PE32+, pluginval 5 and 33 installer assertions | Owner contact/licensing and Key-to-Mini host sync | FL Studio key/scale/A4 sync and project reopen |
 | Skell Afar | 2026-11-18 (checkpoint 34) | PR #12 strict metadata and true-peak integration work recorded; not refreshed this checkpoint | Owner-host audio/CPU acceptance | Exact-head pluginval, install/rollback and FL Studio |
 | Skell Delay | 2026-11-19 13:21 ET (checkpoint 41) | PR #19 run #44594311690 passed; artifact #14565656993 SHA-256 90ced93cd6669418a2c2a55ec315b281981316b739cb9b1bd41439cf3614503d; eight package hashes matched | Owner legal approval, publisher contact, FL Studio/A-B/CPU, SkellHub review and signing | Owner FL Studio scan/load, state/preset recall, real A/B and target-hardware CPU/latency |
