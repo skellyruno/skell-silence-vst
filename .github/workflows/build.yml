@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Test Python release-workflow and generator contracts
+        run: python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Test C++ DSP (without JUCE)
         run: bash tests/run_cpp_tests.sh
   windows:
@@ -238,6 +240,7 @@ jobs:
               manualInstallAndRollbackRequired = $true
               pluginvalStrictnessRequired = 5
               uploadOccursOnlyAfterAllWorkflowGates = $true
+              productArtifactVisibilityPolicy = 'PRIVATE_REPOSITORY_ONLY'
             }
             metadataWarnings = $metadataWarnings
             releaseBlockers = $releaseBlockers
@@ -268,7 +271,16 @@ jobs:
           plugins: dist/Skell Silence.vst3
           strictness-level: 5
           pluginval-version: v2.0.0-beta3
+      - name: Withhold installable preview artifact in public repositories
+        if: always() && github.event.repository.private != true
+        shell: pwsh
+        run: |
+          $message = 'Installable Skell Silence preview artifact withheld because this repository is public.'
+          Write-Host "::notice::$message"
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $message
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value 'The separate SkellSilence-UI-QA diagnostic artifact is unaffected.'
       - uses: actions/upload-artifact@v6
+        if: github.event.repository.private == true
         with:
           name: SkellSilence-Windows
           path: |

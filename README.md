@@ -42,8 +42,11 @@ cmake --build build --config Release --target SkellSilence_VST3 --parallel 2
 ```
 
 Expected release output: `build/SkellSilence_artefacts/Release/VST3/Skell Silence.vst3`.
-On GitHub, successful **Build Skell Silence** runs publish the
-`SkellSilence-Windows` artifact. Unzip the VST3 bundle into the system's
+On GitHub, the installable `SkellSilence-Windows` preview artifact is uploaded
+only when the repository is private. Public-repository runs keep the build,
+DSP/host regression, UI-QA, package verification and pluginval steps enabled,
+but withhold the installable product package. The separate UI-QA artifact
+remains independent. This policy does not delete historical public artifacts. Unzip the VST3 bundle into the system's
 VST3 plugin directory, then rescan plugins in FL Studio. There is **no
 Standalone executable or macOS distribution** in this build.
 
