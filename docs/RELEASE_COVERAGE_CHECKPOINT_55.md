@@ -6,11 +6,11 @@ Selected after SkellyChoir checkpoint 54. The user had just created this reposit
 
 ### Cross-automation and branch ownership
 
-- Skelly Ecosystem Development was in progress during this run; its latest completed result recorded in checkpoint 54 selected PitchNet PR #1. Its active branches were left untouched.
-- Skelly Preset Quality Audit was also in progress; its latest usable completed result recorded in checkpoint 54 was Run 11. Active Preset/Master/EQ branches were left untouched.
-- Skelly Websites Development was disabled; its latest completed result recorded in checkpoint 54 was V125. No website, DNS or deployment work was performed.
-- The latest available nightly blueprint report recorded zero verified commercial releases and zero verified revenue. No pricing, payment or public-launch action was taken.
-- Candidate checks showed active recent work on Fan, Flang, Afar, Spacer, Separator, Cast, Necromancer and Maw. Those branches/PR chains were not edited. DeEsser remains parked.
+- Ecosystem Development's latest usable completed result (run `dc539d8e-8550-8320-bf8c-aba120ced3ba`, completed 09:21Z) focused Business & Releases: SkellyChoir PR #14's public-artifact guard passed; 35 real Choir screenshots were inspected; a SkellTune Mini 3.3.2 Windows VST3 preview was recovered and independently verified. Its newer attempt `6cc93090-0cd0-8322-b901-2d5cd42eaddd` then failed at 10:05Z without a result. Choir and Tune branches were left untouched; Skell-Snap was selected because it was the owner's newest direct request and had no existing open PR/issue.
+- Preset Quality Audit's latest attempt `327dfec2-6a54-8320-ab3d-cbdb7ba47517` failed at 10:05Z with a generic scheduled-task error. The latest usable detailed report remains Run 11; active Preset/Master/EQ work was not touched.
+- Websites Development's latest completed run `3b621bc0-c074-832d-afe3-25ff0d741e1c` delivered V125 at 07:42Z: Preset V38 13/13, Artist 100/100, Creative 48/48, and Quick4/JUCE 8.0.12 restored. The website automation is disabled; no website, DNS or deployment work was performed.
+- Nightly Blueprint's latest completed run `9612a6d4-3d94-832b-9f41-c2561fe78b87` completed 02:16Z. Its report records zero verified commercial releases and zero verified revenue; the next business priorities are the album streaming destination, owner-side Delay FL Studio acceptance, and SkellForge integration. The stored report is truncated, so no additional unexposed detail is inferred.
+- Other repositories with active PR/CI chains were left untouched. DeEsser remains parked.
 
 ### Protected source baseline
 
