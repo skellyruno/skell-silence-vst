@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Configure JUCE plugin
-        run: cmake -S . -B build -A x64 -DSKELL_SILENCE_BUILD_HOST_TESTS=ON
+        run: cmake -S . -B build -A x64 -DSKELL_SILENCE_BUILD_HOST_TESTS=ON -DSKELL_SILENCE_BUILD_UI_RENDERER=ON
       - name: Build Windows VST3
         run: cmake --build build --config Release --target SkellSilence_VST3 --parallel 2
       - name: Build JUCE host regression executable
@@ -30,54 +30,221 @@ jobs:
       - name: Run JUCE processor host regression
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $exe = 'build/Release/SkellSilenceHostRegression.exe'
           if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Host regression missing: $exe" }
           & $exe
           if ($LASTEXITCODE -ne 0) { throw "JUCE processor host regression failed: $LASTEXITCODE" }
-      - name: Package build products
+      - name: Build actual SkellCore editor renderer
+        run: cmake --build build --config Release --target SkellSilenceUIRenderer --parallel 2
+      - name: Capture and validate actual editor UI
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'build/Release/SkellSilenceUIRenderer.exe'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Actual editor renderer missing: $exe" }
+          & $exe --full --output ui-screenshots
+          if ($LASTEXITCODE -ne 0) { throw "SkellCore actual-editor UI capture failed: $LASTEXITCODE" }
+          $manifestPath = 'ui-screenshots/manifest.json'
+          if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'Actual-editor screenshot manifest missing' }
+          $uiManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json -ErrorAction Stop
+          if ($uiManifest.renderer -ne 'SkellCore real-editor JUCE v1') { throw "Unexpected UI renderer: $($uiManifest.renderer)" }
+          $sceneCount = @($uiManifest.scenes).Count
+          if ([int]$uiManifest.count -lt 4 -or $sceneCount -ne [int]$uiManifest.count) { throw "Incomplete screenshot manifest: count=$($uiManifest.count), scenes=$sceneCount" }
+          $pngs = @(Get-ChildItem -LiteralPath 'ui-screenshots' -File -Filter '*.png')
+          if ($pngs.Count -lt 4) { throw "Expected at least four real editor PNGs, found $($pngs.Count)" }
+          if (-not (Test-Path -LiteralPath 'ui-screenshots/contact-sheet.png' -PathType Leaf)) { throw 'Actual-editor contact sheet missing' }
+          Write-Host "SkellCore actual editor screenshots=$sceneCount; PNG files=$($pngs.Count)"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: SkellSilence-UI-QA
+          path: ui-screenshots/**
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stage and verify Windows VST3 package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
           $bundles = @(Get-ChildItem -Path 'build/SkellSilence_artefacts/Release/VST3' -Directory -Filter '*.vst3')
           if ($bundles.Count -ne 1) { throw "Expected one VST3 bundle, found $($bundles.Count)" }
           $vst = $bundles[0]
-          $modules = @(Get-ChildItem -LiteralPath (Join-Path $vst.FullName 'Contents/x86_64-win') -File -Filter '*.vst3' -ErrorAction Stop)
+
+          $moduleDir = Join-Path $vst.FullName 'Contents/x86_64-win'
+          $modules = @(Get-ChildItem -LiteralPath $moduleDir -File -Filter '*.vst3' -ErrorAction Stop)
           if ($modules.Count -ne 1) { throw "Expected one Windows x64 module, found $($modules.Count)" }
-          $bytes = [IO.File]::ReadAllBytes($modules[0].FullName)
+          $module = $modules[0]
+          $bytes = [IO.File]::ReadAllBytes($module.FullName)
           if ($bytes.Length -lt 0x100 -or $bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw 'Module is not a Windows PE binary' }
           $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
-          if ($peOffset -lt 0x40 -or $peOffset + 6 -ge $bytes.Length) { throw 'Invalid Windows PE header offset' }
-          if ([BitConverter]::ToUInt32($bytes,$peOffset) -ne 0x4550) { throw 'Missing PE header signature' }
-          if ([BitConverter]::ToUInt16($bytes,$peOffset+4) -ne 0x8664) { throw 'Not an x64 Windows VST3 module' }
+          if ($peOffset -lt 0x40 -or $peOffset + 26 -gt $bytes.Length) { throw 'Invalid Windows PE header offset' }
+          if ([BitConverter]::ToUInt32($bytes, $peOffset) -ne 0x4550) { throw 'Missing PE header signature' }
+          if ([BitConverter]::ToUInt16($bytes, $peOffset + 4) -ne 0x8664) { throw 'Not an x64 Windows VST3 module' }
+          if ([BitConverter]::ToUInt16($bytes, $peOffset + 24) -ne 0x20b) { throw 'Windows module is not PE32+' }
+
+          $cmakeText = Get-Content -LiteralPath 'CMakeLists.txt' -Raw
+          $versionMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*project\s*\(\s*SkellSilence\s+VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)')
+          if (-not $versionMatch.Success) { throw 'Could not read SkellSilence project version from CMakeLists.txt' }
+          $projectVersion = $versionMatch.Groups[1].Value
+
+          # The VST3 class IDs, bundle ID and four-character codes are a protected
+          # compatibility contract. A change requires an explicit identity migration.
+          $bundleMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*BUNDLE_ID[ \t]+"([^"]+)"')
+          $manufacturerMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*PLUGIN_MANUFACTURER_CODE[ \t]+([A-Za-z0-9]+)')
+          $pluginCodeMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*PLUGIN_CODE[ \t]+([A-Za-z0-9]+)')
+          $formatsMatch = [regex]::Match($cmakeText, '(?im)^[ \t]*FORMATS[ \t]+([^\r\n]+)')
+          if (-not $bundleMatch.Success -or -not $manufacturerMatch.Success -or -not $pluginCodeMatch.Success -or -not $formatsMatch.Success) {
+            throw 'Could not read the complete VST3 identity contract from CMakeLists.txt'
+          }
+          $bundleId = $bundleMatch.Groups[1].Value
+          $manufacturerCode = $manufacturerMatch.Groups[1].Value
+          $pluginCode = $pluginCodeMatch.Groups[1].Value
+          $formats = @($formatsMatch.Groups[1].Value.Trim() -split '\s+')
+          if ($bundleId -cne 'uno.skellyr.silence') { throw "VST3 bundle ID changed unexpectedly: $bundleId" }
+          if ($manufacturerCode -cne 'SkAu') { throw "VST3 manufacturer code changed unexpectedly: $manufacturerCode" }
+          if ($pluginCode -cne 'Sl01') { throw "VST3 plugin code changed unexpectedly: $pluginCode" }
+          if ($formats.Count -ne 1 -or $formats[0] -cne 'VST3') { throw "Release target must remain VST3-only; CMake formats are: $($formats -join ', ')" }
+
           $metadataPath = Join-Path $vst.FullName 'Contents/Resources/moduleinfo.json'
-          if (Test-Path -LiteralPath $metadataPath -PathType Leaf) {
-            $raw = Get-Content -LiteralPath $metadataPath -Raw
-            # JUCE-generated metadata may contain trailing commas; validate the shipped copy.
-            $clean = [regex]::Replace($raw, ',(?=\s*[}\]])', '')
-            # PowerShell ConvertFrom-Json tolerates trailing commas. JsonDocument
-            # is deliberately strict and rejects invalid moduleinfo.json.
-            $strictDocument = [System.Text.Json.JsonDocument]::Parse($clean)
-            $strictDocument.Dispose()
-            $null = $clean | ConvertFrom-Json -ErrorAction Stop
-            Set-Content -LiteralPath $metadataPath -Value $clean -Encoding utf8 -NoNewline
+          if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) { throw 'VST3 moduleinfo.json is missing' }
+          $rawMetadata = Get-Content -LiteralPath $metadataPath -Raw
+          # JUCE-generated metadata may contain trailing commas; validate the exact normalized copy that will ship.
+          $cleanMetadata = [regex]::Replace($rawMetadata, ',(?=\s*[}\]])', '')
+          $metadataDocument = [System.Text.Json.JsonDocument]::Parse($cleanMetadata)
+          $metadataDocument.Dispose()
+          $metadata = $cleanMetadata | ConvertFrom-Json -ErrorAction Stop
+          if ($metadata.Name -ne 'Skell Silence') { throw "Unexpected VST3 product name: $($metadata.Name)" }
+          if ($metadata.Version -ne $projectVersion) { throw "VST3 metadata version $($metadata.Version) does not match CMake version $projectVersion" }
+
+          $factory = $metadata.'Factory Info'
+          if ($factory.Vendor -cne 'Skell Audio') { throw "Unexpected VST3 vendor: $($factory.Vendor)" }
+          $classes = @($metadata.Classes)
+          if ($classes.Count -ne 2) { throw "Expected exactly two protected VST3 classes, found $($classes.Count)" }
+          $audioClasses = @($classes | Where-Object { $_.Category -eq 'Audio Module Class' })
+          $controllerClasses = @($classes | Where-Object { $_.Category -eq 'Component Controller Class' })
+          if ($audioClasses.Count -ne 1 -or $controllerClasses.Count -ne 1) { throw 'VST3 metadata must contain exactly one audio class and one controller class' }
+
+          # These IDs were read from the independently inspected v2.8 Windows
+          # baseline artifact. Do not silently publish a binary that changes host identity.
+          $expectedAudioCid = 'ABCDEF019182FAEB536B4175536C3031'
+          $expectedControllerCid = 'ABCDEF011234ABCD536B4175536C3031'
+          if ([string]$audioClasses[0].CID -cne $expectedAudioCid) { throw "Audio VST3 class ID changed: $($audioClasses[0].CID)" }
+          if ([string]$controllerClasses[0].CID -cne $expectedControllerCid) { throw "Controller VST3 class ID changed: $($controllerClasses[0].CID)" }
+          foreach ($class in $classes) {
+            if ($class.Name -cne 'Skell Silence') { throw "Unexpected VST3 class name: $($class.Name)" }
+            if ($class.Vendor -cne $factory.Vendor) { throw "VST3 class vendor mismatch: $($class.Vendor)" }
+            if ($class.Version -cne $projectVersion) { throw "A VST3 class version does not match the CMake project version: $($class.Version)" }
           }
-          New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Copy-Item -LiteralPath $vst.FullName -Destination dist -Recurse -Force
+          Set-Content -LiteralPath $metadataPath -Value $cleanMetadata -Encoding utf8 -NoNewline
+
+          New-Item -ItemType Directory -Path 'dist' -Force | Out-Null
+          Copy-Item -LiteralPath $vst.FullName -Destination 'dist' -Recurse -Force
           $copy = Join-Path 'dist' $vst.Name
-          $copyModules = @(Get-ChildItem -LiteralPath (Join-Path $copy 'Contents/x86_64-win') -File -Filter '*.vst3')
+          $distBundles = @(Get-ChildItem -Path 'dist' -Directory -Filter '*.vst3')
+          if ($distBundles.Count -ne 1) { throw "Staging must contain exactly one VST3 bundle, found $($distBundles.Count)" }
+          $copyModuleDir = Join-Path $copy 'Contents/x86_64-win'
+          $copyModules = @(Get-ChildItem -LiteralPath $copyModuleDir -File -Filter '*.vst3')
           if ($copyModules.Count -ne 1) { throw 'Packaged Windows module missing or duplicated' }
-          $sourceHash = (Get-FileHash -LiteralPath $modules[0].FullName -Algorithm SHA256).Hash
-          $copyHash = (Get-FileHash -LiteralPath $copyModules[0].FullName -Algorithm SHA256).Hash
+
+          $sourceHash = (Get-FileHash -LiteralPath $module.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $copyHash = (Get-FileHash -LiteralPath $copyModules[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($sourceHash -ne $copyHash) { throw 'Packaged VST3 binary hash mismatch' }
-          Write-Host "VST3 x64 SHA256=$copyHash"
-          if (Test-Path -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json')) {
-            $packagedJson = Get-Content -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json') -Raw
-            $strictPackaged = [System.Text.Json.JsonDocument]::Parse($packagedJson)
-            $strictPackaged.Dispose()
+          $metadataHash = (Get-FileHash -LiteralPath (Join-Path $copy 'Contents/Resources/moduleinfo.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+
+          $metadataWarnings = @()
+          if ([string]::IsNullOrWhiteSpace([string]$factory.URL)) { $metadataWarnings += 'Factory Info.URL is empty; an approved product website is required before commercial release.' }
+          if ([string]::IsNullOrWhiteSpace([string]$factory.'E-Mail')) { $metadataWarnings += 'Factory Info.E-Mail is empty; an approved support contact is required before commercial release.' }
+
+          $relativeModule = "$($vst.Name)/Contents/x86_64-win/$($copyModules[0].Name)"
+          $relativeMetadata = "$($vst.Name)/Contents/Resources/moduleinfo.json"
+          @(
+            "$copyHash  $relativeModule"
+            "$metadataHash  $relativeMetadata"
+          ) | Set-Content -LiteralPath 'dist/SHA256SUMS.txt' -Encoding ascii
+
+          $releaseBlockers = @(
+            'Real FL Studio host/session acceptance is pending.'
+            'Manual visual review of current-source SkellCore screenshot artifact and Quick4 captures is pending.'
+          ) + $metadataWarnings
+          $uiManifestPath = 'ui-screenshots/manifest.json'
+          if (-not (Test-Path -LiteralPath $uiManifestPath -PathType Leaf)) { throw 'SkellCore UI screenshot manifest missing during package staging' }
+          $uiManifest = Get-Content -LiteralPath $uiManifestPath -Raw | ConvertFrom-Json -ErrorAction Stop
+          if ($uiManifest.renderer -ne 'SkellCore real-editor JUCE v1' -or [int]$uiManifest.count -lt 4) {
+            throw 'SkellCore actual-editor screenshot evidence is missing or incomplete'
           }
-      - name: Validate VST3 with pluginval
+          $manifest = [ordered]@{
+            schemaVersion = 1
+            product = 'Skell Silence'
+            version = $projectVersion
+            distribution = 'Windows VST3 x64'
+            releaseStatus = 'PREVIEW_ONLY'
+            commercialReleaseEligible = $false
+            source = [ordered]@{
+              repository = 'skellyruno/skell-silence-vst'
+              commit = $env:GITHUB_SHA
+            }
+            build = [ordered]@{
+              workflow = 'Build Skell Silence'
+              runId = $env:GITHUB_RUN_ID
+              runAttempt = $env:GITHUB_RUN_ATTEMPT
+              ref = $env:GITHUB_REF
+              event = $env:GITHUB_EVENT_NAME
+            }
+            bundle = [ordered]@{
+              name = $vst.Name
+              module = $copyModules[0].Name
+              platformFolder = 'x86_64-win'
+              moduleBytes = $bytes.Length
+              moduleSha256 = $copyHash
+              moduleInfoSha256 = $metadataHash
+              vendor = $factory.Vendor
+              vendorUrl = $factory.URL
+              supportEmail = $factory.'E-Mail'
+              manufacturerCode = $manufacturerCode
+              pluginCode = $pluginCode
+              bundleId = $bundleId
+              classIds = @($classes | ForEach-Object { $_.CID })
+            }
+            uiEvidence = [ordered]@{
+              renderer = $uiManifest.renderer
+              sceneCount = $uiManifest.count
+              artifactName = 'SkellSilence-UI-QA'
+              manualReview = 'PENDING'
+            }
+            automatedGates = [ordered]@{
+              peMachine = 'AMD64'
+              peOptionalHeader = 'PE32+'
+              moduleInfoStrictJson = $true
+              productAndClassVersionsMatch = $true
+              stableBundleIdMatchesBaseline = $true
+              manufacturerCodeMatchesBaseline = $true
+              pluginCodeMatchesBaseline = $true
+              classIdsMatchInspectedV28Baseline = $true
+              cmakeTargetIsVst3Only = $true
+              skellCoreRealEditorUiCapture = $true
+              manualUiReviewRequired = $true
+              exactlyOneVst3Bundle = $true
+              exactlyOneWindowsModule = $true
+              packagedBinaryHashMatchesBuild = $true
+              pluginvalStrictnessRequired = 5
+              uploadOccursOnlyAfterAllWorkflowGates = $true
+            }
+            metadataWarnings = $metadataWarnings
+            releaseBlockers = $releaseBlockers
+          }
+          $manifestJson = $manifest | ConvertTo-Json -Depth 8
+          Set-Content -LiteralPath 'dist/release-manifest.json' -Value $manifestJson -Encoding utf8
+          $manifestCheck = [System.Text.Json.JsonDocument]::Parse((Get-Content -LiteralPath 'dist/release-manifest.json' -Raw))
+          $manifestCheck.Dispose()
+
+          Write-Host "Skell Silence $projectVersion staged as PREVIEW_ONLY"
+          Write-Host "Windows module SHA256=$copyHash"
+          Write-Host "Module metadata SHA256=$metadataHash"
+          Write-Host "Metadata warnings=$($metadataWarnings.Count)"
+      - name: Validate packaged VST3 with pluginval
         uses: Tracktion/pluginval/validate@v2.0.0-beta3
         with:
-          plugins: build/SkellSilence_artefacts/Release/VST3/Skell Silence.vst3
+          plugins: dist/Skell Silence.vst3
           strictness-level: 5
           pluginval-version: v2.0.0-beta3
       - uses: actions/upload-artifact@v6
